@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEA AGENTIQ | Arquitectura de la Creación</title>
+    <link rel="icon" href="/static/images/logo.jpeg" type="image/jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container header__inner">
+            <a href="#" class="logo">
+                <img src="/static/images/logo.jpeg" alt="IEA AGENTIQ">
+                <div class="logo__text">
+                    <span class="logo__title">IEA AGENTIQ</span>
+                    <span class="logo__subtitle">Arquitectura de la Creación</span>
+                </div>
+            </a>
+            <nav class="nav">
+                <a href="#casos">Casos de Uso</a>
+                <a href="#roi">Calculadora ROI</a>
+                <a href="#precios">Servicios</a>
+                <a href="#testimonios">Testimonios</a>
+            </nav>
+            <a href="#contacto" class="btn btn--gold">Agendar Auditoría Gratuita</a>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero__bg-glow"></div>
+        <div class="container hero__inner">
+            <div class="hero__content">
+                <span class="tag">Inteligencia Artificial · Automatización · Agentes Autónomos</span>
+                <h1>Automatizamos tu atención al cliente y calificación de leads con IA en 30 días</h1>
+                <p>Diseñamos e implementamos agentes inteligentes que trabajan 24/7 para tu negocio: responden, califican, agendan y venden, mientras tu equipo se enfoca en crecer.</p>
+                <div class="hero__cta">
+                    <a href="#contacto" class="btn btn--gold btn--lg">Agendar Auditoría Gratuita</a>
+                    <a href="#casos" class="btn btn--outline btn--lg">Ver Casos de Uso</a>
+                </div>
+            </div>
+            <div class="hero__visual">
+                <div class="crystal-orbit">
+                    <img src="/static/images/logo.jpeg" alt="IEA AGENTIQ" class="crystal-orbit__logo">
+                    <div class="crystal-orbit__ring crystal-orbit__ring--1"></div>
+                    <div class="crystal-orbit__ring crystal-orbit__ring--2"></div>
+                    <div class="crystal-orbit__ring crystal-orbit__ring--3"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Casos de uso -->
+    <section class="section" id="casos">
+        <div class="container">
+            <div class="section__header">
+                <span class="tag tag--center">Casos de Uso</span>
+                <h2>Agentes que resuelven problemas reales</h2>
+                <p>No vendemos tecnología abstracta. Construimos soluciones concretas para los procesos que más tiempo y dinero le cuestan a tu empresa.</p>
+            </div>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card__icon">💬</div>
+                    <h3>Asistente de WhatsApp para Clínicas</h3>
+                    <p>Agenda turnos, responde preguntas frecuentes y envía recordatorios automáticos a pacientes, las 24 horas del día.</p>
+                </div>
+                <div class="card">
+                    <div class="card__icon">📧</div>
+                    <h3>Clasificador de Correos para Inmobiliarias</h3>
+                    <p>Identifica, prioriza y responde consultas de propiedades, derivando los leads calificados directamente a tu equipo de ventas.</p>
+                </div>
+                <div class="card">
+                    <div class="card__icon">📊</div>
+                    <h3>Calificador de Leads por WhatsApp</h3>
+                    <p>Conversa con nuevos contactos, detecta su intención de compra y agenda automáticamente una llamada en tu calendario.</p>
+                </div>
+                <div class="card">
+                    <div class="card__icon">🤖</div>
+                    <h3>Sistemas Multi-Agente Complejos</h3>
+                    <p>Orquestamos equipos de agentes especializados que colaboran entre sí para resolver flujos completos de negocio, de punta a punta.</p>
+                </div>
+                <div class="card">
+                    <div class="card__icon">🛡️</div>
+                    <h3>Gobernanza y Seguridad de Datos</h3>
+                    <p>Implementaciones con control de acceso, trazabilidad y cumplimiento, pensadas para sectores como finanzas y salud.</p>
+                </div>
+                <div class="card">
+                    <div class="card__icon">📈</div>
+                    <h3>Reportes Automáticos de Impacto</h3>
+                    <p>Cada agente reporta cuántas horas y cuánto dinero le ahorró a tu negocio, mes a mes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Calculadora ROI -->
+    <section class="section section--alt" id="roi">
+        <div class="container">
+            <div class="section__header">
+                <span class="tag tag--center">Calculadora de ROI</span>
+                <h2>Descubrí cuánto podrías estar ahorrando</h2>
+                <p>Respondé estas preguntas y te mostramos una estimación de lo que un agente de IA podría ahorrarle a tu equipo cada mes.</p>
+            </div>
+            <div class="roi">
+                <div class="roi__form">
+                    <label>
+                        ¿Cuántas horas por semana dedica tu equipo a tareas repetitivas (responder correos, mensajes, agendar)?
+                        <input type="number" id="roi-hours" min="0" value="10" placeholder="Ej: 10">
+                    </label>
+                    <label>
+                        ¿Cuántas personas realizan estas tareas?
+                        <input type="number" id="roi-people" min="1" value="2" placeholder="Ej: 2">
+                    </label>
+                    <label>
+                        Costo promedio por hora de cada persona (USD)
+                        <input type="number" id="roi-rate" min="0" value="8" placeholder="Ej: 8">
+                    </label>
+                    <button class="btn btn--gold" id="roi-calculate">Calcular mi ahorro</button>
+                </div>
+                <div class="roi__result" id="roi-result">
+                    <span class="roi__result-label">Ahorro estimado por mes</span>
+                    <span class="roi__result-value" id="roi-value">$0</span>
+                    <span class="roi__result-sub" id="roi-sub">Completá el formulario para ver tu estimación</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Precios / Escalera de valor -->
+    <section class="section" id="precios">
+        <div class="container">
+            <div class="section__header">
+                <span class="tag tag--center">Cómo Trabajamos</span>
+                <h2>Un camino claro, sin sorpresas</h2>
+                <p>Avanzamos paso a paso, reduciendo el riesgo en cada etapa hasta tener un agente trabajando para vos.</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <span class="pricing-card__step">Fase 1</span>
+                    <h3>Auditoría de IA</h3>
+                    <p class="pricing-card__price">Sin costo inicial</p>
+                    <p>Mapeamos los procesos manuales de tu empresa y detectamos dónde un agente de IA generaría el mayor impacto.</p>
+                    <ul>
+                        <li>Diagnóstico de procesos</li>
+                        <li>Plan de trabajo a medida</li>
+                        <li>Sin compromiso</li>
+                    </ul>
+                </div>
+                <div class="pricing-card pricing-card--featured">
+                    <span class="pricing-card__step">Fase 2</span>
+                    <h3>Construcción del Agente</h3>
+                    <p class="pricing-card__price">Tarifa única de Setup</p>
+                    <p>Desarrollamos, probamos e integramos tu agente con tus herramientas: WhatsApp, web, CRM, calendario y más.</p>
+                    <ul>
+                        <li>Agentes simples (FAQ, soporte)</li>
+                        <li>Agentes de calificación de leads</li>
+                        <li>Sistemas multi-agente complejos</li>
+                    </ul>
+                </div>
+                <div class="pricing-card">
+                    <span class="pricing-card__step">Fase 3</span>
+                    <h3>AI-as-a-Service</h3>
+                    <p class="pricing-card__price">Suscripción mensual</p>
+                    <p>Mantenimiento, monitoreo y mejora continua de tu agente, con reportes mensuales de impacto real.</p>
+                    <ul>
+                        <li>Hosting y monitoreo</li>
+                        <li>Ajuste continuo de prompts</li>
+                        <li>Soporte prioritario</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonios -->
+    <section class="section section--alt" id="testimonios">
+        <div class="container">
+            <div class="section__header">
+                <span class="tag tag--center">Testimonios</span>
+                <h2>Empresas que ya automatizaron con nosotros</h2>
+            </div>
+        </div>
+        <div class="testimonials">
+            <div class="testimonials__track">
+                <div class="testimonial-card">
+                    <p>"El agente de WhatsApp redujo nuestro tiempo de respuesta de horas a segundos. Nuestros pacientes están encantados."</p>
+                    <span class="testimonial-card__author">— Clínica Vitalis</span>
+                </div>
+                <div class="testimonial-card">
+                    <p>"En el primer mes calificamos un 40% más de leads sin contratar a nadie nuevo."</p>
+                    <span class="testimonial-card__author">— Inmobiliaria del Sur</span>
+                </div>
+                <div class="testimonial-card">
+                    <p>"El reporte mensual nos mostró exactamente cuántas horas nos ahorró el agente. La inversión se pagó sola."</p>
+                    <span class="testimonial-card__author">— Estudio Contable Norte</span>
+                </div>
+                <div class="testimonial-card">
+                    <p>"La implementación fue rápida y el soporte siempre está disponible cuando lo necesitamos."</p>
+                    <span class="testimonial-card__author">— Retail Andina</span>
+                </div>
+                <!-- Duplicados para loop continuo -->
+                <div class="testimonial-card">
+                    <p>"El agente de WhatsApp redujo nuestro tiempo de respuesta de horas a segundos. Nuestros pacientes están encantados."</p>
+                    <span class="testimonial-card__author">— Clínica Vitalis</span>
+                </div>
+                <div class="testimonial-card">
+                    <p>"En el primer mes calificamos un 40% más de leads sin contratar a nadie nuevo."</p>
+                    <span class="testimonial-card__author">— Inmobiliaria del Sur</span>
+                </div>
+                <div class="testimonial-card">
+                    <p>"El reporte mensual nos mostró exactamente cuántas horas nos ahorró el agente. La inversión se pagó sola."</p>
+                    <span class="testimonial-card__author">— Estudio Contable Norte</span>
+                </div>
+                <div class="testimonial-card">
+                    <p>"La implementación fue rápida y el soporte siempre está disponible cuando lo necesitamos."</p>
+                    <span class="testimonial-card__author">— Retail Andina</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Final / Contacto -->
+    <section class="cta-final" id="contacto">
+        <div class="container cta-final__inner">
+            <h2>¿Listo para automatizar tu negocio?</h2>
+            <p>Agendá una auditoría gratuita y te mostramos exactamente dónde un agente de IA puede ahorrarte tiempo y dinero.</p>
+            <form class="contact-form" id="contact-form">
+                <input type="text" name="nombre" placeholder="Tu nombre" required>
+                <input type="email" name="email" placeholder="Tu email" required>
+                <input type="text" name="empresa" placeholder="Tu empresa">
+                <button type="submit" class="btn btn--gold btn--lg">Agendar Auditoría Gratuita</button>
+            </form>
+            <p class="contact-form__note" id="contact-form-note"></p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer__inner">
+            <div class="logo">
+                <img src="/static/images/logo.jpeg" alt="IEA AGENTIQ">
+                <div class="logo__text">
+                    <span class="logo__title">IEA AGENTIQ</span>
+                    <span class="logo__subtitle">Arquitectura de la Creación</span>
+                </div>
+            </div>
+            <p>&copy; 2026 IEA AGENTIQ. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
