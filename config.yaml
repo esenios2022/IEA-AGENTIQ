@@ -1,0 +1,23 @@
+app:
+  name: IEA-AGENTIQ
+  env: development
+  debug: true
+  host: 0.0.0.0
+  port: 8000
+
+database:
+  driver: postgresql
+  host: localhost
+  port: 5432
+  name: iea_agentiq
+  user: postgres
+  password: postgres
+
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+
+agents:
+  default_timeout: 30
+  max_concurrent_tasks: 5

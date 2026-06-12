@@ -1,19 +1,75 @@
 # IEA-AGENTIQ
 
-Proyecto IEA-AGENTIQ.
+**IEA-AGENTIQ** es una plataforma de agentes inteligentes basada en IA, diseñada para automatizar tareas, procesar información y ejecutar flujos de trabajo de manera autónoma.
 
 ## Descripción
 
-_Por definir._
+Este proyecto implementa un sistema de agentes inteligentes (AI Agents) orientado a resolver tareas complejas mediante la combinación de modelos de lenguaje, herramientas externas y flujos de trabajo configurables.
+
+## Stack Tecnológico
+
+- **Backend**: Python + [FastAPI](https://fastapi.tiangolo.com/)
+- **Base de datos**: PostgreSQL
+- **Caching**: Redis
+
+## Características
+
+- Arquitectura modular basada en agentes
+- API REST construida con FastAPI
+- Persistencia de datos con PostgreSQL
+- Caching y manejo de tareas con Redis
+- Configuración flexible mediante archivos YAML
+- Integración con herramientas y APIs externas
+- Suite de pruebas para garantizar la calidad del código
+
+## Estructura del proyecto
+
+```
+IEA-AGENTIQ/
+├── src/            # Código fuente principal
+├── docs/           # Documentación del proyecto
+├── tests/          # Pruebas unitarias e integración
+├── config/         # Archivos de configuración
+├── requirements.txt
+├── setup.py
+├── config.yaml
+└── README.md
+```
 
 ## Instalación
 
-_Por definir._
+Cloná el repositorio e instalá las dependencias:
+
+```bash
+git clone https://github.com/esenios2022/IEA-AGENTIQ.git
+cd IEA-AGENTIQ
+pip install -r requirements.txt
+```
+
+## Configuración
+
+Asegurate de contar con una instancia de **PostgreSQL** y **Redis** disponibles, y configurá las credenciales y parámetros de conexión en `config.yaml`.
 
 ## Uso
 
-_Por definir._
+Ejecutá el servidor de desarrollo de FastAPI:
+
+```bash
+uvicorn src.main:app --reload
+```
+
+## Pruebas
+
+Para ejecutar la suite de pruebas:
+
+```bash
+pytest tests/
+```
+
+## Contribuciones
+
+Las contribuciones son bienvenidas. Por favor leé [CONTRIBUTING.md](CONTRIBUTING.md) antes de enviar un pull request.
 
 ## Licencia
 
-_Por definir._
+Este proyecto está bajo la licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
