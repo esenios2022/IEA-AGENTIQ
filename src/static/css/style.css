@@ -834,6 +834,18 @@ h1, h2, h3 {
     font-weight: 600;
 }
 
+.contact-form__alt {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.contact-form__alt a {
+    color: var(--gold);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
 /* Footer */
 .footer {
     background: var(--text-dark);

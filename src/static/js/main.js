@@ -44,8 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Request failed');
             }
 
-            contactNote.textContent = '¡Gracias! Te contactaremos a la brevedad para coordinar tu auditoría gratuita.';
+            contactNote.textContent = '¡Gracias! Te llevamos a Calendly para que elijas el horario de tu auditoría.';
             contactForm.reset();
+            window.open('https://calendly.com/esenios2022/30min', '_blank', 'noopener');
         } catch (error) {
             contactNote.textContent = 'Ocurrió un error al enviar el formulario. Por favor, intentá nuevamente.';
         }
