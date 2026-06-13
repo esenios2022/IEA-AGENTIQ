@@ -307,6 +307,18 @@ h1, h2, h3 {
     color: var(--text-muted);
 }
 
+.pricing-launch-note {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 18px;
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    color: var(--gold);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
 /* Cards grid */
 .cards-grid {
     display: grid;
@@ -351,8 +363,15 @@ h1, h2, h3 {
 }
 
 .card__icon {
-    font-size: 2rem;
     margin-bottom: 16px;
+}
+
+.icon {
+    width: 32px;
+    height: 32px;
+    color: var(--gold);
+    fill: none;
+    stroke: currentColor;
 }
 
 .card h3 {
@@ -465,7 +484,12 @@ h1, h2, h3 {
 }
 
 .chip__icon {
-    font-size: 1.1rem;
+    display: flex;
+}
+
+.chip__icon .icon {
+    width: 20px;
+    height: 20px;
 }
 
 /* Workflow */
@@ -492,7 +516,6 @@ h1, h2, h3 {
 }
 
 .workflow__icon {
-    font-size: 2rem;
     width: 64px;
     height: 64px;
     display: flex;
@@ -501,6 +524,11 @@ h1, h2, h3 {
     border-radius: 50%;
     background: rgba(205, 163, 73, 0.12);
     border: 1px solid rgba(205, 163, 73, 0.35);
+}
+
+.workflow__icon .icon {
+    width: 28px;
+    height: 28px;
 }
 
 .workflow__label {
