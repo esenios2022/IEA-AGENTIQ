@@ -48,15 +48,35 @@ pip install -r requirements.txt
 
 ## Configuración
 
-Asegurate de contar con una instancia de **PostgreSQL** y **Redis** disponibles, y configurá las credenciales y parámetros de conexión en `config.yaml`.
+Copiá `.env.example` a `.env` y ajustá las credenciales de **PostgreSQL**, **Redis** y del panel de administración.
+
+```bash
+cp .env.example .env
+```
 
 ## Uso
+
+### Con Docker Compose (recomendado)
+
+Levanta la app, PostgreSQL y Redis con un solo comando:
+
+```bash
+docker compose up --build
+```
+
+La landing queda disponible en `http://localhost:8000`.
+
+### Local
 
 Ejecutá el servidor de desarrollo de FastAPI:
 
 ```bash
 uvicorn src.main:app --reload
 ```
+
+### Panel de leads
+
+Los contactos enviados desde el formulario quedan guardados en PostgreSQL y son visibles en `/admin/leads` (requiere las credenciales `ADMIN_USER` / `ADMIN_PASSWORD` definidas en `.env`).
 
 ## Pruebas
 

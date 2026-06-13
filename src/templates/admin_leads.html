@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page {
+            max-width: 960px;
+            margin: 60px auto;
+            padding: 0 24px;
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .admin-table th,
+        .admin-table td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid rgba(205, 163, 73, 0.2);
+            font-size: 0.95rem;
+        }
+        .admin-table th {
+            background: var(--emerald);
+            color: var(--gold);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+        .admin-empty {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="admin-page">
+        <h1>Leads recibidos</h1>
+        {% if leads %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Empresa</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in leads %}
+                <tr>
+                    <td>{{ lead.id }}</td>
+                    <td>{{ lead.nombre }}</td>
+                    <td>{{ lead.email }}</td>
+                    <td>{{ lead.empresa or "-" }}</td>
+                    <td>{{ lead.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Todavía no hay leads registrados.</p>
+        {% endif %}
+    </main>
+</body>
+</html>
