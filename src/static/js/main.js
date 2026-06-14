@@ -19,6 +19,53 @@ document.addEventListener('DOMContentLoaded', () => {
         resultSub.textContent = `Equivalente a ${(hours * people * 4).toLocaleString('en-US')} horas/mes liberadas para tu equipo`;
     });
 
+    // Menú móvil
+    const navToggle = document.getElementById('nav-toggle');
+    const nav = document.getElementById('nav');
+    if (navToggle && nav) {
+        navToggle.addEventListener('click', () => {
+            const isOpen = nav.classList.toggle('is-open');
+            navToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+        nav.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => {
+                nav.classList.remove('is-open');
+                navToggle.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+
+    // Contadores animados de la banda de resultados
+    const stats = document.querySelectorAll('.stat');
+    if (stats.length && 'IntersectionObserver' in window) {
+        const animateStat = (stat) => {
+            const valueEl = stat.querySelector('.stat__value');
+            const target = parseFloat(stat.dataset.target) || 0;
+            const suffix = stat.dataset.suffix || '';
+            const duration = 1400;
+            const start = performance.now();
+
+            const tick = (now) => {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                valueEl.textContent = `${Math.round(target * eased)}${suffix}`;
+                if (progress < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        };
+
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    animateStat(entry.target);
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        stats.forEach((stat) => observer.observe(stat));
+    }
+
     // Formulario de contacto
     const contactForm = document.getElementById('contact-form');
     const contactNote = document.getElementById('contact-form-note');

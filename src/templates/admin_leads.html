@@ -39,11 +39,53 @@
             color: var(--text-muted);
             padding: 40px 0;
         }
+        .admin-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 8px 0 24px;
+        }
+        .admin-search {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            min-width: 240px;
+        }
+        .admin-search input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid rgba(205, 163, 73, 0.4);
+            border-radius: 999px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .admin-count {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .admin-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
     <main class="admin-page">
         <h1>Leads recibidos</h1>
+        <div class="admin-toolbar">
+            <form class="admin-search" method="get" action="/admin/leads">
+                <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, email o empresa...">
+                <button type="submit" class="btn btn--gold">Buscar</button>
+                {% if q %}<a href="/admin/leads" class="btn btn--outline">Limpiar</a>{% endif %}
+            </form>
+            <div class="admin-actions">
+                <span class="admin-count">{{ total }} resultado{{ "s" if total != 1 else "" }}</span>
+                <a href="/admin/leads/export{% if q %}?q={{ q | urlencode }}{% endif %}" class="btn btn--outline">Exportar CSV</a>
+            </div>
+        </div>
         {% if leads %}
         <table class="admin-table">
             <thead>
@@ -68,7 +110,7 @@
             </tbody>
         </table>
         {% else %}
-        <p class="admin-empty">Todavía no hay leads registrados.</p>
+        <p class="admin-empty">{% if q %}No hay leads que coincidan con "{{ q }}".{% else %}Todavía no hay leads registrados.{% endif %}</p>
         {% endif %}
     </main>
 </body>
