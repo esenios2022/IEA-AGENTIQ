@@ -26,7 +26,13 @@ with TestClient(app) as client:
         response = client.get("/")
         assert 'id="especializacion"' in response.text
         assert "agentificado" in response.text.lower()
-        assert "Estamos para servirle" in response.text
+        assert "desde cero" in response.text.lower()
+
+    def test_home_has_mision():
+        response = client.get("/")
+        assert 'id="mision"' in response.text
+        assert "tiempo de vida" in response.text.lower()
+        assert "visión clara" in response.text.lower()
 
     def test_create_lead():
         response = client.post(
