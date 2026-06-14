@@ -70,11 +70,92 @@
             gap: 8px;
             align-items: center;
         }
+        .admin-chart {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px 24px 16px;
+            margin-bottom: 28px;
+        }
+        .admin-chart h2 {
+            font-size: 1.3rem;
+            margin-bottom: 18px;
+        }
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 140px;
+        }
+        .chart-bar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            height: 100%;
+        }
+        .chart-bar__fill {
+            width: 100%;
+            min-height: 3px;
+            background: linear-gradient(180deg, var(--gold), var(--gold-light));
+            border-radius: 6px 6px 0 0;
+            position: relative;
+        }
+        .chart-bar__fill[data-count]:hover::after {
+            content: attr(data-count);
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--emerald);
+            color: var(--gold);
+            font-size: 0.7rem;
+            padding: 2px 7px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .chart-bar__label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            margin-top: 24px;
+        }
+        .pagination__info {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .pagination .btn--disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <main class="admin-page">
         <h1>Leads recibidos</h1>
+
+        {% if max_daily %}
+        <section class="admin-chart">
+            <h2>Leads por día (últimos 14 días)</h2>
+            <div class="chart-bars">
+                {% for d in daily %}
+                <div class="chart-bar">
+                    <div class="chart-bar__fill" data-count="{{ d.count }}"
+                         style="height: {{ (d.count / max_daily * 100) | round(1) }}%;"></div>
+                    <span class="chart-bar__label">{{ d.label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
         <div class="admin-toolbar">
             <form class="admin-search" method="get" action="/admin/leads">
                 <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, email o empresa...">
@@ -111,6 +192,16 @@
         </table>
         {% else %}
         <p class="admin-empty">{% if q %}No hay leads que coincidan con "{{ q }}".{% else %}Todavía no hay leads registrados.{% endif %}</p>
+        {% endif %}
+
+        {% if pages > 1 %}
+        <nav class="pagination">
+            <a class="btn btn--outline {{ 'btn--disabled' if page <= 1 }}"
+               href="?page={{ page - 1 }}{% if q %}&q={{ q | urlencode }}{% endif %}">← Anterior</a>
+            <span class="pagination__info">Página {{ page }} de {{ pages }}</span>
+            <a class="btn btn--outline {{ 'btn--disabled' if page >= pages }}"
+               href="?page={{ page + 1 }}{% if q %}&q={{ q | urlencode }}{% endif %}">Siguiente →</a>
+        </nav>
         {% endif %}
     </main>
 </body>

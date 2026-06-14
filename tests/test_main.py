@@ -57,6 +57,27 @@ with TestClient(app) as client:
         assert response.status_code == 200
         assert "buscable@test.com" in response.text
 
+    def test_admin_leads_pagination():
+        for i in range(25):
+            client.post(
+                "/api/leads",
+                json={"nombre": f"Pag{i}", "email": f"pag{i}@test.com"},
+            )
+        response = client.get(
+            "/admin/leads", params={"page": 1, "per_page": 10}, auth=ADMIN_AUTH
+        )
+        assert response.status_code == 200
+        assert "Página 1 de" in response.text
+
+    def test_admin_leads_chart():
+        client.post(
+            "/api/leads",
+            json={"nombre": "Chart", "email": "chart@test.com"},
+        )
+        response = client.get("/admin/leads", auth=ADMIN_AUTH)
+        assert response.status_code == 200
+        assert "Leads por día" in response.text
+
     def test_export_leads_requires_auth():
         response = client.get("/admin/leads/export")
         assert response.status_code == 401
