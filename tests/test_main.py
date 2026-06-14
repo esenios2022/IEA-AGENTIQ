@@ -22,6 +22,12 @@ with TestClient(app) as client:
         assert "stats-band" in response.text
         assert 'id="resultados"' in response.text
 
+    def test_home_has_especializacion_and_lema():
+        response = client.get("/")
+        assert 'id="especializacion"' in response.text
+        assert "agentificado" in response.text.lower()
+        assert "Estamos para servirle" in response.text
+
     def test_create_lead():
         response = client.post(
             "/api/leads",
