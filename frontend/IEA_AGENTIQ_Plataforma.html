@@ -160,6 +160,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ====================== CONEXIÓN SUPABASE ====================== */
+if (!localStorage.getItem('k_surl')) localStorage.setItem('k_surl', 'https://djyuotgzcwhqvoowvixv.supabase.co');
+if (!localStorage.getItem('k_skey')) localStorage.setItem('k_skey', 'sb_publishable_UAsCTutO4nHoP12rQfxLpA__aS3A2Ku');
 const SUPA_URL = localStorage.getItem('k_surl') || 'https://djyuotgzcwhqvoowvixv.supabase.co';
 const SUPA_KEY = localStorage.getItem('k_skey') || '';
 let sb = null;
