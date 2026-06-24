@@ -179,11 +179,42 @@ async function loadFromSupabase() {
           n: a.name, orixá: a['orixá'] || '', grupo: a.group_name,
           modelo: a.modelo || 'ollama/mistral', idioma: 'PT/ES',
           estado: a.status || 'activo', d: a.goal || '',
-          prompt: a.prompt || '', tools: JSON.parse(a.tools || '[]')
+          prompt: a.prompt || '', tools: Array.isArray(a.tools) ? a.tools : JSON.parse(a.tools || '[]')
         };
       });
     }
-  } catch(e) { console.warn('Supabase:', e.message); }
+  } catch(e) { console.warn('Supabase (agents):', e.message); }
+  try {
+    const { data: cdata } = await sb.from('clients').select('*');
+    if (cdata && cdata.length) {
+      CLIENTS = cdata.map(c => ({
+        id: c.id, n: c.name, mail: c.email || '', ag: c.agents || [],
+        plan: c.plan || 'Inicial', pais: c.pais || '', lang: c.lang || 'es',
+        features: c.features || {}
+      }));
+    }
+  } catch(e) { console.warn('Supabase (clients):', e.message); }
+  try {
+    const { data: tdata } = await sb.from('tools_config').select('*');
+    if (tdata) {
+      tdata.forEach(t => {
+        if (t.enabled) ACTIVE_TOOLS.add(t.tool_name); else ACTIVE_TOOLS.delete(t.tool_name);
+        if (t.api_key) localStorage.setItem('tk_' + t.tool_name, t.api_key);
+        if (!TOOLS_KEY[t.tool_name] && t.config && t.config.key_name) TOOLS_KEY[t.tool_name] = t.config.key_name;
+        if (!Object.values(TOOLS_CAT).some(list => list.includes(t.tool_name))) {
+          const cat = (t.config && t.config.category) || '⭐ Plataforma IEA';
+          if (!TOOLS_CAT[cat]) TOOLS_CAT[cat] = [];
+          if (!TOOLS_CAT[cat].includes(t.tool_name)) TOOLS_CAT[cat].push(t.tool_name);
+        }
+      });
+    }
+  } catch(e) { console.warn('Supabase (tools_config):', e.message); }
+  try {
+    const { data: kdata } = await sb.from('api_keys').select('*');
+    if (kdata) {
+      kdata.forEach(r => { if (r.api_key) localStorage.setItem('k_' + r.provider, r.api_key); });
+    }
+  } catch(e) { console.warn('Supabase (api_keys):', e.message); }
 }
 
 /* ====================== DATOS EDITABLES ====================== */
@@ -299,12 +330,12 @@ function renderTree(){
     h+=`<div class="item" onclick="toggle('equipos')"><span class="ic">👥</span> Equipos <span class="car ${open.equipos?'open':''}">▶</span></div>`;
     if(open.equipos){h+=`<div class="children">`;
       WORKFORCES.forEach((w,i)=>{h+=`<div class="child ${current==='wf:'+i?'on':''}" onclick="nav('wf:${i}')"><div class="ag" style="background:linear-gradient(135deg,#d97706,#f59e0b)">${w.n.slice(0,1)}</div>${w.n}</div>`;});
-      h+=`<div class="addrow" onclick="alert('Crear equipo (demo)')">＋ Nuevo equipo</div></div>`;}
+      h+=`<div class="addrow" onclick="createWorkforce()">＋ Nuevo equipo</div></div>`;}
     // Grupo Clientes
     h+=`<div class="item" onclick="toggle('clientes')"><span class="ic">🏢</span> Clientes <span class="car ${open.clientes?'open':''}">▶</span></div>`;
     if(open.clientes){h+=`<div class="children">`;
       CLIENTS.forEach((c,i)=>{h+=`<div class="child ${current==='cli:'+i?'on':''}" onclick="nav('cli:${i}')">🏢 ${c.n}</div>`;});
-      h+=`<div class="addrow" onclick="alert('Agregar cliente (demo)')">＋ Nuevo cliente</div></div>`;}
+      h+=`<div class="addrow" onclick="nav('newclient')">＋ Nuevo cliente</div></div>`;}
     h+=treeItem("ejec","⚡","Ejecuciones");
     h+=treeItem("tools","🧰","Herramientas");
     h+=treeItem("a_rent","💰","Rentabilidad");
@@ -332,6 +363,7 @@ function render(){renderTree();const V=document.getElementById("view");
 
   else if(current.startsWith("agent:")){const k=current.split(":")[1];body=agentDetail(k);title=AGENTS[k].n;crumb="Agentes ›";help="";btn=`<button class="btn alt" onclick="nav('newagent')">＋ Nuevo agente</button>`;}
   else if(current==="newagent"){title="Nuevo agente";crumb="Agentes ›";help="Completá los datos y tocá Crear. El agente va a aparecer en la lista de la izquierda.";body=newAgentForm();}
+  else if(current==="newclient"){title="Nuevo cliente";crumb="Clientes ›";help="Completá los datos y tocá Crear. El cliente va a aparecer en la lista de la izquierda.";body=newClientForm();}
   else if(current==="ejec"){title="Ejecuciones";help="Todas las tareas de todos los clientes. Tocá una para ver el detalle.";
     body=`<div class="panel"><table><thead><tr><th>Tarea</th><th>Cliente</th><th>Agente</th><th>Estado</th></tr></thead><tbody>${TASKS.map(t=>`<tr onclick="openTask(${t.id})"><td><b>${t.t}</b></td><td>${t.cli}</td><td class="mini">${AGENTS[t.ag].n}</td><td>${badge(t.st)}</td></tr>`).join("")}</tbody></table></div>`;}
   else if(current==="tools"){title="Herramientas & Integraciones";help="Activá cada herramienta y configurá su API key. Igual que CrewAI — tus agentes usan las herramientas habilitadas acá.";
@@ -345,7 +377,7 @@ function render(){renderTree();const V=document.getElementById("view");
       });
       tbody+=`</div>`;
     });
-    body=tbody+`<button class="btn" style="margin-top:4px" onclick="saveToolKeys()">💾 Guardar configuración</button>`;
+    body=tbody+`<div class="actions" style="margin-top:4px"><button class="btn alt" onclick="newToolForm()">＋ Agregar herramienta nueva</button><button class="btn" onclick="saveToolKeys()">💾 Guardar configuración</button></div>`;
   }
   else if(current.startsWith("wf:")){const w=WORKFORCES[current.split(":")[1]];title=w.n;crumb="Equipos ›";help=w.d+" Un equipo trabaja coordinado por un jefe (orquestador).";
     body=`<div class="wf"><div class="orch"><div class="ag">J</div><div><b>Jefe del equipo (orquestador)</b><div class="mini">Reparte el trabajo y junta los resultados.</div></div></div><div class="members">${w.members.map(m=>`<div class="member"><div class="ag">${m.slice(0,2)}</div>${AGENTS[m].n}</div>`).join("")}</div></div>`;}
@@ -522,8 +554,12 @@ function agentDetail(k){const g=AGENTS[k];
   </select></div><div><label>Idioma</label><select><option>${g.idioma}</option><option>PT-BR</option><option>ES</option></select></div></div>
   <label>Qué hace (lo ve el cliente)</label><textarea id="ag_desc_${k}" rows="2">${g.d}</textarea>
   <label>Prompt (sus instrucciones)</label><textarea id="ag_prompt_${k}" rows="8" style="font-family:monospace;font-size:13px">${g.prompt}</textarea>
-  <label>Herramientas</label>${g.tools.map(t=>`<div class="toolrow"><div>🧰 ${t}</div><button style="background:none;border:none;color:var(--red);font-size:18px">✕</button></div>`).join("")}
-  <div class="toolrow" style="opacity:.8"><div>➕ Agregar herramienta…</div><button style="background:none;border:none;color:var(--green);font-size:18px">＋</button></div>
+  <label>Herramientas</label>${g.tools.map(t=>`<div class="toolrow"><div>🧰 ${t}</div><button onclick="removeAgentTool('${k}','${t.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer">✕</button></div>`).join("")}
+  <div class="toolrow" style="flex-wrap:wrap;gap:8px">
+    <select id="ag_toolsel_${k}" style="flex:1;min-width:160px">${Object.keys(TOOLS_CAT).map(cat=>`<optgroup label="${cat}">${TOOLS_CAT[cat].filter(t=>g.tools.indexOf(t)<0).map(t=>`<option value="${t}">${t}</option>`).join('')}</optgroup>`).join('')}</select>
+    <input id="ag_toolnew_${k}" placeholder="...o nombre de herramienta nueva" style="flex:1;min-width:160px">
+    <button onclick="addAgentTool('${k}')" style="background:none;border:none;color:var(--green);font-size:18px;cursor:pointer">＋ Agregar</button>
+  </div>
   <div class="actions"><button class="btn alt" onclick="alert('Pausar (demo)')">Pausar</button><button class="btn" id="ag_save_${k}" onclick="saveAgentChanges('${k}')">Guardar cambios</button></div>
   <div class="mini" id="ag_savemsg_${k}" style="margin-top:6px"></div>
   </div><div class="panel pad" style="margin-top:16px"><h3 style="margin-top:0">Lo que está haciendo (${ts.length})</h3><div class="mini" style="margin-bottom:10px">Tocá una tarea para desplegar el paso a paso.</div>${act}</div>`;}
@@ -567,13 +603,24 @@ function newAgentForm(){return `<div class="panel pad" style="max-width:680px">
   <label>Prompt (instrucciones)</label><textarea id="na_p" rows="3" placeholder="Rol: ... SOP: 1)... 2)... Salida: ..."></textarea>
   <label>Herramientas</label>${Object.keys(TOOLS_CAT).map(cat=>`<div style="margin-bottom:10px"><div class="mini" style="color:var(--brand);font-weight:700;margin-bottom:5px">${cat}</div><div style="display:flex;flex-wrap:wrap">${TOOLS_CAT[cat].map(t=>`<label class="toolchk"><input type="checkbox" value="${t}" ${ACTIVE_TOOLS.has(t)?'checked':''}> ${t}</label>`).join('')}</div></div>`).join('')}
   <div class="actions"><button class="btn alt" onclick="nav('inicio')">Cancelar</button><button class="btn" onclick="createAgent()">Crear agente</button></div></div>`;}
-function createAgent(){
+async function createAgent(){
   const n=document.getElementById("na_n").value.trim();
   if(!n){alert("Poné un nombre");return;}
   const tools=[...document.querySelectorAll(".toolchk input:checked")].map(c=>c.value);
-  const key="A"+(Object.keys(AGENTS).length+1);
-  AGENTS[key]={n,grupo:document.getElementById("na_g").value||"General",modelo:document.getElementById("na_m").value.split(" ")[0],idioma:document.getElementById("na_i").value,estado:"activo",d:document.getElementById("na_d").value||"(sin descripción)",prompt:document.getElementById("na_p").value||"",tools:tools.length?tools:["Búsqueda web"]};
+  let key="A"+(Object.keys(AGENTS).length+1);
+  while(AGENTS[key])key="A"+Math.floor(Math.random()*100000);
+  const grupo=document.getElementById("na_g").value||"General";
+  const modelo=document.getElementById("na_m").value.split(" ")[0];
+  const d=document.getElementById("na_d").value||"(sin descripción)";
+  const prompt=document.getElementById("na_p").value||"";
+  const finalTools=tools.length?tools:["Búsqueda web"];
+  AGENTS[key]={n,grupo,modelo,idioma:document.getElementById("na_i").value,estado:"activo",d,prompt,tools:finalTools};
   open.agentes=true;current="agent:"+key;render();
+  if(!sb){console.warn('Sin conexión a Supabase: agente creado solo localmente.');return;}
+  try{
+    const {error}=await sb.from('agents').insert({id:key,name:n,group_name:grupo,modelo,status:'activo',goal:d,prompt,tools:finalTools});
+    if(error)throw error;
+  }catch(e){console.error('Error creando agente en Supabase:',e.message);alert('⚠️ El agente se creó localmente pero no se pudo guardar en Supabase: '+e.message);}
 }
 
 /* MODALES */
@@ -599,9 +646,55 @@ function helpTip(){if(current.indexOf("agent:")===0)return "Estás viendo un age
 function toggleHelp(){helpOpen=!helpOpen;renderHelp();}
 function renderHelp(){var h=document.getElementById("helpWidget");if(!h)return;if(!helpOpen){h.innerHTML="";return;}h.innerHTML="<div class=\'helpcard\'><div class=\'helphd\'><b>\u2728 Asistente IEA AGENTIQ</b><button onclick=\'toggleHelp()\' style=\'background:none;border:none;font-size:18px;color:#fff;cursor:pointer\'>\u2715</button></div><div class=\'helpbody\' id=\'helpbody\'><div class=\'bub a\' style=\'max-width:100%\'>"+tr(helpTip())+"</div></div><div class=\'helpbar\'><input id=\'helpq\' placeholder=\'\u00bfC\u00f3mo hago...?\' onkeydown=\'if(event.key===&quot;Enter&quot;)askHelp()\'><button class=\'primary\' onclick=\'askHelp()\'>Preguntar</button></div></div>";}
 function askHelp(){var q=document.getElementById("helpq");if(!q||!q.value.trim())return;var t=q.value;var b=document.getElementById("helpbody");if(b){b.innerHTML+="<div class=\'bub u\' style=\'max-width:100%\'>"+t+"</div><div class=\'bub a\' style=\'max-width:100%\'>"+tr("Te guío: "+helpTip()+" Si querés, decime el paso exacto que no entendés y te lo explico.")+"</div>";b.scrollTop=b.scrollHeight;}q.value="";}
-function saveAllKeys(){var ids=['k_oai','k_anth','k_gem','k_oll','k_mis','k_surl','k_skey','k_ssvc','k_wa','k_wapid','k_gmail','k_li','k_slack','k_hs','k_notion','k_airtable','k_zapier','k_apollo','k_serper'];ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.value)localStorage.setItem(id,el.value);});alert('✅ Claves guardadas correctamente.');}
-function saveToolKeys(){Object.values(TOOLS_KEY).forEach(function(kn){var id='tk_'+kn;var el=document.getElementById(id);if(el&&el.value)localStorage.setItem('tk_'+kn,el.value);});alert('✅ Herramientas configuradas.');}
-function toggleTool(t,el){el.classList.toggle('off');if(!el.classList.contains('off')){ACTIVE_TOOLS.add(t);}else{ACTIVE_TOOLS.delete(t);}}
+async function saveAllKeys(){
+  var ids=['k_oai','k_anth','k_gem','k_oll','k_mis','k_surl','k_skey','k_ssvc','k_wa','k_wapid','k_gmail','k_li','k_slack','k_hs','k_notion','k_airtable','k_zapier','k_apollo','k_serper'];
+  var rows=[];
+  ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.value){localStorage.setItem(id,el.value);rows.push({provider:id.replace(/^k_/,''),api_key:el.value,enabled:true,updated_at:new Date().toISOString()});}});
+  if(!sb){alert('✅ Claves guardadas en este navegador (sin conexión a Supabase, no se sincronizan entre dispositivos).');return;}
+  try{
+    if(rows.length){const {error}=await sb.from('api_keys').upsert(rows,{onConflict:'provider'});if(error)throw error;}
+    alert('✅ Claves guardadas correctamente en Supabase.');
+  }catch(e){console.error('Error guardando api_keys:',e.message);alert('⚠️ Guardado local; no se pudo sincronizar con Supabase: '+e.message);}
+}
+async function saveToolKeys(){
+  var rows=[];
+  Object.keys(TOOLS_KEY).forEach(function(t){var kn=TOOLS_KEY[t];var id='tk_'+kn;var el=document.getElementById('tk_'+t.replace(/[^a-z]/gi,'_'));var val=el&&el.value?el.value:localStorage.getItem('tk_'+t);if(el&&el.value)localStorage.setItem('tk_'+t,el.value);rows.push({tool_name:t,api_key:val||null,enabled:ACTIVE_TOOLS.has(t),updated_at:new Date().toISOString()});});
+  if(!sb){alert('✅ Herramientas configuradas en este navegador (sin conexión a Supabase).');return;}
+  try{
+    const {error}=await sb.from('tools_config').upsert(rows,{onConflict:'tool_name'});
+    if(error)throw error;
+    alert('✅ Herramientas configuradas y guardadas en Supabase.');
+  }catch(e){console.error('Error guardando tools_config:',e.message);alert('⚠️ Guardado local; no se pudo sincronizar con Supabase: '+e.message);}
+}
+async function toggleTool(t,el){
+  el.classList.toggle('off');
+  const enabled=!el.classList.contains('off');
+  if(enabled)ACTIVE_TOOLS.add(t);else ACTIVE_TOOLS.delete(t);
+  if(!sb)return;
+  try{
+    const {error}=await sb.from('tools_config').upsert({tool_name:t,enabled,updated_at:new Date().toISOString()},{onConflict:'tool_name'});
+    if(error)throw error;
+  }catch(e){console.error('Error guardando estado de herramienta:',e.message);}
+}
+function newToolForm(){
+  const name=prompt('Nombre de la nueva herramienta:');
+  if(!name)return;
+  const cat=prompt('Categoría (una de: '+Object.keys(TOOLS_CAT).join(', ')+') o escribí una nueva:','⭐ Plataforma IEA')||'⭐ Plataforma IEA';
+  const keyName=prompt('Nombre de la variable de entorno para su API key (dejar vacío si no necesita):','')||'';
+  addToolToCatalog(name,cat,keyName);
+}
+async function addToolToCatalog(name,cat,keyName){
+  if(!TOOLS_CAT[cat])TOOLS_CAT[cat]=[];
+  if(!TOOLS_CAT[cat].includes(name))TOOLS_CAT[cat].push(name);
+  if(keyName)TOOLS_KEY[name]=keyName;
+  ACTIVE_TOOLS.add(name);
+  render();
+  if(!sb)return;
+  try{
+    const {error}=await sb.from('tools_config').upsert({tool_name:name,enabled:true,config:{category:cat,key_name:keyName},updated_at:new Date().toISOString()},{onConflict:'tool_name'});
+    if(error)throw error;
+  }catch(e){console.error('Error agregando herramienta al catálogo:',e.message);}
+}
 function contratar(a,p){alert("Solicitaste "+AGENTS[a].n+" ("+p+"). Recibimos tu pedido, programamos el agente y lo activamos en tu cuenta. Te avisamos por email. (demo)");}
 function descargar(){alert("Generando reporte del mes... (demo)");}
 async function saveAgentModel(k,v){
@@ -612,6 +705,38 @@ async function saveAgentModel(k,v){
     const {error}=await sb.from('agents').update({modelo:v,updated_at:new Date().toISOString()}).eq('id',k);
     if(error)throw error;
   }catch(e){console.error('Error guardando modelo en Supabase:',e.message);}
+}
+
+async function persistAgentTools(k){
+  const g=AGENTS[k];
+  if(!g)return;
+  if(!sb){console.warn('Sin conexión a Supabase: herramientas guardadas solo localmente.');return;}
+  try{
+    const {error}=await sb.from('agents').update({tools:g.tools,updated_at:new Date().toISOString()}).eq('id',k);
+    if(error)throw error;
+  }catch(e){console.error('Error guardando herramientas en Supabase:',e.message);}
+}
+function removeAgentTool(k,t){
+  const g=AGENTS[k];
+  if(!g)return;
+  g.tools=g.tools.filter(x=>x!==t);
+  persistAgentTools(k);
+  render();
+}
+function addAgentTool(k){
+  const g=AGENTS[k];
+  if(!g)return;
+  const sel=document.getElementById('ag_toolsel_'+k);
+  const inp=document.getElementById('ag_toolnew_'+k);
+  let t=(inp&&inp.value.trim())?inp.value.trim():(sel?sel.value:'');
+  if(!t)return;
+  if(inp&&inp.value.trim()&&!Object.values(TOOLS_CAT).some(list=>list.includes(t))){
+    if(!TOOLS_CAT['⭐ Plataforma IEA'])TOOLS_CAT['⭐ Plataforma IEA']=[];
+    TOOLS_CAT['⭐ Plataforma IEA'].push(t);
+  }
+  if(g.tools.indexOf(t)<0)g.tools.push(t);
+  persistAgentTools(k);
+  render();
 }
 
 async function saveAgentChanges(k){
@@ -644,10 +769,73 @@ async function saveAgentChanges(k){
     setTimeout(function(){if(msg)msg.innerHTML='';},4000);
   }
 }
-function saveClient(i){var n=document.getElementById('cn_n').value;var m=document.getElementById('cn_m').value;var p=document.getElementById('cn_p').value;var cc=document.getElementById('cn_c').value;var l=document.getElementById('cn_l').value;if(me===CLIENTS[i].n)me=n;CLIENTS[i].n=n;CLIENTS[i].mail=m;CLIENTS[i].plan=p;CLIENTS[i].pais=cc;CLIENTS[i].lang=l;alert('✅ Datos del cliente guardados.');render();}
-function deleteClient(i){if(!confirm('¿Eliminar cliente '+CLIENTS[i].n+'? Esta acción no se puede deshacer.'))return;CLIENTS.splice(i,1);current='inicio';render();}
-function removeAgent(ci,ak){CLIENTS[ci].ag=CLIENTS[ci].ag.filter(function(a){return a!==ak;});render();}
-function addAgent(ci){var sel=document.getElementById('ag_sel_'+ci);if(!sel)return;var ak=sel.value;if(ak&&CLIENTS[ci].ag.indexOf(ak)<0){CLIENTS[ci].ag.push(ak);render();}}
+async function persistClient(i){
+  const c=CLIENTS[i];
+  if(!sb||!c.id){console.warn('Sin conexión a Supabase o cliente sin id: cambios guardados solo localmente.');return false;}
+  try{
+    const {error}=await sb.from('clients').update({name:c.n,email:c.mail,plan:c.plan,pais:c.pais,lang:c.lang,agents:c.ag,features:c.features}).eq('id',c.id);
+    if(error)throw error;
+    return true;
+  }catch(e){console.error('Error guardando cliente en Supabase:',e.message);return false;}
+}
+async function saveClient(i){
+  var n=document.getElementById('cn_n').value;var m=document.getElementById('cn_m').value;var p=document.getElementById('cn_p').value;var cc=document.getElementById('cn_c').value;var l=document.getElementById('cn_l').value;
+  if(me===CLIENTS[i].n)me=n;
+  CLIENTS[i].n=n;CLIENTS[i].mail=m;CLIENTS[i].plan=p;CLIENTS[i].pais=cc;CLIENTS[i].lang=l;
+  const ok=await persistClient(i);
+  alert(ok?'✅ Datos del cliente guardados en Supabase.':'⚠️ Guardado solo en este navegador (sin conexión a Supabase).');
+  render();
+}
+async function deleteClient(i){
+  if(!confirm('¿Eliminar cliente '+CLIENTS[i].n+'? Esta acción no se puede deshacer.'))return;
+  const c=CLIENTS[i];
+  CLIENTS.splice(i,1);
+  current='inicio';render();
+  if(sb&&c.id){
+    try{const {error}=await sb.from('clients').delete().eq('id',c.id);if(error)throw error;}
+    catch(e){console.error('Error eliminando cliente en Supabase:',e.message);}
+  }
+}
+function removeAgent(ci,ak){CLIENTS[ci].ag=CLIENTS[ci].ag.filter(function(a){return a!==ak;});persistClient(ci);render();}
+function addAgent(ci){var sel=document.getElementById('ag_sel_'+ci);if(!sel)return;var ak=sel.value;if(ak&&CLIENTS[ci].ag.indexOf(ak)<0){CLIENTS[ci].ag.push(ak);persistClient(ci);render();}}
+function newClientForm(){return `<div class="panel pad" style="max-width:560px">
+  <div class="formgrid"><div><label>Nombre</label><input id="nc_n" placeholder="Ej: Centro Aurora"></div><div><label>Email</label><input id="nc_m" placeholder="cliente@empresa.com"></div></div>
+  <div class="formgrid"><div><label>Plan</label><select id="nc_p"><option>Inicial</option><option>Pro</option><option>Ecosistema</option><option>Cristal</option></select></div><div><label>Idioma</label><select id="nc_l"><option value="es">Español</option><option value="pt">Português</option></select></div></div>
+  <label>País</label><input id="nc_c" placeholder="Ej: Brasil">
+  <div class="actions"><button class="btn alt" onclick="nav('inicio')">Cancelar</button><button class="btn" onclick="createClient()">Crear cliente</button></div></div>`;}
+async function createClient(){
+  const n=document.getElementById('nc_n').value.trim();
+  if(!n){alert('Poné un nombre');return;}
+  const mail=document.getElementById('nc_m').value.trim();
+  const plan=document.getElementById('nc_p').value;
+  const lang=document.getElementById('nc_l').value;
+  const pais=document.getElementById('nc_c').value.trim();
+  const c={n,mail,ag:[],plan,pais,lang,features:{}};
+  if(!sb){
+    CLIENTS.push(c);open.clientes=true;current='cli:'+(CLIENTS.length-1);render();
+    alert('⚠️ Cliente creado solo en este navegador (sin conexión a Supabase).');
+    return;
+  }
+  try{
+    const {data,error}=await sb.from('clients').insert({name:n,email:mail||null,plan,pais,lang,agents:[],features:{}}).select().single();
+    if(error)throw error;
+    c.id=data.id;
+    CLIENTS.push(c);open.clientes=true;current='cli:'+(CLIENTS.length-1);render();
+  }catch(e){
+    console.error('Error creando cliente en Supabase:',e.message);
+    CLIENTS.push(c);open.clientes=true;current='cli:'+(CLIENTS.length-1);render();
+    alert('⚠️ El cliente se creó localmente pero no se pudo guardar en Supabase: '+e.message);
+  }
+}
+function createWorkforce(){
+  const n=prompt('Nombre del equipo:');
+  if(!n)return;
+  const d=prompt('Descripción breve del equipo:')||'';
+  const members=prompt('Códigos de agentes separados por coma (ej: SL,GS):')||'';
+  const list=members.split(',').map(s=>s.trim().toUpperCase()).filter(k=>AGENTS[k]);
+  WORKFORCES.push({n,d,members:list});
+  open.equipos=true;current='wf:'+(WORKFORCES.length-1);render();
+}
 const DICT=[
 ["Hablar con un agente","Falar com um agente"],["Hablar con el agente","Falar com o agente"],
 ["Chat con agentes","Chat com agentes"],["Mis tareas","Minhas tarefas"],["Mis agentes","Meus agentes"],
@@ -839,7 +1027,7 @@ const DICT=[
 ];
 function tr(h){if(lang!=="pt")return h;for(var i=0;i<DICT.length;i++){h=h.split(DICT[i][0]).join(DICT[i][1]);}return h;}
 function setLang(l){lang=l;render();}
-function toggleFeat(i,k){CLIENTS[i].features[k]=!CLIENTS[i].features[k];render();}
+function toggleFeat(i,k){CLIENTS[i].features[k]=!CLIENTS[i].features[k];persistClient(i);render();}
 function modal(html){document.getElementById("modalHost").innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()" style="position:fixed;inset:0;background:rgba(20,24,33,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50"><div class="lcard" style="width:520px;max-height:88vh;overflow:auto;position:relative"><button onclick="closeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;color:var(--muted)">✕</button>${html}</div></div>`;}
 function closeModal(){document.getElementById("modalHost").innerHTML="";}
 function openTask(id){const t=TASKS.find(x=>x.id===id);const ctl=role==='adm'?`<label>Editar instrucción</label><textarea rows="2">${t.t}</textarea><div class="actions"><button class="btn alt" onclick="closeModal()">Pausar</button><button class="btn" onclick="closeModal()">Guardar</button></div>`:(t.st==='wait'?`<div class="actions"><button class="btn alt" onclick="closeModal()">Rechazar</button><button class="btn" onclick="closeModal()">Aprobar</button></div>`:'');modal(`<h2 style="margin:0 0 4px">${t.t}</h2><div class="sub">${AGENTS[t.ag].n} · ${t.cli} · ${STATUS[t.st][1]}</div>${feedFor(t)}${ctl}`);}
