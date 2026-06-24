@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IEA AGENTIQ — Plataforma</title>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --marfil:   #FDFDF5;
+      --marfil2:  #F5F5EA;
+      --verde:    #2D5A27;
+      --verde2:   #1f4216;
+      --dorado:   #C5A059;
+      --dorado2:  #a8863e;
+      --texto:    #333333;
+      --gris:     #888;
+      --borde:    rgba(45,90,39,.12);
+      --sombra:   0 2px 12px rgba(0,0,0,.06);
+      --sombra2:  0 6px 24px rgba(197,160,89,.15);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--marfil);
+      color: var(--texto);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--verde);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-brand {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--dorado);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Crimson Text', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--verde2);
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-family: 'Crimson Text', serif;
+      font-size: 17px;
+      color: var(--dorado);
+      letter-spacing: .5px;
+      line-height: 1.1;
+    }
+
+    .brand-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,.4);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 20px 0;
+      overflow-y: auto;
+    }
+
+    .nav-section {
+      padding: 0 16px;
+      margin-bottom: 6px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      color: rgba(255,255,255,.35);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 10px 8px 6px;
+      font-weight: 600;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: rgba(255,255,255,.65);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover { background: rgba(255,255,255,.08); color: white; }
+
+    .nav-item.active {
+      background: rgba(197,160,89,.2);
+      color: var(--dorado);
+      border-left: 3px solid var(--dorado);
+    }
+
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--dorado);
+      color: var(--verde2);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.06);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--dorado);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--verde);
+    }
+
+    .user-name { font-size: 13px; color: rgba(255,255,255,.8); font-weight: 600; }
+    .user-role { font-size: 11px; color: var(--dorado); }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top bar */
+    .topbar {
+      background: white;
+      border-bottom: 1px solid var(--borde);
+      padding: 0 36px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .page-title {
+      font-family: 'Crimson Text', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--verde);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; border: none; font-family: 'Inter', sans-serif; }
+    .btn-outline { background: transparent; border: 1px solid var(--dorado); color: var(--dorado); }
+    .btn-outline:hover { background: var(--dorado); color: var(--verde); }
+    .btn-solid { background: var(--verde); color: white; }
+    .btn-solid:hover { background: var(--verde2); box-shadow: var(--sombra2); transform: translateY(-1px); }
+    .btn-gold { background: var(--dorado); color: var(--verde2); font-weight: 700; }
+    .btn-gold:hover { background: var(--dorado2); }
+
+    /* Content */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 36px;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: var(--sombra);
+    }
+
+    .stat-label { font-size: 11px; color: var(--gris); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-family: 'Crimson Text', serif; color: var(--verde); font-weight: 600; }
+    .stat-sub { font-size: 11px; color: var(--dorado); margin-top: 3px; }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: 8px;
+      padding: 8px 14px;
+      flex: 1;
+      max-width: 300px;
+      box-shadow: var(--sombra);
+    }
+
+    .search-box input {
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      color: var(--texto);
+      outline: none;
+      width: 100%;
+    }
+
+    .search-box input::placeholder { color: #bbb; }
+
+    .filter-btn {
+      padding: 8px 16px;
+      border-radius: 7px;
+      border: 1px solid var(--borde);
+      background: white;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gris);
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .filter-btn:hover, .filter-btn.active { border-color: var(--verde); color: var(--verde); background: rgba(45,90,39,.05); }
+
+    /* ── AGENTS GRID ── */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .agent-card {
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--sombra);
+      transition: all .25s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .agent-card:hover {
+      border-color: rgba(197,160,89,.4);
+      box-shadow: var(--sombra2);
+      transform: translateY(-3px);
+    }
+
+    .agent-card-header {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--marfil2);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .agent-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      background: rgba(45,90,39,.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+      border: 1.5px solid var(--borde);
+      transition: all .3s;
+    }
+
+    .agent-card:hover .agent-avatar,
+    .agent-card.running .agent-avatar {
+      background: rgba(197,160,89,.15);
+      border-color: var(--dorado);
+    }
+
+    .agent-title { flex: 1; min-width: 0; }
+
+    .agent-name {
+      font-family: 'Crimson Text', serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--verde);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agent-orixá {
+      font-size: 11px;
+      color: var(--dorado);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-top: 3px;
+    }
+
+    .agent-status {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d0d0d0;
+      margin-top: 4px;
+    }
+
+    .agent-status.active { background: var(--verde); box-shadow: 0 0 0 3px rgba(45,90,39,.15); }
+    .agent-status.running { background: var(--dorado); box-shadow: 0 0 0 3px rgba(197,160,89,.2); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse {
+      0%,100% { opacity:1; }
+      50% { opacity:.5; }
+    }
+
+    .agent-card-body {
+      padding: 14px 20px;
+      flex: 1;
+    }
+
+    .agent-role {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--verde);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+
+    .agent-goal {
+      font-size: 12.5px;
+      color: #555;
+      line-height: 1.55;
+    }
+
+    .agent-card-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--marfil2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .agent-group {
+      font-size: 11px;
+      background: rgba(45,90,39,.08);
+      color: var(--verde);
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--borde);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: all .2s;
+      color: var(--gris);
+    }
+
+    .icon-btn:hover { border-color: var(--dorado); color: var(--dorado); background: rgba(197,160,89,.08); }
+    .icon-btn.run:hover { border-color: var(--verde); color: white; background: var(--verde); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+
+    .modal-header {
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--borde);
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .modal-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: rgba(45,90,39,.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+
+    .modal-title h2 {
+      font-family: 'Crimson Text', serif;
+      font-size: 26px;
+      color: var(--verde);
+      font-weight: 600;
+    }
+
+    .modal-title .orixá {
+      color: var(--dorado);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .modal-close {
+      margin-left: auto;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--borde);
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gris);
+    }
+
+    .modal-close:hover { background: #f5f5f5; }
+
+    .modal-body {
+      padding: 24px 32px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .detail-item label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--dorado);
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .detail-item p {
+      font-size: 14px;
+      color: var(--texto);
+    }
+
+    .tools-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .tool-tag {
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--borde);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--verde);
+      background: rgba(45,90,39,.05);
+    }
+
+    .goal-box {
+      background: var(--marfil2);
+      border-left: 3px solid var(--dorado);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--texto);
+      margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      padding: 16px 32px 28px;
+      display: flex;
+      gap: 12px;
+    }
+
+    /* Terminal logs */
+    .logs-box {
+      background: #0d0d0d;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 16px;
+    }
+
+    .log-l { margin: 2px 0; }
+    .log-l.ok { color: #50fa7b; }
+    .log-l.info { color: #8be9fd; }
+    .log-l.warn { color: #ffb86c; }
+    .log-l.err { color: #ff5555; }
+    .log-t { color: #6272a4; margin-right: 8px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(197,160,89,.4); border-radius: 3px; }
+
+    @media (max-width: 1200px) {
+      .agents-grid { grid-template-columns: repeat(3, 1fr); }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { width: 200px; }
+      .agents-grid { grid-template-columns: repeat(2, 1fr); }
+      .content { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">A</div>
+      <div>
+        <div class="brand-name">AGENTIQ</div>
+        <div class="brand-sub">Arquitectura de la Creación</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-label">Principal</div>
+        <a class="nav-item" onclick="setPage('dashboard')">
+          <span class="nav-icon">⬛</span> Dashboard
+        </a>
+        <a class="nav-item active" onclick="setPage('agents')">
+          <span class="nav-icon">🤖</span> Agentes
+          <span class="nav-badge">16</span>
+        </a>
+        <a class="nav-item" onclick="setPage('teams')">
+          <span class="nav-icon">🔗</span> Equipos
+        </a>
+        <a class="nav-item" onclick="setPage('clients')">
+          <span class="nav-icon">👥</span> Clientes
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Sistema</div>
+        <a class="nav-item" onclick="setPage('tools')">
+          <span class="nav-icon">🔧</span> Herramientas
+        </a>
+        <a class="nav-item" onclick="setPage('billing')">
+          <span class="nav-icon">💳</span> Facturación
+        </a>
+        <a class="nav-item" onclick="setPage('logs')">
+          <span class="nav-icon">📡</span> Ejecuciones
+        </a>
+        <a class="nav-item" onclick="setPage('settings')">
+          <span class="nav-icon">⚙️</span> Configuración
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">IEA</div>
+        <div>
+          <div class="user-name">Admin</div>
+          <div class="user-role">Administrador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="page-title">Agentes del Equipo</div>
+      <div class="topbar-actions">
+        <button class="btn btn-outline" onclick="toggleLang()">🌐 ES | PT</button>
+        <button class="btn btn-gold" onclick="openNewAgentModal()">+ Nuevo Agente</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-label">Total Agentes</div>
+          <div class="stat-value">16</div>
+          <div class="stat-sub">Equipo completo activo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ejecuciones hoy</div>
+          <div class="stat-value" id="execCount">0</div>
+          <div class="stat-sub">Tareas completadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tokens usados</div>
+          <div class="stat-value">—</div>
+          <div class="stat-sub">Conectar backend</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Clientes activos</div>
+          <div class="stat-value">—</div>
+          <div class="stat-sub">Ver en Clientes</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" placeholder="Buscar agente..." oninput="filterAgents(this.value)">
+        </div>
+        <button class="filter-btn active" onclick="filterByGroup('all', this)">Todos</button>
+        <button class="filter-btn" onclick="filterByGroup('Adquisición', this)">Adquisición</button>
+        <button class="filter-btn" onclick="filterByGroup('Contenido', this)">Contenido</button>
+        <button class="filter-btn" onclick="filterByGroup('Operaciones', this)">Operaciones</button>
+        <button class="filter-btn" onclick="filterByGroup('Cumplimiento', this)">Cumplimiento</button>
+      </div>
+
+      <!-- Agents Grid -->
+      <div class="agents-grid" id="agentsGrid"></div>
+    </div>
+  </div>
+
+  <!-- AGENT DETAIL MODAL -->
+  <div class="modal-overlay" id="agentModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-avatar" id="modalAvatar">🤖</div>
+        <div class="modal-title">
+          <h2 id="modalName">Nombre</h2>
+          <div class="orixá" id="modalOrixá">ORIXÁ</div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="goal-box" id="modalGoal">Descripción del objetivo del agente...</div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Función</label>
+            <p id="modalRole">—</p>
+          </div>
+          <div class="detail-item">
+            <label>Grupo / Máquina</label>
+            <p id="modalGroup">—</p>
+          </div>
+          <div class="detail-item">
+            <label>Estado</label>
+            <p id="modalStatus">—</p>
+          </div>
+          <div class="detail-item">
+            <label>Proveedor LLM</label>
+            <p>GPT-4o / Ollama / Gemini</p>
+          </div>
+        </div>
+        <div class="detail-item">
+          <label>Herramientas asignadas</label>
+          <div class="tools-list" id="modalTools"></div>
+        </div>
+        <div class="logs-box" id="modalLogs">
+          <div class="log-l info"><span class="log-t">[--:--]</span>Selecciona ejecutar para ver logs en tiempo real</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-solid" id="modalRunBtn" onclick="runFromModal()">▶ Ejecutar Agente</button>
+        <button class="btn btn-outline" onclick="closeModal()">✎ Editar</button>
+        <button class="btn btn-outline" style="margin-left:auto;color:#cc3333;border-color:#cc3333;" onclick="closeModal()">🗑 Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const AGENTS = [
+      { id:"001", name:"Sales Lead",        orixá:"Oxum",       role:"Cierre de Ventas",      group:"Adquisición",  icon:"💰", goal:"Especializada en cierre de ventas y conversión de clientes terapeutas y líderes. Gestiona el pipeline desde el lead calificado hasta la firma del contrato.", tools:["CRM","WhatsApp API","Email Gmail","LinkedIn","Agenda"] },
+      { id:"002", name:"Growth Scout",       orixá:"Oxóssi",     role:"Prospección Activa",     group:"Adquisición",  icon:"🔍", goal:"Prospección activa de nuevos clientes y nichos de mercado. Identifica oportunidades, analiza competencia y genera listas de prospectos calificados.", tools:["LinkedIn","Búsqueda Web","CRM","Email Gmail"] },
+      { id:"003", name:"SEO Architect",      orixá:"Obatalá",    role:"Posicionamiento SEO",    group:"Contenido",    icon:"🏗️", goal:"Posicionamiento orgánico y claridad estratégica de marca en buscadores. Audita, planifica y ejecuta estrategias SEO para máxima visibilidad.", tools:["Búsqueda Web","Archivos","Generación Contenido"] },
+      { id:"004", name:"Resource Manager",   orixá:"Ogum",       role:"Gestión Financiera",     group:"Operaciones",  icon:"💳", goal:"Gestión de presupuestos, finanzas y flujo de caja. Monitorea gastos operativos, genera reportes de rentabilidad y controla el consumo de tokens.", tools:["Archivos","Email Gmail","CRM"] },
+      { id:"005", name:"Client Care",        orixá:"Iemanjá",    role:"Soporte al Cliente",     group:"Atención",     icon:"💬", goal:"Soporte al cliente y atención a la comunidad. Responde consultas, resuelve problemas y mantiene altos estándares de satisfacción.", tools:["WhatsApp API","Email Gmail","CRM","Agenda"] },
+      { id:"006", name:"Compliance Guard",   orixá:"Xangó",      role:"Legal y Ética",          group:"Cumplimiento", icon:"⚖️", goal:"Legal, contratos y ética de la plataforma. Revisa documentos, asegura cumplimiento normativo y gestiona riesgos legales.", tools:["Archivos","Email Gmail","Búsqueda Web"] },
+      { id:"007", name:"Brand Catalyst",     orixá:"Iansã",      role:"Marketing y Redes",      group:"Contenido",    icon:"🎨", goal:"Publicidad, redes sociales y campañas virales. Crea contenido de alto impacto, gestiona comunidades y ejecuta campañas de conversión.", tools:["Instagram API","LinkedIn","Generación Contenido","Búsqueda Web"] },
+      { id:"008", name:"Systems Healer",     orixá:"Obaluaiê",   role:"Soporte Técnico",        group:"Operaciones",  icon:"🔧", goal:"Soporte técnico, estabilidad y mantenimiento de la plataforma. Diagnostica errores, gestiona integraciones y asegura uptime óptimo.", tools:["Archivos","Email Gmail"] },
+      { id:"009", name:"Creative Flow",      orixá:"Logun Edé",  role:"Creación de Contenido",  group:"Contenido",    icon:"✍️", goal:"Creación de contenido, copy y material gráfico. Genera textos persuasivos, guiones, emails y material para campañas de marketing.", tools:["Generación Contenido","Archivos","Búsqueda Web"] },
+      { id:"010", name:"Operations Lead",    orixá:"Ossaim",     role:"Automatización",         group:"Operaciones",  icon:"⚙️", goal:"Logística, automatización y procesos internos. Diseña y ejecuta flujos de trabajo automatizados para maximizar eficiencia operativa.", tools:["CRM","Archivos","Email Gmail","Agenda"] },
+      { id:"011", name:"Project Core",       orixá:"Oduduwa",    role:"Gestión de Proyectos",   group:"Operaciones",  icon:"📋", goal:"Gestión general y liderazgo de proyectos. Coordina equipos, seguimiento de hitos y entrega resultados dentro de tiempo y presupuesto.", tools:["Agenda","CRM","Email Gmail","Archivos"] },
+      { id:"012", name:"Gatekeeper AI",      orixá:"Exu",        role:"Seguridad y APIs",       group:"Cumplimiento", icon:"🔐", goal:"Seguridad, APIs y tráfico de información. Controla accesos, audita logs, gestiona autenticaciones y protege datos sensibles.", tools:["Archivos"] },
+      { id:"013", name:"Innovation Nexus",   orixá:"Oxumaré",    role:"I+D y Tecnología",       group:"Análisis",     icon:"🚀", goal:"I+D, nuevas tecnologías y escalabilidad. Investiga herramientas emergentes, evalúa integraciones y propone mejoras técnicas continuas.", tools:["Búsqueda Web","Archivos","Generación Contenido"] },
+      { id:"014", name:"Knowledge Anchor",   orixá:"Orunmilá",   role:"Formación y Capacitación",group:"Operaciones", icon:"📚", goal:"Formación, capacitación y bases de conocimiento. Crea materiales de entrenamiento, gestiona la base de conocimiento y capacita al equipo.", tools:["Archivos","Generación Contenido","Email Gmail"] },
+      { id:"015", name:"Wisdom Auditor",     orixá:"Nanã",       role:"Control de Calidad",     group:"Calidad",      icon:"✅", goal:"Control de calidad, auditoría y mejora continua. Evalúa procesos, identifica áreas de mejora y garantiza estándares de excelencia.", tools:["Archivos","CRM","Email Gmail"] },
+      { id:"016", name:"Global Harmony",     orixá:"Oxalá",      role:"Relaciones Institucionales",group:"Estrategia", icon:"🌍", goal:"Relaciones institucionales y expansión global. Gestiona alianzas estratégicas, partnerships y posicionamiento internacional de la marca.", tools:["LinkedIn","Email Gmail","CRM","Agenda"] }
+    ];
+
+    let currentAgent = null;
+    let executions = 0;
+    let currentLang = 'ES';
+    let activeGroup = 'all';
+    let searchQuery = '';
+
+    function renderAgents() {
+      const grid = document.getElementById('agentsGrid');
+      let list = AGENTS;
+
+      if (activeGroup !== 'all') list = list.filter(a => a.group === activeGroup);
+      if (searchQuery) list = list.filter(a =>
+        a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.orixá.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.role.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      grid.innerHTML = list.map(a => `
+        <div class="agent-card" onclick="openModal('${a.id}')">
+          <div class="agent-card-header">
+            <div class="agent-avatar">${a.icon}</div>
+            <div class="agent-title">
+              <div class="agent-name">${a.name}</div>
+              <div class="agent-orixá">${a.orixá}</div>
+            </div>
+            <div class="agent-status active"></div>
+          </div>
+          <div class="agent-card-body">
+            <div class="agent-role">${a.role}</div>
+            <div class="agent-goal">${a.goal.slice(0,90)}…</div>
+          </div>
+          <div class="agent-card-footer">
+            <span class="agent-group">${a.group}</span>
+            <div class="card-actions">
+              <button class="icon-btn run" title="Ejecutar" onclick="event.stopPropagation(); quickRun('${a.id}', this)">▶</button>
+              <button class="icon-btn" title="Editar" onclick="event.stopPropagation()">✎</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openModal(id) {
+      currentAgent = AGENTS.find(a => a.id === id);
+      if (!currentAgent) return;
+
+      document.getElementById('modalAvatar').textContent = currentAgent.icon;
+      document.getElementById('modalName').textContent = currentAgent.name;
+      document.getElementById('modalOrixá').textContent = currentAgent.orixá;
+      document.getElementById('modalGoal').textContent = currentAgent.goal;
+      document.getElementById('modalRole').textContent = currentAgent.role;
+      document.getElementById('modalGroup').textContent = currentAgent.group;
+      document.getElementById('modalStatus').textContent = '● Activo';
+      document.getElementById('modalTools').innerHTML = currentAgent.tools.map(t =>
+        `<span class="tool-tag">🔗 ${t}</span>`).join('');
+      document.getElementById('modalLogs').innerHTML =
+        `<div class="log-l info"><span class="log-t">[${now()}]</span>Agente ${currentAgent.name} cargado</div>`;
+
+      document.getElementById('agentModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('agentModal').classList.remove('open');
+    }
+
+    function runFromModal() {
+      if (!currentAgent) return;
+      const logs = document.getElementById('modalLogs');
+      const btn = document.getElementById('modalRunBtn');
+      btn.textContent = '⏳ Ejecutando...';
+      btn.disabled = true;
+
+      addLog(logs, `Iniciando: ${currentAgent.name} (${currentAgent.orixá})`, 'info');
+      addLog(logs, `Cargando herramientas: ${currentAgent.tools.join(', ')}`, 'info');
+
+      setTimeout(() => {
+        addLog(logs, `Procesando tarea principal...`, 'info');
+      }, 800);
+
+      setTimeout(() => {
+        addLog(logs, `✓ Tarea completada exitosamente`, 'ok');
+        btn.textContent = '▶ Ejecutar Agente';
+        btn.disabled = false;
+        executions++;
+        document.getElementById('execCount').textContent = executions;
+      }, 2200);
+    }
+
+    function quickRun(id, btn) {
+      const agent = AGENTS.find(a => a.id === id);
+      btn.textContent = '⏳';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.textContent = '✓';
+        btn.style.color = '#2D5A27';
+        btn.style.borderColor = '#2D5A27';
+        executions++;
+        document.getElementById('execCount').textContent = executions;
+        setTimeout(() => {
+          btn.textContent = '▶';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+          btn.disabled = false;
+        }, 2000);
+      }, 1800);
+    }
+
+    function addLog(container, msg, type) {
+      const line = document.createElement('div');
+      line.className = `log-l ${type}`;
+      line.innerHTML = `<span class="log-t">[${now()}]</span>${msg}`;
+      container.appendChild(line);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function now() {
+      return new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+
+    function filterAgents(q) {
+      searchQuery = q;
+      renderAgents();
+    }
+
+    function filterByGroup(group, btn) {
+      activeGroup = group;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderAgents();
+    }
+
+    function setPage(page) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      event.target.closest('.nav-item').classList.add('active');
+    }
+
+    function toggleLang() {
+      currentLang = currentLang === 'ES' ? 'PT' : 'ES';
+      alert(`Idioma cambiado a ${currentLang === 'ES' ? 'Español' : 'Português'}`);
+    }
+
+    function openNewAgentModal() {
+      alert('Formulario de nuevo agente — próximamente conectado a Supabase');
+    }
+
+    // Close modal on overlay click
+    document.getElementById('agentModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    renderAgents();
+  </script>
+</body>
+</html>
