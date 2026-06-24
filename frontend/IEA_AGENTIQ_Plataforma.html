@@ -520,11 +520,13 @@ function agentDetail(k){const g=AGENTS[k];
       <option${g.modelo==='mistral-large'?' selected':''}>mistral-large</option>
     </optgroup>
   </select></div><div><label>Idioma</label><select><option>${g.idioma}</option><option>PT-BR</option><option>ES</option></select></div></div>
-  <label>Qué hace (lo ve el cliente)</label><textarea rows="2">${g.d}</textarea>
-  <label>Prompt (sus instrucciones)</label><textarea rows="4">${g.prompt}</textarea>
+  <label>Qué hace (lo ve el cliente)</label><textarea id="ag_desc_${k}" rows="2">${g.d}</textarea>
+  <label>Prompt (sus instrucciones)</label><textarea id="ag_prompt_${k}" rows="8" style="font-family:monospace;font-size:13px">${g.prompt}</textarea>
   <label>Herramientas</label>${g.tools.map(t=>`<div class="toolrow"><div>🧰 ${t}</div><button style="background:none;border:none;color:var(--red);font-size:18px">✕</button></div>`).join("")}
   <div class="toolrow" style="opacity:.8"><div>➕ Agregar herramienta…</div><button style="background:none;border:none;color:var(--green);font-size:18px">＋</button></div>
-  <div class="actions"><button class="btn alt" onclick="alert('Pausar (demo)')">Pausar</button><button class="btn" onclick="alert('Guardado (demo)')">Guardar cambios</button></div></div><div class="panel pad" style="margin-top:16px"><h3 style="margin-top:0">Lo que está haciendo (${ts.length})</h3><div class="mini" style="margin-bottom:10px">Tocá una tarea para desplegar el paso a paso.</div>${act}</div>`;}
+  <div class="actions"><button class="btn alt" onclick="alert('Pausar (demo)')">Pausar</button><button class="btn" id="ag_save_${k}" onclick="saveAgentChanges('${k}')">Guardar cambios</button></div>
+  <div class="mini" id="ag_savemsg_${k}" style="margin-top:6px"></div>
+  </div><div class="panel pad" style="margin-top:16px"><h3 style="margin-top:0">Lo que está haciendo (${ts.length})</h3><div class="mini" style="margin-bottom:10px">Tocá una tarea para desplegar el paso a paso.</div>${act}</div>`;}
 
 /* CREAR AGENTE (funcional: aparece en la lista) */
 function newAgentForm(){return `<div class="panel pad" style="max-width:680px">
@@ -602,7 +604,46 @@ function saveToolKeys(){Object.values(TOOLS_KEY).forEach(function(kn){var id='tk
 function toggleTool(t,el){el.classList.toggle('off');if(!el.classList.contains('off')){ACTIVE_TOOLS.add(t);}else{ACTIVE_TOOLS.delete(t);}}
 function contratar(a,p){alert("Solicitaste "+AGENTS[a].n+" ("+p+"). Recibimos tu pedido, programamos el agente y lo activamos en tu cuenta. Te avisamos por email. (demo)");}
 function descargar(){alert("Generando reporte del mes... (demo)");}
-function saveAgentModel(k,v){if(AGENTS[k]){AGENTS[k].modelo=v;var t=document.querySelector('#ag_model_'+k);if(t){var m=t.closest('.panel');if(m){var lbl=m.querySelector('.mini');if(lbl&&lbl.textContent.indexOf('Guardado')<0){var sp=document.createElement('span');sp.style.cssText='color:var(--green);font-size:11px;margin-left:8px';sp.textContent='\u2705 Guardado';lbl.appendChild(sp);setTimeout(function(){sp.remove();},2000);}}}}}
+async function saveAgentModel(k,v){
+  if(!AGENTS[k])return;
+  AGENTS[k].modelo=v;
+  if(!sb){console.warn('Sin conexi\u00f3n a Supabase: cambio de modelo solo guardado localmente.');return;}
+  try{
+    const {error}=await sb.from('agents').update({modelo:v,updated_at:new Date().toISOString()}).eq('id',k);
+    if(error)throw error;
+  }catch(e){console.error('Error guardando modelo en Supabase:',e.message);}
+}
+
+async function saveAgentChanges(k){
+  const g=AGENTS[k];
+  if(!g)return;
+  const descEl=document.getElementById('ag_desc_'+k);
+  const promptEl=document.getElementById('ag_prompt_'+k);
+  const btn=document.getElementById('ag_save_'+k);
+  const msg=document.getElementById('ag_savemsg_'+k);
+  const desc=descEl?descEl.value:g.d;
+  const prompt=promptEl?promptEl.value:g.prompt;
+  g.d=desc;g.prompt=prompt;
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+  if(!sb){
+    if(msg)msg.innerHTML='<span style="color:var(--amber)">\u26a0\ufe0f Sin conexi\u00f3n a Supabase: guardado solo en este navegador, no es permanente.</span>';
+    if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}
+    return;
+  }
+  try{
+    const {error}=await sb.from('agents').update({
+      goal:desc,prompt:prompt,modelo:g.modelo,updated_at:new Date().toISOString()
+    }).eq('id',k);
+    if(error)throw error;
+    if(msg)msg.innerHTML='<span style="color:var(--green)">\u2705 Guardado en Supabase</span>';
+  }catch(e){
+    if(msg)msg.innerHTML='<span style="color:var(--red)">\u274c Error al guardar: '+e.message+'</span>';
+    console.error('Error guardando agente en Supabase:',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}
+    setTimeout(function(){if(msg)msg.innerHTML='';},4000);
+  }
+}
 function saveClient(i){var n=document.getElementById('cn_n').value;var m=document.getElementById('cn_m').value;var p=document.getElementById('cn_p').value;var cc=document.getElementById('cn_c').value;var l=document.getElementById('cn_l').value;if(me===CLIENTS[i].n)me=n;CLIENTS[i].n=n;CLIENTS[i].mail=m;CLIENTS[i].plan=p;CLIENTS[i].pais=cc;CLIENTS[i].lang=l;alert('✅ Datos del cliente guardados.');render();}
 function deleteClient(i){if(!confirm('¿Eliminar cliente '+CLIENTS[i].n+'? Esta acción no se puede deshacer.'))return;CLIENTS.splice(i,1);current='inicio';render();}
 function removeAgent(ci,ak){CLIENTS[ci].ag=CLIENTS[ci].ag.filter(function(a){return a!==ak;});render();}
