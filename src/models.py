@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, DateTime, ForeignKey, Numeric, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
@@ -30,7 +29,7 @@ class Agent(Base):
     status: Mapped[str] = mapped_column(String, default="active")
     modelo: Mapped[str] = mapped_column(String, default="ollama/mistral")
     prompt: Mapped[str | None] = mapped_column(String, nullable=True)
-    tools: Mapped[list] = mapped_column(JSONB, default=list)
+    tools: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -38,23 +37,23 @@ class Agent(Base):
 class Client(Base):
     __tablename__ = "clients"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String)
     email: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     plan: Mapped[str] = mapped_column(String, default="Inicial")
     pais: Mapped[str | None] = mapped_column(String, nullable=True)
     lang: Mapped[str] = mapped_column(String, default="es")
-    agents: Mapped[list] = mapped_column(JSONB, default=list)
-    features: Mapped[dict] = mapped_column(JSONB, default=dict)
+    agents: Mapped[list] = mapped_column(JSON, default=list)
+    features: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Execution(Base):
     __tablename__ = "executions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     agent_id: Mapped[str | None] = mapped_column(String, ForeignKey("agents.id"), nullable=True)
-    client_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True)
+    client_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("clients.id"), nullable=True)
     task: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="pending")
     result: Mapped[str | None] = mapped_column(String, nullable=True)
