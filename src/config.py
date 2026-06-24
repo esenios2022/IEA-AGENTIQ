@@ -9,5 +9,14 @@ class Settings(BaseSettings):
     admin_user: str = "admin"
     admin_password: str = "change-me"
 
+    supabase_url: str = "https://djyuotgzcwhqvoowvixv.supabase.co"
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+
+    openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    gemini_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
+
 
 settings = Settings()
