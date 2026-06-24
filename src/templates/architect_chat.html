@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>El Gran Arquitecto</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a202c 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 {
+            font-size: 40px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .chat-window {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 90%;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .message.user { background: linear-gradient(135deg, #2563eb, #1e40af); align-self: flex-end; }
+        .message.architect { background: rgba(139, 92, 246, 0.1); border-left: 4px solid #8b5cf6; align-self: flex-start; }
+        .message.status { color: #94a3b8; font-size: 13px; align-self: center; }
+        .input-group { display: flex; gap: 10px; }
+        textarea {
+            flex: 1;
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.8);
+            color: #fff;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            resize: none;
+            height: 80px;
+            font-family: inherit;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            height: 80px;
+        }
+        button:hover { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>El Gran Arquitecto</h1>
+            <p>Dile qué agente quieres y lo diseñará automáticamente</p>
+        </div>
+        <div class="chat-window" id="chat"></div>
+        <div class="input-group">
+            <textarea id="input" placeholder="Ejemplo: Quiero un agente que lea emails..."></textarea>
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+    <script>
+        const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${proto}//${window.location.host}/api/architect/chat`);
+
+        ws.onopen = () => addMessage("Hola. Soy El Gran Arquitecto. ¿Qué agente quieres?", "architect");
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "status") addMessage(data.message, "status");
+            else if (data.type === "analysis") addMessage(data.content, "architect");
+            else if (data.type === "design") addMessage(data.content, "architect");
+            else if (data.type === "complete") addMessage(data.message, "status");
+        };
+
+        function sendMessage() {
+            const input = document.getElementById("input");
+            const requirement = input.value.trim();
+            if (!requirement) return;
+            addMessage(requirement, "user");
+            ws.send(JSON.stringify({ requirement }));
+            input.value = "";
+        }
+
+        function addMessage(msg, type) {
+            const chat = document.getElementById("chat");
+            const div = document.createElement("div");
+            div.className = `message ${type}`;
+            div.textContent = msg;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>

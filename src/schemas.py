@@ -11,3 +11,15 @@ class LeadOut(LeadCreate):
     id: int
 
     model_config = {"from_attributes": True}
+
+
+class ArchitectCreateAgentRequest(BaseModel):
+    requirement: str
+    user_id: str = "demo_user"
+
+
+class ArchitectCreateAgentResponse(BaseModel):
+    success: bool
+    agent_id: int
+    agent_name: str
+    definition: dict
