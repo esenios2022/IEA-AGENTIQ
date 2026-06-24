@@ -74,14 +74,17 @@ class GranArquitecto:
             f"Requirement: {requirement}\nSOLO JSON, sin explicaciones."
         )
         agent_def = _extract_json(design)
+        sub_agents = agent_def.get("agents") or []
+        role = sub_agents[0].get("role", "general") if sub_agents else "general"
 
         agent = Agent(
             name=agent_def.get("agent_name", "Unnamed"),
+            role=role,
             description=agent_def.get("agent_description", ""),
             user_id=user_id,
             requirement=requirement,
             definition=agent_def,
-            status="published",
+            status="active",
         )
         db.add(agent)
         db.commit()
@@ -89,7 +92,7 @@ class GranArquitecto:
 
         return {
             "success": True,
-            "agent_id": agent.id,
+            "agent_id": str(agent.id),
             "agent_name": agent.name,
             "definition": agent_def,
         }

@@ -95,7 +95,7 @@ def architect_create_agent(payload: ArchitectCreateAgentRequest, db: Session = D
 
 
 @app.get("/api/agents/{agent_id}")
-def get_agent(agent_id: int, db: Session = Depends(get_db)):
+def get_agent(agent_id: str, db: Session = Depends(get_db)):
     agent = db.get(Agent, agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")

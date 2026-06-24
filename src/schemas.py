@@ -20,6 +20,6 @@ class ArchitectCreateAgentRequest(BaseModel):
 
 class ArchitectCreateAgentResponse(BaseModel):
     success: bool
-    agent_id: int
+    agent_id: str
     agent_name: str
     definition: dict
