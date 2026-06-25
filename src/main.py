@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from secrets import compare_digest
 
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -45,9 +46,14 @@ def health_check():
     return {"status": "ok"}
 
 
+def _serve_static_html(filename: str) -> HTMLResponse:
+    with open(f"src/templates/{filename}", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+
+
 @app.get("/")
-def home(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+def home():
+    return _serve_static_html("index.html")
 
 
 @app.post("/api/leads", response_model=LeadOut)
@@ -72,6 +78,16 @@ def list_leads(
 @app.get("/architect-chat")
 def architect_chat_page(request: Request):
     return templates.TemplateResponse(request, "architect_chat.html")
+
+
+@app.get("/plataforma")
+def plataforma_page():
+    return _serve_static_html("plataforma.html")
+
+
+@app.get("/dashboard")
+def dashboard_page():
+    return _serve_static_html("dashboard.html")
 
 
 @app.get("/api/architect/status")
