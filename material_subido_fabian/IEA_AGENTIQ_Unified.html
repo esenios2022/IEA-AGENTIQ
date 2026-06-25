@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEA AGENTIQ | Arquitectura de la Creación</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+:root {
+    --emerald: #0b4d3c;
+    --emerald-light: #126e55;
+    --gold: #b08d57;
+    --gold-light: #d8c6a0;
+    --cream: #faf6ee;
+    --white: #ffffff;
+    --text-dark: #1c2b27;
+    --text-muted: #5a6b66;
+    --radius: 16px;
+    --shadow: 0 10px 30px rgba(11, 77, 60, 0.08);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+h1, h2, h3 {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--emerald);
+    font-weight: 700;
+}
+
+.container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 28px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: all 0.25s ease;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+.btn--gold {
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    color: var(--emerald);
+    box-shadow: 0 6px 18px rgba(205, 163, 73, 0.35);
+}
+
+.btn--gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(205, 163, 73, 0.45);
+}
+
+.btn--outline {
+    border-color: var(--emerald);
+    color: var(--emerald);
+    background: transparent;
+}
+
+.btn--outline:hover {
+    background: var(--emerald);
+    color: var(--white);
+}
+
+.btn--lg {
+    padding: 16px 36px;
+    font-size: 1.05rem;
+}
+
+/* ======== HEADER LANDING ======== */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(250, 246, 238, 0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(205, 163, 73, 0.25);
+}
+
+.header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    gap: 24px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.logo__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.logo__title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--emerald);
+    letter-spacing: 1px;
+}
+
+.logo__subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+.nav {
+    display: flex;
+    gap: 28px;
+    flex: 1;
+    justify-content: center;
+}
+
+.nav a {
+    color: var(--text-dark);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+}
+
+.nav a:hover {
+    color: var(--gold);
+}
+
+.header__actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* ======== LANDING VIEW ======== */
+.landing {
+    display: none;
+}
+
+.landing.active {
+    display: block;
+}
+
+.hero {
+    position: relative;
+    overflow: hidden;
+    padding: 100px 0 80px;
+}
+
+.hero__bg-glow {
+    position: absolute;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(205, 163, 73, 0.25), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.hero__inner {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    align-items: center;
+    gap: 48px;
+}
+
+.hero__content h1 {
+    font-size: 3rem;
+    line-height: 1.15;
+    margin-bottom: 20px;
+}
+
+.hero__content p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    max-width: 520px;
+    margin-bottom: 32px;
+}
+
+.hero__cta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.crystal-orbit {
+    position: relative;
+    width: 400px;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crystal-orbit__logo {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    box-shadow: 0 0 60px rgba(205, 163, 73, 0.5);
+    animation: float 6s ease-in-out infinite;
+    z-index: 2;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.2s;
+}
+
+.crystal-orbit__logo:hover {
+    transform: scale(1.05);
+}
+
+.crystal-orbit__logo:active {
+    transform: scale(0.95);
+}
+
+.crystal-orbit__logo img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.crystal-orbit__ring {
+    position: absolute;
+    border: 1px solid rgba(205, 163, 73, 0.35);
+    border-radius: 50%;
+}
+
+.crystal-orbit__ring--1 {
+    width: 100%;
+    height: 100%;
+    animation: spin 30s linear infinite;
+    border-style: dashed;
+}
+
+.crystal-orbit__ring--2 {
+    width: 80%;
+    height: 80%;
+    top: 10%;
+    left: 10%;
+    animation: spin 22s linear infinite reverse;
+}
+
+.crystal-orbit__ring--3 {
+    width: 60%;
+    height: 60%;
+    top: 20%;
+    left: 20%;
+    animation: spin 16s linear infinite;
+    border-style: dotted;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-16px); }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.section {
+    padding: 90px 0;
+}
+
+.section--alt {
+    background: var(--white);
+}
+
+.section__header {
+    text-align: center;
+    max-width: 680px;
+    margin: 0 auto 56px;
+}
+
+.section__header h2 {
+    font-size: 2.4rem;
+    margin-bottom: 16px;
+}
+
+.section__header p {
+    color: var(--text-muted);
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 28px;
+}
+
+.card {
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 36px rgba(11, 77, 60, 0.12);
+    border-color: var(--gold);
+}
+
+.card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+}
+
+.card p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.tag {
+    display: inline-block;
+    background: rgba(205, 163, 73, 0.15);
+    color: var(--gold);
+    border: 1px solid rgba(205, 163, 73, 0.4);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+/* ======== CATALOG SECTION ======== */
+.catalog-header {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.catalog-header h3 {
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+}
+
+.catalog-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.catalog-row {
+    margin-bottom: 48px;
+}
+
+.catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.agent-card {
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    transition: transform 0.25s ease;
+    text-align: center;
+}
+
+.agent-card:hover {
+    transform: translateY(-4px);
+}
+
+.agent-card__badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--emerald);
+    font-weight: 700;
+    font-size: 18px;
+    margin: 0 auto 12px;
+}
+
+.agent-card h3 {
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.agent-card__desc {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 12px 0;
+}
+
+.agent-card__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.agent-card__actions button {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.agent-card__actions .btn-primary {
+    background: var(--emerald);
+    color: var(--white);
+}
+
+.agent-card__actions .btn-primary:hover {
+    background: var(--emerald-light);
+}
+
+.agent-card__actions .btn-secondary {
+    background: var(--cream);
+    color: var(--emerald);
+    border: 1px solid var(--gold);
+}
+
+.agent-card__actions .btn-secondary:hover {
+    background: rgba(205, 163, 73, 0.1);
+}
+
+.programming-time {
+    background: rgba(205, 163, 73, 0.08);
+    border-left: 3px solid var(--gold);
+    padding: 16px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}
+
+.programming-time strong {
+    color: var(--gold);
+}
+
+/* ======== FEATURES SECTION ======== */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.feature-item {
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.15);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+}
+
+.feature-item__icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: var(--gold);
+}
+
+.feature-item h4 {
+    font-size: 1rem;
+    color: var(--emerald);
+    margin-bottom: 8px;
+}
+
+.feature-item p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* ======== TESTIMONIALS ======== */
+.testimonials-carousel {
+    overflow-x: auto;
+    padding: 20px 0;
+    display: flex;
+    gap: 24px;
+}
+
+.testimonial-card {
+    flex: 0 0 300px;
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.testimonial-card__avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    margin-bottom: 12px;
+}
+
+.testimonial-card__name {
+    font-weight: 700;
+    color: var(--emerald);
+    margin-bottom: 4px;
+}
+
+.testimonial-card__role {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.testimonial-card__text {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* ======== LOGIN VIEW ======== */
+.login {
+    display: none;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(1000px 500px at 80% -10%, rgba(11, 77, 60, 0.16), transparent);
+}
+
+.login.active {
+    display: flex;
+}
+
+.login-card {
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 20px 50px rgba(16, 24, 40, 0.1);
+}
+
+.login-card h2 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.login-card p {
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 28px;
+    font-size: 0.9rem;
+}
+
+.login-card label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 16px 0 6px;
+    font-weight: 600;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    margin-bottom: 16px;
+}
+
+.login-card input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(11, 77, 60, 0.12);
+}
+
+.login-roles {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.login-roles button {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    background: var(--white);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.login-roles button.active {
+    background: var(--emerald);
+    color: var(--white);
+    border-color: var(--emerald);
+}
+
+.login-card .btn--gold {
+    width: 100%;
+    padding: 14px;
+    margin-top: 12px;
+}
+
+.login-note {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 14px;
+}
+
+/* ======== DASHBOARD VIEW ======== */
+.dashboard {
+    display: none;
+}
+
+.dashboard.active {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: 100vh;
+    background: #f5f3ec;
+}
+
+.dashboard__sidebar {
+    background: var(--white);
+    border-right: 1px solid rgba(205, 163, 73, 0.15);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard__header {
+    padding: 14px;
+    border-bottom: 1px solid rgba(205, 163, 73, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dashboard__brand-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.dashboard__nav {
+    flex: 1;
+    padding: 8px;
+    overflow-y: auto;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-dark);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.nav-item:hover {
+    background: rgba(205, 163, 73, 0.1);
+}
+
+.nav-item.active {
+    background: rgba(11, 77, 60, 0.1);
+    color: var(--emerald);
+}
+
+.dashboard__footer {
+    padding: 12px;
+    border-top: 1px solid rgba(205, 163, 73, 0.15);
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--cream);
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.logout-btn:hover {
+    background: rgba(205, 163, 73, 0.15);
+}
+
+.dashboard__main {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard__topbar {
+    position: sticky;
+    top: 0;
+    background: rgba(245, 246, 248, 0.85);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid rgba(205, 163, 73, 0.15);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 50;
+}
+
+.dashboard__title {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.dashboard__content {
+    flex: 1;
+    padding: 28px;
+}
+
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.kpi {
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.15);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.kpi__value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--emerald);
+    line-height: 1;
+}
+
+.kpi__label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.panel {
+    background: var(--white);
+    border: 1px solid rgba(205, 163, 73, 0.15);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.panel h3 {
+    margin-top: 0;
+    margin-bottom: 18px;
+    font-size: 1.15rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table thead th {
+    text-align: left;
+    padding: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(205, 163, 73, 0.15);
+    background: #faf6ee;
+}
+
+.table tbody td {
+    padding: 14px 12px;
+    border-bottom: 1px solid rgba(205, 163, 73, 0.1);
+    font-size: 0.9rem;
+}
+
+.table tbody tr:hover {
+    background: #faf6ee;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge--active {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+}
+
+.badge--pending {
+    background: rgba(217, 119, 6, 0.12);
+    color: #d97706;
+}
+
+.badge--running {
+    background: rgba(11, 77, 60, 0.12);
+    color: var(--emerald);
+}
+
+.badge--done {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+}
+
+.two-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 24px;
+}
+
+/* ======== MODAL CHAT ======== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal__content {
+    background: var(--white);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    height: 70vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal__header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(205, 163, 73, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal__header h3 {
+    margin: 0;
+}
+
+.modal__close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.modal__body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-msg {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.chat-msg--user {
+    justify-content: flex-end;
+}
+
+.chat-msg__bubble {
+    max-width: 70%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.chat-msg--user .chat-msg__bubble {
+    background: var(--emerald);
+    color: var(--white);
+}
+
+.chat-msg--agent .chat-msg__bubble {
+    background: var(--cream);
+    color: var(--text-dark);
+}
+
+.modal__footer {
+    padding: 20px;
+    border-top: 1px solid rgba(205, 163, 73, 0.15);
+    display: flex;
+    gap: 8px;
+}
+
+.modal__footer input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid rgba(205, 163, 73, 0.2);
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+.modal__footer button {
+    padding: 10px 16px;
+    background: var(--gold);
+    color: var(--emerald);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+    .two-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpis {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard__sidebar {
+        display: none;
+    }
+
+    .hero__inner {
+        grid-template-columns: 1fr;
+    }
+
+    .nav {
+        display: none;
+    }
+
+    .kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .catalog-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+    </style>
+</head>
+<body>
+
+<!-- ======== LANDING VIEW ======== -->
+<div id="landing-view" class="landing active">
+    <header class="header">
+        <div class="header__inner">
+            <div class="logo" onclick="showLanding()">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #0b4d3c, #126e55); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px;">AQ</div>
+                <div class="logo__text">
+                    <div class="logo__title">IEA AGENTIQ</div>
+                    <div class="logo__subtitle">Arquitectura de la Creación</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="#agentes">Agentes</a>
+                <a href="#caracteristicas">Características</a>
+                <a href="#testimonios">Testimonios</a>
+            </nav>
+            <div class="header__actions">
+                <button class="btn btn--outline" onclick="showLogin()">Entrar</button>
+                <button class="btn btn--gold" onclick="showLogin()">Comenzar</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero">
+            <div class="hero__bg-glow"></div>
+            <div class="hero__inner">
+                <div class="hero__content">
+                    <h1>La Arquitectura Invisible que Hace Realidad tu Propósito</h1>
+                    <p>Diseñamos e instalamos sistemas inteligentes que trabajan por ti. Automatiza sin perder humanidad.</p>
+                    <div class="hero__cta">
+                        <button class="btn btn--gold btn--lg" onclick="showLogin()">Comenzar Ahora</button>
+                        <button class="btn btn--outline btn--lg">Ver Demo</button>
+                    </div>
+                </div>
+                    <div class="crystal-orbit">
+                    <div class="crystal-orbit__ring crystal-orbit__ring--1"></div>
+                    <div class="crystal-orbit__ring crystal-orbit__ring--2"></div>
+                    <div class="crystal-orbit__ring crystal-orbit__ring--3"></div>
+                    <button class="crystal-orbit__logo" onclick="openAgentChat(event)" title="Habla con nuestro agente">
+                        <img src="flor_agentiq.png" alt="AgentiQ Flor de la Vida">
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="section section--alt">
+        <div class="container">
+            <div class="section__header">
+                <div class="tag">CÓMO FUNCIONA</div>
+                <h2>Cuatro Pasos Hacia tu Manifestación</h2>
+                <p>De la visión al resultado: diseño, instalación, manifestación y escalado continuo.</p>
+            </div>
+            <div class="cards-grid">
+                <div class="card">
+                    <h3>1. Diseño</h3>
+                    <p>Entendemos tu negocio y diseñamos el sistema de agentes que lo potencia, personalizados a tu voz y proceso.</p>
+                </div>
+                <div class="card">
+                    <h3>2. Instalación</h3>
+                    <p>Los agentes se integran en tu flujo: WhatsApp, Email, LinkedIn, CRM. Trabajan como un equipo coordinado.</p>
+                </div>
+                <div class="card">
+                    <h3>3. Manifestación</h3>
+                    <p>Observás los resultados: leads, ventas, contactos calificados. Todo medido, optimizado, escalable.</p>
+                </div>
+                <div class="card">
+                    <h3>4. Escalado</h3>
+                    <p>Crece sin límites. Los agentes se adaptan a tu crecimiento, nuevas integraciones, nuevos mercados.</p>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <section class="section" id="agentes">
+        <div class="container">
+            <div class="section__header">
+                <div class="tag">EQUIPO DE AGENTES</div>
+                <h2>Tu Equipo de Especialistas</h2>
+                <p>Elige los agentes que necesitás. Cada uno tiene un rol específico. Actúan coordinados.</p>
+            </div>
+
+            <!-- PLAN INICIAL: 4 AGENTES -->
+            <div class="catalog-row">
+                <div class="catalog-header">
+                    <h3>Plan Inicial • 4 Agentes</h3>
+                    <p>$39/mes</p>
+                </div>
+                <div class="catalog-grid" id="agents-4"></div>
+            </div>
+
+            <!-- PLAN PRO: 8 AGENTES -->
+            <div class="catalog-row">
+                <div class="catalog-header">
+                    <h3>Plan Pro • 8 Agentes</h3>
+                    <p>$117/mes</p>
+                </div>
+                <div class="catalog-grid" id="agents-8"></div>
+            </div>
+
+            <!-- PLAN AVANZADO: 12 AGENTES -->
+            <div class="catalog-row">
+                <div class="catalog-header">
+                    <h3>Plan Avanzado • 12 Agentes</h3>
+                    <p>$156/mes</p>
+                </div>
+                <div class="catalog-grid" id="agents-12"></div>
+            </div>
+
+            <!-- PLAN ENTERPRISE: 16 AGENTES -->
+            <div class="catalog-row">
+                <div class="catalog-header">
+                    <h3>Plan Enterprise • 16 Agentes</h3>
+                    <p>$468/mes</p>
+                </div>
+                <div class="catalog-grid" id="agents-16"></div>
+            </div>
+
+            <div class="programming-time">
+                <strong>⏱️ Tiempo de programación:</strong> Los agentes se adaptan a tu negocio. Plan Inicial: 30 días. Plan Pro: 45 días. Plan Avanzado: 60 días. Plan Enterprise: 90 días.
+            </div>
+        </div>
+    </section>
+
+    <section class="section section--alt" id="caracteristicas">
+        <div class="container">
+            <div class="section__header">
+                <div class="tag">CARACTERÍSTICAS</div>
+                <h2>Lo que Obtienés</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-item__icon">📊</div>
+                    <h4>Métricas en Vivo</h4>
+                    <p>Dashboard que muestra cuánto trabaja cada agente, cuánto cuesta, y cuánto produce.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">💬</div>
+                    <h4>Chat Bilingüe</h4>
+                    <p>Dale órdenes en español o portugués. Él entiende, ejecuta, y te muestra el avance.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">🔧</div>
+                    <h4>Personalizable</h4>
+                    <p>Ajustá el prompt, las herramientas, el idioma. Cada agente se especializa en tu negocio.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">💰</div>
+                    <h4>Transparencia Total</h4>
+                    <p>Sabés exactamente qué consume cada agente. No hay sorpresas. Paga solo lo que usás.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">⚙️</div>
+                    <h4>Automatización</h4>
+                    <p>Procesos que corren sin intervención. Los agentes trabajan 24/7 por tu negocio.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">👁️</div>
+                    <h4>Control Humano</h4>
+                    <p>Tú siempre decides. Apruebs, rechazás, ajustás. Los agentes son herramientas tuyas.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">🌐</div>
+                    <h4>Integraciones</h4>
+                    <p>WhatsApp, Instagram, LinkedIn, Email, CRM. Todos tus canales en un único sistema.</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-item__icon">📈</div>
+                    <h4>Escalado Infinito</h4>
+                    <p>Crece de 4 a 16 agentes (o más) sin cambiar tu stack. Todo compatible.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="testimonios">
+        <div class="container">
+            <div class="section__header">
+                <div class="tag">TESTIMONIOS</div>
+                <h2>Lo que Dicen nuestros Clientes</h2>
+            </div>
+            <div class="testimonials-carousel" id="testimonials"></div>
+        </div>
+    </section>
+
+    <footer style="background: var(--emerald); color: var(--white); padding: 48px 0; text-align: center;">
+        <div class="container">
+            <p style="margin-bottom: 12px;">&copy; 2026 IEA AGENTIQ. Arquitectura de la Creación.</p>
+            <p style="font-size: 0.85rem; color: rgba(255,255,255,0.7);">Hecho con propósito.</p>
+        </div>
+    </footer>
+</div>
+
+<!-- ======== LOGIN VIEW ======== -->
+<div id="login-view" class="login">
+    <div class="login-card">
+        <h2>IEA AGENTIQ</h2>
+        <p>Ingresa a tu plataforma de agentes</p>
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="tu@email.com" value="cliente@demo.com">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••" value="demodemo">
+        <label style="margin-top: 18px;">¿Quién sos?</label>
+        <div class="login-roles">
+            <button class="active" onclick="setLoginRole(this, 'client')">Cliente</button>
+            <button onclick="setLoginRole(this, 'admin')">Admin</button>
+        </div>
+        <button class="btn btn--gold" style="width: 100%;" onclick="login()">Entrar</button>
+        <p class="login-note">Demo · Datos de ejemplo</p>
+        <p style="text-align: center; margin-top: 16px;"><a href="#" onclick="showLanding()" style="color: var(--gold); text-decoration: none; font-weight: 600;">Volver a la página principal</a></p>
+    </div>
+</div>
+
+<!-- ======== DASHBOARD VIEW ======== -->
+<div id="dashboard-view" class="dashboard">
+    <div class="dashboard__sidebar">
+        <div class="dashboard__header">
+            <div class="dashboard__brand-dot">AQ</div>
+            <div>
+                <div style="font-size: 13px; font-weight: 700; color: var(--emerald);">IEA AGENTIQ</div>
+                <div style="font-size: 10px; color: var(--text-muted);" id="user-role">Cliente</div>
+            </div>
+        </div>
+        <nav class="dashboard__nav" id="dashboard-nav"></nav>
+        <div class="dashboard__footer">
+            <button class="logout-btn" onclick="logout()">Salir</button>
+        </div>
+    </div>
+
+    <div class="dashboard__main">
+        <div class="dashboard__topbar">
+            <h1 class="dashboard__title" id="page-title">Dashboard</h1>
+        </div>
+        <div class="dashboard__content" id="page-content"></div>
+    </div>
+</div>
+
+<!-- ======== CHAT MODAL ======== -->
+<div id="chat-modal" class="modal">
+    <div class="modal__content">
+        <div class="modal__header">
+            <h3>Chat con AgentiQ</h3>
+            <button class="modal__close" onclick="closeAgentChat()">×</button>
+        </div>
+        <div class="modal__body" id="chat-messages"></div>
+        <div class="modal__footer">
+            <input type="text" id="chat-input" placeholder="Escribe tu pregunta...">
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ======== STATE ======== 
+let currentView = 'landing';
+let currentUser = null;
+let currentRole = 'client';
+let currentPage = 'home';
+
+// ======== AGENTS DATA ======== 
+const AGENTS_DATA = [
+    { id: 'PR', name: 'Prospector LinkedIn', group: 'Ventas', desc: 'Busca y filtra clientes potenciales en LinkedIn.' },
+    { id: 'PI', name: 'Prospector IG + Facebook', group: 'Ventas', desc: 'Prospección en Instagram y Facebook.' },
+    { id: 'CAL', name: 'Calificador de leads', group: 'Ventas', desc: 'Enriquece y puntúa contactos.' },
+    { id: 'RED', name: 'Redactor de invitaciones', group: 'Ventas', desc: 'Escribe mensajes personalizados.' },
+    { id: 'WAL', name: 'Limpiador de listas WhatsApp', group: 'Difusión', desc: 'Valida, deduplica y segmenta listas.' },
+    { id: 'WAD', name: 'Difusor WhatsApp', group: 'Difusión', desc: 'Campañas de difusión (API oficial).' },
+    { id: 'VID', name: 'Fragmentador de video', group: 'Contenido', desc: 'Corta videos largos en reels.' },
+    { id: 'COP', name: 'Generador de copy + hashtags', group: 'Contenido', desc: 'Textos y etiquetas para IG/FB.' },
+    { id: 'PUB', name: 'Publicador omnicanal', group: 'Contenido', desc: 'Programa y publica en IG y Facebook.' },
+    { id: 'B2C', name: 'Primer contacto B2C', group: 'Clientes finales', desc: 'Responde, califica y deriva a WhatsApp.' },
+    { id: 'NUR', name: 'Seguimiento / nurturing', group: 'Clientes finales', desc: 'Recordatorios y secuencias.' },
+    { id: 'MET', name: 'Analista de métricas', group: 'Operación', desc: 'Mide qué rinde mejor y reporta.' },
+    { id: 'G13', name: 'Gestor de integraciones', group: 'Operación', desc: 'Conecta y sincroniza tus herramientas.' },
+    { id: 'G14', name: 'Asistente de reportes', group: 'Operación', desc: 'Genera reportes automatizados.' },
+    { id: 'G15', name: 'Optimizador de procesos', group: 'Operación', desc: 'Mejora continua de tus flujos.' },
+    { id: 'G16', name: 'Estratega de crecimiento', group: 'Operación', desc: 'Planifica y ejecuta tu escalado.' }
+];
+
+const TESTIMONIALS = [
+    { name: 'Centro Aurora', role: 'Terapeutas', text: 'Los agentes nos permitieron automatizar 80% de nuestro prospecting. Ahora tenemos más tiempo para las personas.' },
+    { name: 'Instituto Theta', role: 'Educación', text: 'Implementamos 8 agentes en 45 días. El ROI fue evidente desde el primer mes.' },
+    { name: 'Luz Interior', role: 'Coaching', text: 'La arquitectura que proponen es exactamente lo que necesitábamos para escalar sin perder humanidad.' }
+];
+
+// ======== VIEW MANAGEMENT ======== 
+function showLanding() {
+    currentView = 'landing';
+    updateView();
+}
+
+function showLogin() {
+    currentView = 'login';
+    updateView();
+}
+
+function showDashboard() {
+    if (!currentUser) {
+        showLogin();
+        return;
+    }
+    currentView = 'dashboard';
+    updateView();
+    renderDashboard();
+}
+
+function updateView() {
+    document.getElementById('landing-view').classList.toggle('active', currentView === 'landing');
+    document.getElementById('login-view').classList.toggle('active', currentView === 'login');
+    document.getElementById('dashboard-view').classList.toggle('active', currentView === 'dashboard');
+}
+
+// ======== AGENTS RENDERING ======== 
+function renderAgentsGrid(containerId, count) {
+    const container = document.getElementById(containerId);
+    const agents = AGENTS_DATA.slice(0, count);
+    container.innerHTML = agents.map(agent => `
+        <div class="agent-card">
+            <div class="agent-card__badge">${agent.id}</div>
+            <h3>${agent.name}</h3>
+            <p style="font-size: 0.75rem; color: var(--gold); font-weight: 600; margin-bottom: 8px;">${agent.group}</p>
+            <div class="agent-card__desc">${agent.desc}</div>
+            <div class="agent-card__actions">
+                <button class="btn-secondary" onclick="alert('Ver detalles')">Detalles</button>
+                <button class="btn-primary" onclick="showLogin()">Contratar</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderTestimonials() {
+    const container = document.getElementById('testimonials');
+    container.innerHTML = TESTIMONIALS.map(t => `
+        <div class="testimonial-card">
+            <div class="testimonial-card__avatar"></div>
+            <div class="testimonial-card__name">${t.name}</div>
+            <div class="testimonial-card__role">${t.role}</div>
+            <div class="testimonial-card__text">"${t.text}"</div>
+        </div>
+    `).join('');
+}
+
+// ======== LOGIN ======== 
+function setLoginRole(btn, role) {
+    [...btn.parentElement.children].forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRole = role;
+}
+
+function login() {
+    const email = document.getElementById('login-email').value;
+    if (!email) {
+        alert('Ingresá un email');
+        return;
+    }
+    currentUser = { email, role: currentRole };
+    showDashboard();
+}
+
+function logout() {
+    currentUser = null;
+    showLanding();
+}
+
+// ======== DASHBOARD ======== 
+function renderDashboard() {
+    const navEl = document.getElementById('dashboard-nav');
+    const nav = currentRole === 'client'
+        ? [
+            { id: 'home', label: '🏠 Dashboard', page: 'home' },
+            { id: 'tasks', label: '🗒️ Mis tareas', page: 'tasks' },
+            { id: 'agents', label: '🤖 Mis agentes', page: 'agents' },
+            { id: 'consumption', label: '💳 Consumo', page: 'consumption' },
+            { id: 'catalog', label: '🛒 Catálogo', page: 'catalog' }
+          ]
+        : [
+            { id: 'home', label: '🏠 Inicio', page: 'home' },
+            { id: 'agents', label: '🤖 Agentes', page: 'agents_admin' },
+            { id: 'clients', label: '🏢 Clientes', page: 'clients' },
+            { id: 'executions', label: '⚡ Ejecuciones', page: 'executions' },
+            { id: 'analytics', label: '📊 Analítica', page: 'analytics' }
+          ];
+    
+    navEl.innerHTML = nav.map(item => 
+        `<div class="nav-item ${currentPage === item.page ? 'active' : ''}" onclick="selectPage('${item.page}')">${item.label}</div>`
+    ).join('');
+
+    document.getElementById('user-role').textContent = currentRole === 'client' ? 'Cliente' : 'Administrador';
+    renderPage();
+}
+
+function selectPage(page) {
+    currentPage = page;
+    renderDashboard();
+}
+
+function renderPage() {
+    const title = document.getElementById('page-title');
+    const content = document.getElementById('page-content');
+
+    if (currentRole === 'client') {
+        switch(currentPage) {
+            case 'home':
+                title.textContent = 'Dashboard';
+                content.innerHTML = `
+                    <div class="kpis">
+                        <div class="kpi">
+                            <div class="kpi__value">8</div>
+                            <div class="kpi__label">Agentes contratados</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="kpi__value">24</div>
+                            <div class="kpi__label">Tareas completadas</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="kpi__value">$117</div>
+                            <div class="kpi__label">Gasto este mes</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="kpi__value">$883</div>
+                            <div class="kpi__label">Saldo disponible</div>
+                        </div>
+                    </div>
+                    <div class="two-grid">
+                        <div class="panel">
+                            <h3>Tareas recientes</h3>
+                            <table class="table">
+                                <thead><tr><th>Tarea</th><th>Agente</th><th>Estado</th></tr></thead>
+                                <tbody>
+                                    <tr><td><b>Buscar 50 leads en Brasil</b></td><td>Prospector LinkedIn</td><td><span class="badge badge--done">✓ Completada</span></td></tr>
+                                    <tr><td><b>Cortar 3 reels del video</b></td><td>Fragmentador de video</td><td><span class="badge badge--running">En curso</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="panel">
+                            <h3>Próximos pasos</h3>
+                            <p style="color: var(--text-muted); margin-bottom: 12px;">Tu agente te espera</p>
+                            <button class="btn btn--gold" style="width: 100%;" onclick="openAgentChat()">Hablar con AgentiQ</button>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'catalog':
+                title.textContent = 'Catálogo';
+                content.innerHTML = `<div class="catalog-grid" id="catalog-grid"></div>`;
+                setTimeout(() => {
+                    const grid = document.getElementById('catalog-grid');
+                    grid.innerHTML = AGENTS_DATA.map(agent => `
+                        <div class="agent-card">
+                            <div class="agent-card__badge">${agent.id}</div>
+                            <h3>${agent.name}</h3>
+                            <p style="font-size: 0.75rem; color: var(--gold); font-weight: 600; margin-bottom: 8px;">${agent.group}</p>
+                            <div class="agent-card__desc">${agent.desc}</div>
+                            <div class="agent-card__actions">
+                                <button class="btn-secondary">1 mes</button>
+                                <button class="btn-primary">Contratar</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }, 0);
+                break;
+            default:
+                content.innerHTML = '<p>Página en construcción</p>';
+        }
+    } else {
+        content.innerHTML = '<p>Panel de admin en construcción</p>';
+    }
+}
+
+// ======== CHAT ======== 
+function openAgentChat(e) {
+    if (e) e.preventDefault();
+    document.getElementById('chat-modal').classList.add('active');
+    const msgs = document.getElementById('chat-messages');
+    msgs.innerHTML = `<div class="chat-msg chat-msg--agent"><div class="chat-msg__bubble">Hola, soy AgentiQ. ¿En qué puedo ayudarte?</div></div>`;
+}
+
+function closeAgentChat() {
+    document.getElementById('chat-modal').classList.remove('active');
+}
+
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    
+    const msgs = document.getElementById('chat-messages');
+    msgs.innerHTML += `<div class="chat-msg chat-msg--user"><div class="chat-msg__bubble">${msg}</div></div>`;
+    msgs.innerHTML += `<div class="chat-msg chat-msg--agent"><div class="chat-msg__bubble">Entendido. Estoy procesando tu solicitud...</div></div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    input.value = '';
+}
+
+// ======== INIT ======== 
+window.addEventListener('load', () => {
+    renderAgentsGrid('agents-4', 4);
+    renderAgentsGrid('agents-8', 8);
+    renderAgentsGrid('agents-12', 12);
+    renderAgentsGrid('agents-16', 16);
+    renderTestimonials();
+});
+    </script>
+</body>
+</html>
