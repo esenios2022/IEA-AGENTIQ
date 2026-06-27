@@ -98,9 +98,10 @@
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === "status") addMessage(data.message, "status");
+            else if (data.type === "message") addMessage(data.content, "architect");
             else if (data.type === "analysis") addMessage(data.content, "architect");
             else if (data.type === "design") addMessage(data.content, "architect");
-            else if (data.type === "complete") addMessage(data.message, "status");
+            else if (data.type === "complete") addMessage("✅ " + data.message, "status");
             else if (data.type === "error") addMessage("⚠️ " + data.message, "status");
         };
 

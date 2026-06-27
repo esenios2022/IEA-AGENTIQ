@@ -119,7 +119,7 @@ def get_agent(agent_id: str, db: Session = Depends(get_db)):
 
 
 @app.websocket("/api/architect/chat")
-async def architect_chat_socket(websocket: WebSocket):
+async def architect_chat_socket(websocket: WebSocket, db: Session = Depends(get_db)):
     await websocket.accept()
     architect = get_obatala()
     architect.reset_conversation()
@@ -131,17 +131,18 @@ async def architect_chat_socket(websocket: WebSocket):
                 continue
 
             try:
-                await websocket.send_json({"type": "status", "message": "Analizando..."})
-                analysis = architect.think(f"Analiza: {requirement}\n\nBreve análisis.")
-                await websocket.send_json({"type": "analysis", "content": analysis})
+                await websocket.send_json({"type": "status", "message": "Pensando..."})
+                result = architect.respond(requirement)
 
-                await websocket.send_json({"type": "status", "message": "Diseñando..."})
-                design = architect.think(
-                    f"JSON del agente.\nRequirement: {requirement}\nSOLO JSON."
+                if result["kind"] == "message":
+                    await websocket.send_json({"type": "message", "content": result["text"]})
+                    continue
+
+                agent = architect.persist_agent(result["definition"], requirement, "demo_user", db)
+                await websocket.send_json({"type": "design", "content": result["text"]})
+                await websocket.send_json(
+                    {"type": "complete", "message": f"Agente «{agent.name}» creado y guardado."}
                 )
-                await websocket.send_json({"type": "design", "content": design})
-
-                await websocket.send_json({"type": "complete", "message": "Listo"})
             except Exception as exc:
                 await websocket.send_json({"type": "error", "message": f"Error: {exc}"})
     except WebSocketDisconnect:
