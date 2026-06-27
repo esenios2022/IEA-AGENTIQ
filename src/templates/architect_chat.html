@@ -101,7 +101,11 @@
             else if (data.type === "analysis") addMessage(data.content, "architect");
             else if (data.type === "design") addMessage(data.content, "architect");
             else if (data.type === "complete") addMessage(data.message, "status");
+            else if (data.type === "error") addMessage("⚠️ " + data.message, "status");
         };
+
+        ws.onerror = () => addMessage("⚠️ Error de conexión con Obatalá.", "status");
+        ws.onclose = () => addMessage("⚠️ Conexión cerrada. Recargá la página para reintentar.", "status");
 
         function sendMessage() {
             const input = document.getElementById("input");

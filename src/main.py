@@ -130,16 +130,19 @@ async def architect_chat_socket(websocket: WebSocket):
             if not requirement:
                 continue
 
-            await websocket.send_json({"type": "status", "message": "Analizando..."})
-            analysis = architect.think(f"Analiza: {requirement}\n\nBreve análisis.")
-            await websocket.send_json({"type": "analysis", "content": analysis})
+            try:
+                await websocket.send_json({"type": "status", "message": "Analizando..."})
+                analysis = architect.think(f"Analiza: {requirement}\n\nBreve análisis.")
+                await websocket.send_json({"type": "analysis", "content": analysis})
 
-            await websocket.send_json({"type": "status", "message": "Diseñando..."})
-            design = architect.think(
-                f"JSON del agente.\nRequirement: {requirement}\nSOLO JSON."
-            )
-            await websocket.send_json({"type": "design", "content": design})
+                await websocket.send_json({"type": "status", "message": "Diseñando..."})
+                design = architect.think(
+                    f"JSON del agente.\nRequirement: {requirement}\nSOLO JSON."
+                )
+                await websocket.send_json({"type": "design", "content": design})
 
-            await websocket.send_json({"type": "complete", "message": "Listo"})
+                await websocket.send_json({"type": "complete", "message": "Listo"})
+            except Exception as exc:
+                await websocket.send_json({"type": "error", "message": f"Error: {exc}"})
     except WebSocketDisconnect:
         pass
