@@ -1,4 +1,4 @@
-"""El Gran Arquitecto: a meta-agent that designs other agents from a plain-language requirement."""
+"""Obatalá: a meta-agent that designs other agents from a plain-language requirement."""
 
 import json
 import re
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from src.config import settings
 from src.models import Agent
 
-SYSTEM_PROMPT = """Eres el Gran Arquitecto de IA - experto en diseño de agentes.
+SYSTEM_PROMPT = """Eres Obatalá, el Orixá creador, experto en diseño de agentes de IA.
 
 Cuando un usuario dice "Quiero un agente que...", DEBES:
 1. ANALIZAR el requirement
@@ -45,7 +45,7 @@ def _extract_json(text: str) -> dict[str, Any]:
         return json.loads(match.group())
 
 
-class GranArquitecto:
+class Obatala:
     """Designs an agent definition from a requirement, talking to Claude across a few turns."""
 
     def __init__(self, api_key: str | None = None):
@@ -98,11 +98,11 @@ class GranArquitecto:
         }
 
 
-_gran_arquitecto: GranArquitecto | None = None
+_obatala: Obatala | None = None
 
 
-def get_gran_arquitecto() -> GranArquitecto:
-    global _gran_arquitecto
-    if _gran_arquitecto is None:
-        _gran_arquitecto = GranArquitecto()
-    return _gran_arquitecto
+def get_obatala() -> Obatala:
+    global _obatala
+    if _obatala is None:
+        _obatala = Obatala()
+    return _obatala

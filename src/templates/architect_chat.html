@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>El Gran Arquitecto</title>
+    <title>Obatalá</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -80,8 +80,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>El Gran Arquitecto</h1>
-            <p>Dile qué agente quieres y lo diseñará automáticamente</p>
+            <h1>Obatalá</h1>
+            <p>El Orixá creador. Dile qué agente quieres y lo diseñará automáticamente</p>
         </div>
         <div class="chat-window" id="chat"></div>
         <div class="input-group">
@@ -93,7 +93,7 @@
         const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const ws = new WebSocket(`${proto}//${window.location.host}/api/architect/chat`);
 
-        ws.onopen = () => addMessage("Hola. Soy El Gran Arquitecto. ¿Qué agente quieres?", "architect");
+        ws.onopen = () => addMessage("Hola. Soy Obatalá. ¿Qué agente quieres?", "architect");
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);

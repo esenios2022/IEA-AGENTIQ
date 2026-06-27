@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.architect_agent import get_gran_arquitecto
+from src.architect_agent import get_obatala
 from src.config import settings
 from src.database import Base, engine, get_db
 from src.models import Agent, Lead
@@ -92,7 +92,7 @@ def dashboard_page():
 
 @app.get("/api/architect/status")
 def architect_status():
-    architect = get_gran_arquitecto()
+    architect = get_obatala()
     return {
         "status": "active",
         "model": "claude-sonnet-4-6",
@@ -102,7 +102,7 @@ def architect_status():
 
 @app.post("/api/architect/create-agent", response_model=ArchitectCreateAgentResponse)
 def architect_create_agent(payload: ArchitectCreateAgentRequest, db: Session = Depends(get_db)):
-    architect = get_gran_arquitecto()
+    architect = get_obatala()
     architect.reset_conversation()
     try:
         return architect.create_agent(payload.requirement, payload.user_id, db)
@@ -121,7 +121,7 @@ def get_agent(agent_id: str, db: Session = Depends(get_db)):
 @app.websocket("/api/architect/chat")
 async def architect_chat_socket(websocket: WebSocket):
     await websocket.accept()
-    architect = get_gran_arquitecto()
+    architect = get_obatala()
     architect.reset_conversation()
     try:
         while True:
