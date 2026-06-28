@@ -1,8 +1,9 @@
+import json
 from contextlib import asynccontextmanager
 from secrets import compare_digest
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -116,6 +117,54 @@ def get_agent(agent_id: str, db: Session = Depends(get_db)):
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     return agent
+
+
+@app.get("/admin/agents")
+def list_agents_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agents = db.scalars(select(Agent).order_by(Agent.created_at.desc())).all()
+    return templates.TemplateResponse(request, "admin_agents.html", {"agents": agents})
+
+
+@app.get("/admin/agents/{agent_id}")
+def agent_detail_page(
+    agent_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    definition_json = json.dumps(agent.definition or {}, indent=2, ensure_ascii=False)
+    return templates.TemplateResponse(
+        request, "admin_agent_detail.html", {"agent": agent, "definition_json": definition_json}
+    )
+
+
+@app.post("/admin/agents/{agent_id}")
+def update_agent_definition(
+    agent_id: str,
+    definition_json: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    try:
+        definition = json.loads(definition_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail=f"JSON inválido: {exc}") from exc
+
+    agent.definition = definition
+    if definition.get("agent_name"):
+        agent.name = definition["agent_name"]
+    db.commit()
+    return RedirectResponse(url=f"/admin/agents/{agent_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.websocket("/api/architect/chat")

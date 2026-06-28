@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentes | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page {
+            max-width: 960px;
+            margin: 60px auto;
+            padding: 0 24px;
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .admin-table th,
+        .admin-table td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid rgba(205, 163, 73, 0.2);
+            font-size: 0.95rem;
+        }
+        .admin-table th {
+            background: var(--emerald);
+            color: var(--gold);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+        .admin-table a { color: inherit; text-decoration: underline; }
+        .admin-empty {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="admin-page">
+        <h1>Agentes creados por Obatalá</h1>
+        {% if agents %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Creado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agent in agents %}
+                <tr>
+                    <td>{{ agent.name }}</td>
+                    <td>{{ agent.role }}</td>
+                    <td>{{ agent.status }}</td>
+                    <td>{{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                    <td><a href="/admin/agents/{{ agent.id }}">Ver / Editar</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Todavía no hay agentes creados.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ agent.name }} | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page {
+            max-width: 860px;
+            margin: 60px auto;
+            padding: 0 24px;
+        }
+        .admin-back { display: inline-block; margin-bottom: 20px; color: inherit; }
+        .admin-meta {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+        .admin-meta div { margin-bottom: 6px; }
+        textarea {
+            width: 100%;
+            min-height: 480px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+            padding: 16px;
+            border-radius: var(--radius);
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 14px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <main class="admin-page">
+        <a class="admin-back" href="/admin/agents">&larr; Volver a Agentes</a>
+        <h1>{{ agent.name }}</h1>
+        <div class="admin-meta">
+            <div><strong>ID:</strong> {{ agent.id }}</div>
+            <div><strong>Rol:</strong> {{ agent.role }}</div>
+            <div><strong>Estado:</strong> {{ agent.status }}</div>
+            <div><strong>Requerimiento original:</strong> {{ agent.requirement or "-" }}</div>
+            <div><strong>Creado:</strong> {{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        </div>
+        <form method="post" action="/admin/agents/{{ agent.id }}">
+            <label for="definition_json"><strong>Definición (JSON)</strong></label><br>
+            <textarea id="definition_json" name="definition_json" spellcheck="false">{{ definition_json }}</textarea>
+            <br>
+            <button type="submit">Guardar cambios</button>
+        </form>
+    </main>
+</body>
+</html>

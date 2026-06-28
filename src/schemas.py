@@ -23,3 +23,7 @@ class ArchitectCreateAgentResponse(BaseModel):
     agent_id: str
     agent_name: str
     definition: dict
+
+
+class AgentDefinitionUpdate(BaseModel):
+    definition: dict
