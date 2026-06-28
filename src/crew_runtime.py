@@ -6,13 +6,24 @@ from crewai import Agent as CrewAgent
 from crewai import Crew, Task
 
 from src.models import Agent
+from src.tools.google_calendar import TOOL_REGISTRY
 
 CREW_LLM = "anthropic/claude-sonnet-4-6"
 KICKOFF_TIMEOUT_SECONDS = 240
 
 
+def _matching_tools(definition: dict) -> list:
+    tools = []
+    for spec in definition.get("tools") or []:
+        tool = TOOL_REGISTRY.get(spec.get("name", ""))
+        if tool is not None and tool not in tools:
+            tools.append(tool)
+    return tools
+
+
 def build_crew(agent: Agent) -> Crew:
     definition = agent.definition or {}
+    shared_tools = _matching_tools(definition)
 
     crew_agents: dict[str, CrewAgent] = {}
     for spec in definition.get("agents") or []:
@@ -20,6 +31,7 @@ def build_crew(agent: Agent) -> Crew:
             role=spec.get("role", agent.role),
             goal=spec.get("goal", agent.description or ""),
             backstory=spec.get("backstory", ""),
+            tools=shared_tools,
             llm=CREW_LLM,
             verbose=False,
         )
@@ -28,6 +40,7 @@ def build_crew(agent: Agent) -> Crew:
             role=agent.role,
             goal=agent.description or agent.requirement or "",
             backstory="",
+            tools=shared_tools,
             llm=CREW_LLM,
             verbose=False,
         )
