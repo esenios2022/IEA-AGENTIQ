@@ -13,7 +13,8 @@ DEFAULT_TIMEZONE = "America/Montevideo"
 
 
 def _calendar_service():
-    info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+    raw = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"].encode("utf-8").decode("utf-8-sig").strip()
+    info = json.loads(raw)
     credentials = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
     return build("calendar", "v3", credentials=credentials)
 
