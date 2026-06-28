@@ -13,9 +13,17 @@ from sqlalchemy.orm import Session
 from src.agent_runtime import AgentRuntime
 from src.architect_agent import get_obatala
 from src.config import settings
+from src.crew_runtime import run_crew
 from src.database import Base, engine, get_db
 from src.models import Agent, Lead
-from src.schemas import ArchitectCreateAgentRequest, ArchitectCreateAgentResponse, LeadCreate, LeadOut
+from src.schemas import (
+    ArchitectCreateAgentRequest,
+    ArchitectCreateAgentResponse,
+    CrewRunRequest,
+    CrewRunResponse,
+    LeadCreate,
+    LeadOut,
+)
 
 
 @asynccontextmanager
@@ -166,6 +174,23 @@ def update_agent_definition(
         agent.name = definition["agent_name"]
     db.commit()
     return RedirectResponse(url=f"/admin/agents/{agent_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/api/agents/{agent_id}/run", response_model=CrewRunResponse)
+def run_agent_with_crew(
+    agent_id: str,
+    payload: CrewRunRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    try:
+        result = run_crew(agent, payload.input)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Error ejecutando CrewAI: {exc}") from exc
+    return CrewRunResponse(result=result)
 
 
 @app.get("/agentes/{agent_id}")

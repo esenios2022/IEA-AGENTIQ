@@ -42,6 +42,20 @@
             font-weight: 600;
             cursor: pointer;
         }
+        .crew-box {
+            margin-top: 32px;
+            padding: 18px 22px;
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        .crew-box textarea { min-height: 60px; margin-bottom: 10px; }
+        #crew-result {
+            white-space: pre-wrap;
+            margin-top: 14px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +75,34 @@
             <br>
             <button type="submit">Guardar cambios</button>
         </form>
+
+        <div class="crew-box">
+            <h2>Ejecutar con CrewAI</h2>
+            <p>Corre este agente de verdad, usando la definición guardada arriba.</p>
+            <textarea id="crew-input" placeholder="(Opcional) Contexto extra para esta corrida..."></textarea>
+            <br>
+            <button type="button" onclick="runCrew()">Ejecutar</button>
+            <div id="crew-result"></div>
+        </div>
+
+        <script>
+            async function runCrew() {
+                const resultBox = document.getElementById("crew-result");
+                const input = document.getElementById("crew-input").value.trim();
+                resultBox.textContent = "Ejecutando... esto puede tardar unos segundos.";
+                try {
+                    const resp = await fetch(window.location.pathname.replace("/admin/agents/", "/api/agents/") + "/run", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ input: input || null }),
+                    });
+                    const data = await resp.json();
+                    resultBox.textContent = resp.ok ? data.result : ("⚠️ " + (data.detail || "Error desconocido"));
+                } catch (err) {
+                    resultBox.textContent = "⚠️ Error: " + err;
+                }
+            }
+        </script>
     </main>
 </body>
 </html>

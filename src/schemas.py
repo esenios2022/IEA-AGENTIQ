@@ -27,3 +27,11 @@ class ArchitectCreateAgentResponse(BaseModel):
 
 class AgentDefinitionUpdate(BaseModel):
     definition: dict
+
+
+class CrewRunRequest(BaseModel):
+    input: str | None = None
+
+
+class CrewRunResponse(BaseModel):
+    result: str
