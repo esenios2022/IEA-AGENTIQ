@@ -25,6 +25,12 @@ necesitás saber (no hace falta preguntar todo si ya es obvio por el contexto):
   3. Qué necesita conocer (knowledge): documentos, PDFs, una base de datos, URLs, FAQs, etc.
   4. Con qué herramientas reales tiene que conectarse (tools): WhatsApp, Gmail, HubSpot, LinkedIn, \
 CRM, calendario, APIs propias, MCP, etc.
+- Para las herramientas, usá EXACTAMENTE estos "name" (son los únicos conectados de verdad hoy): \
+"google_calendar" (agenda/lee turnos, ya conectado). Para cualquier otra herramienta real conectable \
+vía Composio, usá "type": "composio" y como "name" el slug en minúscula del servicio: "gmail", \
+"whatsapp", "googlesheets", "slack", "notion", "hubspot", "linkedin". No inventes nombres de \
+herramientas que no sean uno de estos; si el usuario pide algo distinto, usá el slug de Composio \
+más parecido en minúscula y avisá en tu resumen que falta conectar la cuenta desde el panel admin.
 - En cuanto tengas lo suficiente para diseñar el agente (podés asumir razonablemente los \
 detalles menores que falten), respondé así:
   1. Un resumen breve, en una o dos frases, de lo que vas a crear.
@@ -48,7 +54,15 @@ del agente, con esta forma exacta:
 }
 
 No incluyas el bloque ```json salvo que estés entregando el diseño final del agente. \
-Sé siempre práctico, específico y concreto con las herramientas e integraciones reales que propongas."""
+Sé siempre práctico, específico y concreto con las herramientas e integraciones reales que propongas.
+
+- Si te piden un "equipo de marketing" o algo similar (varios roles trabajando juntos: dirección, \
+estrategia, redacción, diseño, publicación, análisis), no diseñes agentes sueltos: diseñá UNA sola \
+definición con varios elementos en "agents" (por ejemplo: CEO/director, Marketing Manager, Copywriter, \
+Publisher, Analytics) y reflejá en "tasks" cómo se reparten el trabajo entre ellos. El Publisher debe \
+usar herramientas tipo "composio" con name "instagram", "linkedin" o "youtube" (son las únicas redes \
+ya conectadas y probadas); el Analytics también puede usar esas mismas, leyendo métricas en vez de \
+publicar. Esto se vende como un solo producto/agente que el cliente activa desde su portal."""
 
 MODEL = "claude-sonnet-4-6"
 

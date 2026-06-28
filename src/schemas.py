@@ -53,3 +53,7 @@ class ClientOut(BaseModel):
     name: str
     email: str
     agents: list[AssignedAgentOut] = []
+
+
+class ConnectToolkitResponse(BaseModel):
+    redirect_url: str

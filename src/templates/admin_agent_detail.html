@@ -77,6 +77,16 @@
         </form>
 
         <div class="crew-box">
+            <h2>Conectar herramienta real (Composio)</h2>
+            <p>Conectá Gmail, WhatsApp, Google Sheets, etc. para que este agente los use de verdad.</p>
+            <form method="get" action="/admin/agents/{{ agent.id }}/connect">
+                <input type="text" name="toolkit" placeholder="ej: gmail, whatsapp, googlesheets" required
+                       style="padding:10px 12px; border-radius:8px; border:1px solid rgba(205,163,73,0.3); margin-right:8px;">
+                <button type="submit">Conectar</button>
+            </form>
+        </div>
+
+        <div class="crew-box">
             <h2>Ejecutar con CrewAI</h2>
             <p>Corre este agente de verdad, usando la definición guardada arriba.</p>
             <textarea id="crew-input" placeholder="(Opcional) Contexto extra para esta corrida..."></textarea>

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     admin_password: str = "change-me"
     anthropic_api_key: str | None = None
     secret_key: str = "dev-secret-change-me"
+    composio_api_key: str | None = None
 
 
 settings = Settings()

@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from src.agent_runtime import AgentRuntime
 from src.architect_agent import get_obatala
 from src.auth import get_current_client, hash_password, verify_password
+from src.composio_tools import start_connection
 from src.config import settings
 from src.crew_runtime import run_crew
 from src.database import Base, engine, get_db
@@ -24,6 +25,7 @@ from src.schemas import (
     AssignedAgentOut,
     ClientLogin,
     ClientOut,
+    ConnectToolkitResponse,
     CrewRunRequest,
     CrewRunResponse,
     LeadCreate,
@@ -182,6 +184,23 @@ def update_agent_definition(
     return RedirectResponse(url=f"/admin/agents/{agent_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.get("/admin/agents/{agent_id}/connect")
+def connect_agent_toolkit(
+    agent_id: str,
+    toolkit: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    try:
+        url = start_connection(user_id=agent_id, toolkit_slug=toolkit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"No se pudo iniciar la conexión con Composio: {exc}") from exc
+    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+
 @app.post("/api/agents/{agent_id}/run", response_model=CrewRunResponse)
 def run_agent_with_crew(
     agent_id: str,
@@ -317,6 +336,39 @@ def update_client(
     db.commit()
 
     return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/api/me/connect", response_model=ConnectToolkitResponse)
+def connect_my_toolkit(toolkit: str, request: Request, db: Session = Depends(get_db)):
+    client = get_current_client(request, db)
+    try:
+        url = start_connection(user_id=str(client.id), toolkit_slug=toolkit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"No se pudo iniciar la conexión con Composio: {exc}") from exc
+    return ConnectToolkitResponse(redirect_url=url)
+
+
+@app.post("/api/me/agents/{agent_id}/run", response_model=CrewRunResponse)
+def run_my_agent(
+    agent_id: str,
+    payload: CrewRunRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    client = get_current_client(request, db)
+    link = db.scalar(
+        select(ClientAgent).where(ClientAgent.client_id == client.id, ClientAgent.agent_id == agent_id)
+    )
+    if link is None:
+        raise HTTPException(status_code=403, detail="Este agente no está asignado a tu cuenta")
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    try:
+        result = run_crew(agent, payload.input, user_id=str(client.id))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Error ejecutando CrewAI: {exc}") from exc
+    return CrewRunResponse(result=result)
 
 
 @app.get("/agentes/{agent_id}")
