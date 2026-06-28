@@ -84,7 +84,7 @@
         {% if clients_with_agents %}
         <table class="admin-table">
             <thead>
-                <tr><th>Nombre</th><th>Email</th><th>Agentes asignados</th></tr>
+                <tr><th>Nombre</th><th>Email</th><th>Agentes asignados</th><th></th></tr>
             </thead>
             <tbody>
                 {% for client, agents in clients_with_agents %}
@@ -98,6 +98,7 @@
                             <span class="mini">Sin agentes</span>
                         {% endif %}
                     </td>
+                    <td><a href="/admin/clients/{{ client.id }}">Editar</a></td>
                 </tr>
                 {% endfor %}
             </tbody>

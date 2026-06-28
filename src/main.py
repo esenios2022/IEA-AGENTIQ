@@ -279,6 +279,46 @@ def create_client(
     return RedirectResponse(url="/admin/clients", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.get("/admin/clients/{client_id}")
+def client_detail_page(
+    client_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    agents = db.scalars(select(Agent).order_by(Agent.name)).all()
+    assigned_ids = {str(a.id) for a in _client_out(client, db).agents}
+    return templates.TemplateResponse(
+        request,
+        "admin_client_detail.html",
+        {"client": client, "agents": agents, "assigned_ids": assigned_ids},
+    )
+
+
+@app.post("/admin/clients/{client_id}")
+def update_client(
+    client_id: str,
+    name: str = Form(...),
+    agent_ids: list[str] = Form([]),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    client.name = name
+    db.query(ClientAgent).filter(ClientAgent.client_id == client.id).delete()
+    for agent_id in agent_ids:
+        db.add(ClientAgent(client_id=client.id, agent_id=agent_id))
+    db.commit()
+
+    return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.get("/agentes/{agent_id}")
 def agent_public_chat_page(agent_id: str, request: Request, db: Session = Depends(get_db)):
     agent = db.get(Agent, agent_id)
