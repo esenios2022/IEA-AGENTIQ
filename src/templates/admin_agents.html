@@ -63,7 +63,11 @@
                     <td>{{ agent.role }}</td>
                     <td>{{ agent.status }}</td>
                     <td>{{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-                    <td><a href="/admin/agents/{{ agent.id }}">Ver / Editar</a></td>
+                    <td>
+                        <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>
+                        &middot;
+                        <a href="/agentes/{{ agent.id }}" target="_blank">Probar chat</a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

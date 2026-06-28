@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.agent_runtime import AgentRuntime
 from src.architect_agent import get_obatala
 from src.config import settings
 from src.database import Base, engine, get_db
@@ -165,6 +166,38 @@ def update_agent_definition(
         agent.name = definition["agent_name"]
     db.commit()
     return RedirectResponse(url=f"/admin/agents/{agent_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/agentes/{agent_id}")
+def agent_public_chat_page(agent_id: str, request: Request, db: Session = Depends(get_db)):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return templates.TemplateResponse(request, "agent_public_chat.html", {"agent": agent})
+
+
+@app.websocket("/api/agents/{agent_id}/chat")
+async def agent_chat_socket(agent_id: str, websocket: WebSocket, db: Session = Depends(get_db)):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        await websocket.close(code=4404)
+        return
+
+    await websocket.accept()
+    runtime = AgentRuntime(agent)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            message = data.get("message")
+            if not message:
+                continue
+            try:
+                reply = runtime.reply(message)
+                await websocket.send_json({"type": "message", "content": reply})
+            except Exception as exc:
+                await websocket.send_json({"type": "error", "message": f"Error: {exc}"})
+    except WebSocketDisconnect:
+        pass
 
 
 @app.websocket("/api/architect/chat")
