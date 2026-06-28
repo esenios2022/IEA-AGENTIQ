@@ -1,11 +1,14 @@
 """Turns a persisted agent definition into a real CrewAI crew and runs it."""
 
+import concurrent.futures
+
 from crewai import Agent as CrewAgent
 from crewai import Crew, Task
 
 from src.models import Agent
 
 CREW_LLM = "anthropic/claude-sonnet-4-6"
+KICKOFF_TIMEOUT_SECONDS = 90
 
 
 def build_crew(agent: Agent) -> Crew:
@@ -52,6 +55,20 @@ def build_crew(agent: Agent) -> Crew:
 
 
 def run_crew(agent: Agent, extra_input: str | None = None) -> str:
+    print(f"[crew_runtime] building crew for agent {agent.id}", flush=True)
     crew = build_crew(agent)
-    result = crew.kickoff(inputs={"input": extra_input} if extra_input else None)
+    inputs = {"input": extra_input} if extra_input else None
+
+    print(f"[crew_runtime] kicking off crew (timeout={KICKOFF_TIMEOUT_SECONDS}s)", flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(crew.kickoff, inputs=inputs)
+        try:
+            result = future.result(timeout=KICKOFF_TIMEOUT_SECONDS)
+        except concurrent.futures.TimeoutError as exc:
+            raise TimeoutError(
+                f"CrewAI no respondió en {KICKOFF_TIMEOUT_SECONDS}s. "
+                "Puede ser un problema de red o un modelo/LLM mal configurado."
+            ) from exc
+
+    print("[crew_runtime] kickoff finished", flush=True)
     return str(result)
