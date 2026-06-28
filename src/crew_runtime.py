@@ -8,7 +8,7 @@ from crewai import Crew, Task
 from src.models import Agent
 
 CREW_LLM = "anthropic/claude-sonnet-4-6"
-KICKOFF_TIMEOUT_SECONDS = 90
+KICKOFF_TIMEOUT_SECONDS = 240
 
 
 def build_crew(agent: Agent) -> Crew:
@@ -21,7 +21,7 @@ def build_crew(agent: Agent) -> Crew:
             goal=spec.get("goal", agent.description or ""),
             backstory=spec.get("backstory", ""),
             llm=CREW_LLM,
-            verbose=True,
+            verbose=False,
         )
     if not crew_agents:
         crew_agents["principal"] = CrewAgent(
@@ -29,7 +29,7 @@ def build_crew(agent: Agent) -> Crew:
             goal=agent.description or agent.requirement or "",
             backstory="",
             llm=CREW_LLM,
-            verbose=True,
+            verbose=False,
         )
 
     fallback_agent = next(iter(crew_agents.values()))
@@ -51,7 +51,7 @@ def build_crew(agent: Agent) -> Crew:
             )
         )
 
-    return Crew(agents=list(crew_agents.values()), tasks=crew_tasks, verbose=True)
+    return Crew(agents=list(crew_agents.values()), tasks=crew_tasks, verbose=False)
 
 
 def run_crew(agent: Agent, extra_input: str | None = None) -> str:
