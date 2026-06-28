@@ -9,16 +9,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
 from src.agent_runtime import AgentRuntime
 from src.architect_agent import get_obatala
+from src.auth import get_current_client, hash_password, verify_password
 from src.config import settings
 from src.crew_runtime import run_crew
 from src.database import Base, engine, get_db
-from src.models import Agent, Lead
+from src.models import Agent, Client, ClientAgent, Lead
 from src.schemas import (
     ArchitectCreateAgentRequest,
     ArchitectCreateAgentResponse,
+    AssignedAgentOut,
+    ClientLogin,
+    ClientOut,
     CrewRunRequest,
     CrewRunResponse,
     LeadCreate,
@@ -33,6 +38,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="IEA-AGENTIQ", lifespan=lifespan)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 templates = Jinja2Templates(directory="src/templates")
@@ -191,6 +197,86 @@ def run_agent_with_crew(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Error ejecutando CrewAI: {exc}") from exc
     return CrewRunResponse(result=result)
+
+
+def _client_out(client: Client, db: Session) -> ClientOut:
+    rows = db.scalars(
+        select(Agent).join(ClientAgent, ClientAgent.agent_id == Agent.id).where(ClientAgent.client_id == client.id)
+    ).all()
+    return ClientOut(
+        id=str(client.id),
+        name=client.name,
+        email=client.email,
+        agents=[AssignedAgentOut(id=str(a.id), name=a.name, description=a.description) for a in rows],
+    )
+
+
+@app.post("/api/auth/login", response_model=ClientOut)
+def login(payload: ClientLogin, request: Request, db: Session = Depends(get_db)):
+    client = db.scalar(select(Client).where(Client.email == payload.email))
+    if client is None or not verify_password(payload.password, client.password_hash):
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+    request.session["client_id"] = str(client.id)
+    return _client_out(client, db)
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request):
+    request.session.clear()
+    return {"success": True}
+
+
+@app.get("/api/me", response_model=ClientOut)
+def me(request: Request, db: Session = Depends(get_db)):
+    client = get_current_client(request, db)
+    return _client_out(client, db)
+
+
+@app.get("/login")
+def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html")
+
+
+@app.get("/portal")
+def portal_page(request: Request):
+    return templates.TemplateResponse(request, "portal.html")
+
+
+@app.get("/admin/clients")
+def list_clients_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    clients = db.scalars(select(Client).order_by(Client.created_at.desc())).all()
+    agents = db.scalars(select(Agent).order_by(Agent.name)).all()
+    clients_with_agents = [(c, _client_out(c, db).agents) for c in clients]
+    return templates.TemplateResponse(
+        request,
+        "admin_clients.html",
+        {"clients_with_agents": clients_with_agents, "agents": agents},
+    )
+
+
+@app.post("/admin/clients")
+def create_client(
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    agent_ids: list[str] = Form([]),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = Client(name=name, email=email, password_hash=hash_password(password))
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    for agent_id in agent_ids:
+        db.add(ClientAgent(client_id=client.id, agent_id=agent_id))
+    db.commit()
+
+    return RedirectResponse(url="/admin/clients", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/agentes/{agent_id}")

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     admin_user: str = "admin"
     admin_password: str = "change-me"
     anthropic_api_key: str | None = None
+    secret_key: str = "dev-secret-change-me"
 
 
 settings = Settings()

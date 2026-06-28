@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Portal | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .portal-page { max-width: 900px; margin: 50px auto; padding: 0 24px; }
+        .portal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .portal-header button {
+            border: none;
+            background: none;
+            text-decoration: underline;
+            cursor: pointer;
+            color: inherit;
+        }
+        .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+        .agent-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+        }
+        .agent-card h3 { margin: 0 0 8px; }
+        .agent-card p { margin: 0 0 14px; font-size: 0.9rem; color: var(--text-muted); }
+        .agent-card a {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--emerald);
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
+    </style>
+</head>
+<body>
+    <main class="portal-page">
+        <div class="portal-header">
+            <h1 id="client-name">Cargando...</h1>
+            <button onclick="logout()">Salir</button>
+        </div>
+        <div id="agents-container"></div>
+    </main>
+    <script>
+        async function loadMe() {
+            const resp = await fetch("/api/me");
+            if (!resp.ok) {
+                window.location.href = "/login";
+                return;
+            }
+            const data = await resp.json();
+            document.getElementById("client-name").textContent = "Hola, " + data.name;
+            const container = document.getElementById("agents-container");
+            if (!data.agents.length) {
+                container.innerHTML = '<p class="empty">Todavía no tenés agentes asignados.</p>';
+                return;
+            }
+            container.innerHTML = '<div class="agents-grid">' + data.agents.map(a => `
+                <div class="agent-card">
+                    <h3>${a.name}</h3>
+                    <p>${a.description || ""}</p>
+                    <a href="/agentes/${a.id}" target="_blank">Hablar con el agente</a>
+                </div>
+            `).join("") + '</div>';
+        }
+
+        async function logout() {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+        }
+
+        loadMe();
+    </script>
+</body>
+</html>

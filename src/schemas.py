@@ -35,3 +35,21 @@ class CrewRunRequest(BaseModel):
 
 class CrewRunResponse(BaseModel):
     result: str
+
+
+class ClientLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AssignedAgentOut(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+
+
+class ClientOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    agents: list[AssignedAgentOut] = []
