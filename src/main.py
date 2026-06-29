@@ -150,7 +150,10 @@ def list_agents_page(
     _: None = Depends(require_admin),
 ):
     agents = db.scalars(select(Agent).order_by(Agent.created_at.desc())).all()
-    return templates.TemplateResponse(request, "admin_agents.html", {"agents": agents})
+    groups: dict[str, list[Agent]] = {}
+    for agent in agents:
+        groups.setdefault(agent.user_id or "Sin grupo", []).append(agent)
+    return templates.TemplateResponse(request, "admin_agents.html", {"groups": groups, "agents": agents})
 
 
 @app.get("/admin/agents/{agent_id}")

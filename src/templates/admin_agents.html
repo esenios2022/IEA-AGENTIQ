@@ -8,33 +8,50 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .admin-page {
-            max-width: 960px;
+            max-width: 1100px;
             margin: 60px auto;
             padding: 0 24px;
         }
-        .admin-table {
-            width: 100%;
-            border-collapse: collapse;
+        .group-block { margin-bottom: 40px; }
+        .group-title {
+            font-size: 1.1rem;
+            color: var(--emerald);
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(205, 163, 73, 0.3);
+        }
+        .group-title .count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+        .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .agent-card {
             background: var(--white);
             border-radius: var(--radius);
-            overflow: hidden;
             box-shadow: var(--shadow);
+            padding: 18px 20px;
         }
-        .admin-table th,
-        .admin-table td {
-            padding: 14px 18px;
-            text-align: left;
-            border-bottom: 1px solid rgba(205, 163, 73, 0.2);
-            font-size: 0.95rem;
-        }
-        .admin-table th {
-            background: var(--emerald);
-            color: var(--gold);
+        .agent-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+        .agent-card .role-tag {
+            display: inline-block;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            color: var(--gold);
+            background: var(--emerald);
+            padding: 2px 9px;
+            border-radius: 6px;
+            margin-bottom: 8px;
         }
-        .admin-table a { color: inherit; text-decoration: underline; }
+        .agent-card .status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        .agent-card .links { display: flex; gap: 10px; font-size: 0.85rem; }
+        .agent-card a { color: inherit; text-decoration: underline; }
         .admin-empty {
             text-align: center;
             color: var(--text-muted);
@@ -48,32 +65,24 @@
         <h1>Agentes creados por Obatalá</h1>
         <p><a href="/admin/clients">Ver clientes &rarr;</a> &middot; <a href="/architect-chat">Crear agente con Obatalá &rarr;</a></p>
         {% if agents %}
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Rol</th>
-                    <th>Estado</th>
-                    <th>Creado</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for agent in agents %}
-                <tr>
-                    <td>{{ agent.name }}</td>
-                    <td>{{ agent.role }}</td>
-                    <td>{{ agent.status }}</td>
-                    <td>{{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-                    <td>
-                        <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>
-                        &middot;
-                        <a href="/agentes/{{ agent.id }}" target="_blank">Probar chat</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            {% for group_name, group_agents in groups.items() %}
+            <div class="group-block">
+                <div class="group-title">{{ group_name }}<span class="count">({{ group_agents|length }})</span></div>
+                <div class="agent-grid">
+                    {% for agent in group_agents %}
+                    <div class="agent-card">
+                        <span class="role-tag">{{ agent.role }}</span>
+                        <h3>{{ agent.name }}</h3>
+                        <div class="status">{{ agent.status }} &middot; {{ agent.created_at.strftime("%Y-%m-%d") }}</div>
+                        <div class="links">
+                            <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>
+                            <a href="/agentes/{{ agent.id }}" target="_blank">Probar chat</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
         <p class="admin-empty">Todavía no hay agentes creados.</p>
         {% endif %}
