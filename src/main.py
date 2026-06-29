@@ -1,5 +1,6 @@
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime
 from secrets import compare_digest
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, WebSocket, WebSocketDisconnect, status
@@ -19,6 +20,7 @@ from src.config import settings
 from src.crew_runtime import run_crew
 from src.database import Base, engine, get_db
 from src.models import Agent, Client, ClientAgent, Lead
+from src.scheduler import start_scheduler
 from src.schemas import (
     ArchitectCreateAgentRequest,
     ArchitectCreateAgentResponse,
@@ -36,7 +38,9 @@ from src.schemas import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    scheduler = start_scheduler()
     yield
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(title="IEA-AGENTIQ", lifespan=lifespan)
@@ -310,10 +314,14 @@ def client_detail_page(
         raise HTTPException(status_code=404, detail="Client not found")
     agents = db.scalars(select(Agent).order_by(Agent.name)).all()
     assigned_ids = {str(a.id) for a in _client_out(client, db).agents}
+    schedule_links = {
+        str(link.agent_id): link
+        for link in db.scalars(select(ClientAgent).where(ClientAgent.client_id == client.id)).all()
+    }
     return templates.TemplateResponse(
         request,
         "admin_client_detail.html",
-        {"client": client, "agents": agents, "assigned_ids": assigned_ids},
+        {"client": client, "agents": agents, "assigned_ids": assigned_ids, "schedule_links": schedule_links},
     )
 
 
@@ -369,6 +377,53 @@ def run_my_agent(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Error ejecutando CrewAI: {exc}") from exc
     return CrewRunResponse(result=result)
+
+
+@app.get("/admin/clients/{client_id}/agents/{agent_id}/schedule")
+def schedule_form_page(
+    client_id: str,
+    agent_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    link = db.scalar(
+        select(ClientAgent).where(ClientAgent.client_id == client_id, ClientAgent.agent_id == agent_id)
+    )
+    if link is None:
+        raise HTTPException(status_code=404, detail="Este agente no está asignado a este cliente")
+    client = db.get(Client, client_id)
+    agent = db.get(Agent, agent_id)
+    return templates.TemplateResponse(
+        request, "admin_schedule.html", {"client": client, "agent": agent, "link": link}
+    )
+
+
+@app.post("/admin/clients/{client_id}/agents/{agent_id}/schedule")
+def schedule_save(
+    client_id: str,
+    agent_id: str,
+    frequency: str = Form(...),
+    instruction: str = Form(""),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    link = db.scalar(
+        select(ClientAgent).where(ClientAgent.client_id == client_id, ClientAgent.agent_id == agent_id)
+    )
+    if link is None:
+        raise HTTPException(status_code=404, detail="Este agente no está asignado a este cliente")
+
+    if frequency == "none":
+        link.schedule_frequency = None
+        link.next_run_at = None
+    else:
+        link.schedule_frequency = frequency
+        link.schedule_input = instruction or None
+        if link.next_run_at is None:
+            link.next_run_at = datetime.utcnow()
+    db.commit()
+    return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/agentes/{agent_id}")

@@ -50,3 +50,8 @@ class ClientAgent(Base):
     client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"))
     agent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agents.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    schedule_frequency: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    schedule_input: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_result: Mapped[str | None] = mapped_column(Text, nullable=True)
