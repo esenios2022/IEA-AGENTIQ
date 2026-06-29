@@ -17,6 +17,23 @@
             width: 340px;
         }
         .login-card h1 { margin: 0 0 18px; font-size: 1.3rem; }
+        .tabs { display: flex; gap: 6px; margin-bottom: 22px; }
+        .tabs button {
+            flex: 1;
+            padding: 9px;
+            border: 1px solid rgba(205, 163, 73, 0.4);
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .tabs button.active {
+            background: var(--emerald);
+            color: var(--gold);
+            border-color: var(--emerald);
+        }
         .login-card label { display: block; font-size: 0.85rem; margin: 14px 0 6px; }
         .login-card input {
             width: 100%;
@@ -25,7 +42,7 @@
             border: 1px solid rgba(205, 163, 73, 0.3);
             box-sizing: border-box;
         }
-        .login-card button {
+        .login-card button[type="submit"] {
             margin-top: 20px;
             width: 100%;
             padding: 11px;
@@ -36,28 +53,54 @@
             font-weight: 600;
             cursor: pointer;
         }
-        #login-error { color: #c0392b; font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
+        .login-form { display: none; }
+        .login-form.active { display: block; }
+        .login-error { color: #c0392b; font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
     </style>
 </head>
 <body>
     {% include "_header.html" %}
     <main class="login-main">
         <div class="login-card">
-            <h1>Ingresar a tu portal</h1>
-            <form id="login-form">
+            <h1 id="login-title">Ingresar a tu portal</h1>
+            <div class="tabs">
+                <button type="button" id="tab-client" onclick="showTab('client')">Soy cliente</button>
+                <button type="button" id="tab-admin" onclick="showTab('admin')">Soy administrador</button>
+            </div>
+
+            <form id="client-form" class="login-form">
                 <label for="email">Email</label>
                 <input type="email" id="email" required>
                 <label for="password">Contraseña</label>
                 <input type="password" id="password" required>
-                <div id="login-error"></div>
+                <div class="login-error" id="client-error"></div>
+                <button type="submit">Entrar</button>
+            </form>
+
+            <form id="admin-form" class="login-form">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" required>
+                <label for="admin-password">Contraseña</label>
+                <input type="password" id="admin-password" required>
+                <div class="login-error" id="admin-error"></div>
                 <button type="submit">Entrar</button>
             </form>
         </div>
     </main>
     <script>
-        document.getElementById("login-form").addEventListener("submit", async (e) => {
+        function showTab(which) {
+            document.getElementById("tab-client").classList.toggle("active", which === "client");
+            document.getElementById("tab-admin").classList.toggle("active", which === "admin");
+            document.getElementById("client-form").classList.toggle("active", which === "client");
+            document.getElementById("admin-form").classList.toggle("active", which === "admin");
+            document.getElementById("login-title").textContent =
+                which === "client" ? "Ingresar a tu portal" : "Ingresar como administrador";
+        }
+        showTab("{{ default_tab }}");
+
+        document.getElementById("client-form").addEventListener("submit", async (e) => {
             e.preventDefault();
-            const errorBox = document.getElementById("login-error");
+            const errorBox = document.getElementById("client-error");
             errorBox.textContent = "";
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
@@ -73,6 +116,29 @@
                     return;
                 }
                 window.location.href = "/portal";
+            } catch (err) {
+                errorBox.textContent = "Error de conexión: " + err;
+            }
+        });
+
+        document.getElementById("admin-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const errorBox = document.getElementById("admin-error");
+            errorBox.textContent = "";
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("admin-password").value;
+            try {
+                const resp = await fetch("/api/auth/admin-login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ username, password }),
+                });
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    errorBox.textContent = data.detail || "Error al ingresar.";
+                    return;
+                }
+                window.location.href = "/admin/agents";
             } catch (err) {
                 errorBox.textContent = "Error de conexión: " + err;
             }

@@ -49,18 +49,21 @@ app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 templates = Jinja2Templates(directory="src/templates")
 
-security = HTTPBasic()
+security = HTTPBasic(auto_error=False)
 
 
-def require_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    valid_user = compare_digest(credentials.username, settings.admin_user)
-    valid_password = compare_digest(credentials.password, settings.admin_password)
-    if not (valid_user and valid_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+def require_admin(request: Request, credentials: HTTPBasicCredentials | None = Depends(security)):
+    if request.session.get("is_admin"):
+        return
+    if credentials is not None:
+        valid_user = compare_digest(credentials.username, settings.admin_user)
+        valid_password = compare_digest(credentials.password, settings.admin_password)
+        if valid_user and valid_password:
+            return
+    raise HTTPException(
+        status_code=status.HTTP_303_SEE_OTHER,
+        headers={"Location": "/login?as=admin"},
+    )
 
 
 @app.get("/health")
@@ -243,6 +246,16 @@ def login(payload: ClientLogin, request: Request, db: Session = Depends(get_db))
     return _client_out(client, db)
 
 
+@app.post("/api/auth/admin-login")
+def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    valid_user = compare_digest(username, settings.admin_user)
+    valid_password = compare_digest(password, settings.admin_password)
+    if not (valid_user and valid_password):
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    request.session["is_admin"] = True
+    return {"success": True}
+
+
 @app.post("/api/auth/logout")
 def logout(request: Request):
     request.session.clear()
@@ -257,7 +270,8 @@ def me(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/login")
 def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html")
+    default_tab = "admin" if request.query_params.get("as") == "admin" else "client"
+    return templates.TemplateResponse(request, "login.html", {"default_tab": default_tab})
 
 
 @app.get("/portal")
