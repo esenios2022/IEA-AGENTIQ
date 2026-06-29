@@ -8,6 +8,7 @@ from crewai import Crew, Task
 from src.composio_tools import get_toolkit_tools
 from src.models import Agent
 from src.tools.google_calendar import TOOL_REGISTRY
+from src.tools.zapier import build_zapier_tools
 
 CREW_LLM = "anthropic/claude-sonnet-4-6"
 KICKOFF_TIMEOUT_SECONDS = 240
@@ -56,7 +57,11 @@ def _composio_tools(definition: dict, user_id: str) -> list:
 def build_crew(agent: Agent, extra_input: str | None = None, user_id: str | None = None) -> Crew:
     definition = agent.definition or {}
     composio_user_id = user_id or str(agent.id)
-    shared_tools = _matching_tools(definition) + _composio_tools(definition, composio_user_id)
+    shared_tools = (
+        _matching_tools(definition)
+        + _composio_tools(definition, composio_user_id)
+        + build_zapier_tools(definition.get("tools") or [])
+    )
     context_block = (
         f"\n\nDATOS REALES DE ESTE CASO (usalos tal cual, no inventes otros nombres ni datos):\n{extra_input}"
         if extra_input
