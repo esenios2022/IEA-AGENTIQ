@@ -43,8 +43,10 @@
     </style>
 </head>
 <body>
+    {% include "_header.html" %}
     <main class="admin-page">
         <h1>Agentes creados por Obatalá</h1>
+        <p><a href="/admin/clients">Ver clientes &rarr;</a> &middot; <a href="/architect-chat">Crear agente con Obatalá &rarr;</a></p>
         {% if agents %}
         <table class="admin-table">
             <thead>

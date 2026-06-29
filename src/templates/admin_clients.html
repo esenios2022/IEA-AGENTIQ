@@ -79,8 +79,10 @@
     </style>
 </head>
 <body>
+    {% include "_header.html" %}
     <main class="admin-page">
         <h1>Clientes</h1>
+        <p><a href="/admin/agents">Ver agentes &rarr;</a></p>
         {% if clients_with_agents %}
         <table class="admin-table">
             <thead>
