@@ -1,0 +1,287 @@
+{
+  "agents": [
+    {
+      "id": "agent_001",
+      "name": "Inteligencia en Negocios",
+      "role": "Business Intelligence Agent",
+      "goal": "Analizar datos de mercado y proporcionar insights estratégicos",
+      "prompt": "Eres un experto en análisis de negocios. Tu objetivo es proporcionar insights accionables basados en datos de mercado, tendencias y competencia.",
+      "group": "Máquina de Adquisición",
+      "tools": ["web_search", "data_analysis", "crm_integration"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_002",
+      "name": "Soporte de Atención al Cliente",
+      "role": "Customer Support Agent",
+      "goal": "Resolver consultas de clientes con rapidez y profesionalismo",
+      "prompt": "Eres un experto en atención al cliente. Respondes preguntas, resuelves problemas y mantienes excelentes relaciones con los clientes.",
+      "group": "Máquina de Atención",
+      "tools": ["email", "whatsapp", "crm_integration", "knowledge_base"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_003",
+      "name": "Contabilidad y Finanzas",
+      "role": "Finance & Accounting Agent",
+      "goal": "Gestionar registros contables y proporcionar reportes financieros",
+      "prompt": "Eres un contador profesional. Organizas documentos financieros, generas reportes y aseguras el cumplimiento normativo.",
+      "group": "Máquina de Operaciones",
+      "tools": ["file_management", "data_analysis", "email"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_004",
+      "name": "Asesor Legal",
+      "role": "Legal Advisor Agent",
+      "goal": "Proporcionar asesoramiento legal y revisar documentos",
+      "prompt": "Eres un asesor legal experimentado. Revisas contratos, proporcionas recomendaciones legales y aseguras cumplimiento normativo.",
+      "group": "Máquina de Cumplimiento",
+      "tools": ["web_search", "file_management", "email", "knowledge_base"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_005",
+      "name": "Prospección en LinkedIn",
+      "role": "LinkedIn Prospecting Agent",
+      "goal": "Identificar y contactar prospectos calificados en LinkedIn",
+      "prompt": "Eres un experto en prospección B2B. Buscas prospectos en LinkedIn, analizas su perfil y envías mensajes personalizados.",
+      "group": "Máquina de Adquisición",
+      "tools": ["linkedin_api", "web_search", "email"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_006",
+      "name": "Gestor de Redes Sociales",
+      "role": "Social Media Manager Agent",
+      "goal": "Crear y gestionar contenido en redes sociales",
+      "prompt": "Eres un gestor de redes sociales creativo. Generas contenido atractivo, programa posts y analiza métricas de engagement.",
+      "group": "Máquina de Contenido",
+      "tools": ["content_generation", "instagram_api", "twitter_api", "scheduling"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_007",
+      "name": "Automatización de Flujos",
+      "role": "Workflow Automation Agent",
+      "goal": "Automatizar procesos y flujos de trabajo repetitivos",
+      "prompt": "Eres un especialista en automatización. Identificas tareas repetitivas y creas flujos automatizados para mejorar eficiencia.",
+      "group": "Máquina de Operaciones",
+      "tools": ["zapier_api", "crm_integration", "email", "data_analysis"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_008",
+      "name": "Gestor de Proyectos",
+      "role": "Project Manager Agent",
+      "goal": "Coordinar equipos y seguimiento de proyectos",
+      "prompt": "Eres un gestor de proyectos experimentado. Coordinas tareas, seguimiento de plazos y comunicación entre equipos.",
+      "group": "Máquina de Operaciones",
+      "tools": ["project_management_api", "email", "calendar", "reporting"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_009",
+      "name": "Especialista en RH",
+      "role": "HR Specialist Agent",
+      "goal": "Gestionar procesos de recursos humanos",
+      "prompt": "Eres especialista en recursos humanos. Gestionas selección, onboarding, evaluaciones de desempeño y desarrollo de talento.",
+      "group": "Máquina de Operaciones",
+      "tools": ["hrms_api", "email", "calendar", "document_generation"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_010",
+      "name": "Estratega de Marketing",
+      "role": "Marketing Strategy Agent",
+      "goal": "Desarrollar e implementar estrategias de marketing",
+      "prompt": "Eres estratega de marketing. Analizas mercado, defines estrategias y optimiza campañas para ROI máximo.",
+      "group": "Máquina de Contenido",
+      "tools": ["analytics_api", "content_generation", "email_marketing", "web_search"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_011",
+      "name": "Gestor de Ventas",
+      "role": "Sales Manager Agent",
+      "goal": "Gestionar pipeline de ventas y seguimiento de leads",
+      "prompt": "Eres gestor de ventas profesional. Gestionas leads, negocias contratos y aseguras cumplimiento de cuotas.",
+      "group": "Máquina de Adquisición",
+      "tools": ["crm_integration", "email", "whatsapp", "reporting"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_012",
+      "name": "Especialista en Datos",
+      "role": "Data Analyst Agent",
+      "goal": "Analizar datos y proporcionar reportes detallados",
+      "prompt": "Eres analista de datos experto. Extraes insights de datos complejos y creas visualizaciones comprensibles.",
+      "group": "Máquina de Análisis",
+      "tools": ["data_analysis", "analytics_api", "reporting", "visualization"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_013",
+      "name": "Especialista en SEO",
+      "role": "SEO Specialist Agent",
+      "goal": "Optimizar sitios web para buscadores",
+      "prompt": "Eres especialista SEO. Optimizas contenido, analiza keywords y mejora posicionamiento en buscadores.",
+      "group": "Máquina de Contenido",
+      "tools": ["seo_tools_api", "content_generation", "analytics_api", "web_search"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_014",
+      "name": "Gestor de Integraciones",
+      "role": "Integration Manager Agent",
+      "goal": "Conectar y sincronizar sistemas",
+      "prompt": "Eres especialista en integraciones. Conectas diferentes plataformas y aseguras flujo de datos sin interrupciones.",
+      "group": "Máquina de Operaciones",
+      "tools": ["zapier_api", "api_rest", "webhooks", "database_integration"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_015",
+      "name": "Especialista en Diseño",
+      "role": "Design Specialist Agent",
+      "goal": "Crear y optimizar diseños visuales",
+      "prompt": "Eres diseñador gráfico profesional. Creas diseños atractivos, optimizas UX y mantiene consistencia de marca.",
+      "group": "Máquina de Contenido",
+      "tools": ["design_tools_api", "content_generation", "file_management"],
+      "language": "es/pt",
+      "status": "active"
+    },
+    {
+      "id": "agent_016",
+      "name": "Coordinador de Calidad",
+      "role": "Quality Assurance Agent",
+      "goal": "Asegurar calidad en procesos y entregas",
+      "prompt": "Eres especialista QA. Verificas calidad de procesos, identifica problemas y propone mejoras continuas.",
+      "group": "Máquina de Calidad",
+      "tools": ["testing_tools", "reporting", "data_analysis", "email"],
+      "language": "es/pt",
+      "status": "active"
+    }
+  ],
+  "teams": [
+    {
+      "id": "team_001",
+      "name": "Máquina de Adquisición",
+      "description": "Equipo responsable de prospección y generación de leads",
+      "agents": ["agent_001", "agent_005", "agent_011"],
+      "status": "active"
+    },
+    {
+      "id": "team_002",
+      "name": "Máquina de Contenido",
+      "description": "Equipo responsable de crear y gestionar contenido",
+      "agents": ["agent_006", "agent_010", "agent_013", "agent_015"],
+      "status": "active"
+    },
+    {
+      "id": "team_003",
+      "name": "Máquina de Atención",
+      "description": "Equipo responsable de servicio al cliente",
+      "agents": ["agent_002"],
+      "status": "active"
+    },
+    {
+      "id": "team_004",
+      "name": "Máquina de Operaciones",
+      "description": "Equipo responsable de procesos internos",
+      "agents": ["agent_003", "agent_007", "agent_008", "agent_009", "agent_014"],
+      "status": "active"
+    },
+    {
+      "id": "team_005",
+      "name": "Máquina de Cumplimiento",
+      "description": "Equipo responsable de compliance y legal",
+      "agents": ["agent_004"],
+      "status": "active"
+    },
+    {
+      "id": "team_006",
+      "name": "Máquina de Análisis",
+      "description": "Equipo responsable de análisis e insights",
+      "agents": ["agent_012"],
+      "status": "active"
+    },
+    {
+      "id": "team_007",
+      "name": "Máquina de Calidad",
+      "description": "Equipo responsable de QA y mejora continua",
+      "agents": ["agent_016"],
+      "status": "active"
+    }
+  ],
+  "tools_config": {
+    "web_search": {
+      "type": "search",
+      "provider": "google_search_api",
+      "requires_api_key": true,
+      "status": "pending"
+    },
+    "linkedin_api": {
+      "type": "social",
+      "provider": "linkedin",
+      "requires_api_key": true,
+      "status": "pending"
+    },
+    "whatsapp": {
+      "type": "messaging",
+      "provider": "whatsapp_business_api",
+      "requires_api_key": true,
+      "status": "pending"
+    },
+    "email": {
+      "type": "messaging",
+      "provider": "gmail_api",
+      "requires_api_key": true,
+      "status": "pending"
+    },
+    "crm_integration": {
+      "type": "crm",
+      "provider": "custom_crm",
+      "requires_api_key": true,
+      "status": "pending"
+    },
+    "data_analysis": {
+      "type": "analytics",
+      "provider": "custom",
+      "requires_api_key": false,
+      "status": "ready"
+    },
+    "zapier_api": {
+      "type": "automation",
+      "provider": "zapier",
+      "requires_api_key": true,
+      "status": "pending"
+    },
+    "file_management": {
+      "type": "storage",
+      "provider": "supabase_storage",
+      "requires_api_key": false,
+      "status": "ready"
+    },
+    "content_generation": {
+      "type": "ai",
+      "provider": "openai_api",
+      "requires_api_key": true,
+      "status": "pending"
+    }
+  }
+}
