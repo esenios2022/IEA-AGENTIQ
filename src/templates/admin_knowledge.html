@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base de conocimiento | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page { max-width: 960px; margin: 60px auto; padding: 0 24px; }
+        .kb-form {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            margin-bottom: 24px;
+            display: grid;
+            gap: 10px;
+        }
+        .kb-form input, .kb-form textarea {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            font-family: inherit;
+        }
+        .kb-form textarea { min-height: 70px; }
+        .kb-form button {
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            padding: 10px 16px;
+            cursor: pointer;
+            justify-self: start;
+        }
+        .kb-warning { font-size: 0.85rem; color: #7a1f1f; }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .admin-table th, .admin-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(205, 163, 73, 0.2);
+            font-size: 0.9rem;
+            vertical-align: top;
+        }
+        .admin-table th {
+            background: var(--emerald);
+            color: var(--gold);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+        }
+        .admin-empty { text-align: center; color: var(--text-muted); padding: 40px 0; }
+        .delete-btn {
+            border: none;
+            background: none;
+            color: #7a1f1f;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .embedded-badge { font-size: 0.7rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <h1>Base de conocimiento</h1>
+        <p>Artículos compartidos que los agentes consultan antes de razonar desde cero (María, Elías responden directo cuando hay un match &gt;85% de similitud, a costo cero).</p>
+
+        {% if not openai_configured %}
+        <p class="kb-warning">Falta configurar OPENAI_API_KEY: los artículos se guardan pero no se pueden buscar por similitud hasta que se configure.</p>
+        {% endif %}
+
+        <form class="kb-form" method="post" action="/admin/knowledge">
+            <input type="text" name="tema" placeholder="Tema (ej: Precios)" required>
+            <textarea name="pregunta" placeholder="Pregunta" required></textarea>
+            <textarea name="respuesta" placeholder="Respuesta" required></textarea>
+            <button type="submit">Agregar artículo</button>
+        </form>
+
+        {% if articles %}
+        <table class="admin-table">
+            <thead>
+                <tr><th>Tema</th><th>Pregunta</th><th>Respuesta</th><th></th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                <tr>
+                    <td>{{ article.tema }}</td>
+                    <td>{{ article.pregunta }}</td>
+                    <td>{{ article.respuesta }}</td>
+                    <td><span class="embedded-badge">{{ "indexado" if article.embedding else "sin indexar" }}</span></td>
+                    <td>
+                        <form method="post" action="/admin/knowledge/{{ article.id }}/delete">
+                            <button type="submit" class="delete-btn">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Todavía no hay artículos en la base de conocimiento.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

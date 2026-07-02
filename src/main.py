@@ -13,13 +13,16 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.agent_runtime import AgentRuntime
+from src.agent_seed import sync_master_agents
+from src.agent_service import AgentPausedError
+from src.agent_service import run as run_agent_service
 from src.architect_agent import get_obatala
 from src.auth import get_current_client, hash_password, verify_password
 from src.composio_tools import start_connection
 from src.config import settings
-from src.crew_runtime import run_crew
 from src.database import Base, engine, get_db
-from src.models import Agent, Client, ClientAgent, Lead
+from src.embeddings import embed_text
+from src.models import Agent, Client, ClientAgent, KbArticle, Lead
 from src.scheduler import start_scheduler
 from src.schemas import (
     ArchitectCreateAgentRequest,
@@ -32,7 +35,12 @@ from src.schemas import (
     CrewRunResponse,
     LeadCreate,
     LeadOut,
+    ProfitabilityByClientOut,
+    ProfitabilityOut,
+    UsageByAgentOut,
+    UsageOut,
 )
+from src.usage_reports import agent_usage_summary, profitability_by_client, usage_by_agent
 
 
 @asynccontextmanager
@@ -100,6 +108,52 @@ def list_leads(
     return templates.TemplateResponse(request, "admin_leads.html", {"leads": leads})
 
 
+@app.get("/admin/knowledge")
+def list_knowledge_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    articles = db.scalars(select(KbArticle).order_by(KbArticle.created_at.desc())).all()
+    return templates.TemplateResponse(
+        request,
+        "admin_knowledge.html",
+        {"articles": articles, "openai_configured": bool(settings.openai_api_key)},
+    )
+
+
+@app.post("/admin/knowledge")
+def create_knowledge_article(
+    tema: str = Form(...),
+    pregunta: str = Form(...),
+    respuesta: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    embedding = None
+    try:
+        embedding = embed_text(f"{tema}\n{pregunta}")
+    except Exception as exc:
+        print(f"[main] no se pudo generar embedding para el artículo nuevo: {exc}", flush=True)
+
+    db.add(KbArticle(tema=tema, pregunta=pregunta, respuesta=respuesta, embedding=embedding))
+    db.commit()
+    return RedirectResponse(url="/admin/knowledge", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/knowledge/{article_id}/delete")
+def delete_knowledge_article(
+    article_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    article = db.get(KbArticle, article_id)
+    if article is not None:
+        db.delete(article)
+        db.commit()
+    return RedirectResponse(url="/admin/knowledge", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.get("/architect-chat")
 def architect_chat_page(request: Request):
     return templates.TemplateResponse(request, "architect_chat.html")
@@ -107,12 +161,14 @@ def architect_chat_page(request: Request):
 
 @app.get("/plataforma")
 def plataforma_page():
-    return _serve_static_html("plataforma.html")
+    """Old static mockup, superseded by the real (Jinja, connected) admin/portal UI."""
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
 @app.get("/dashboard")
 def dashboard_page():
-    return _serve_static_html("dashboard.html")
+    """Old static mockup, superseded by the real (Jinja, connected) admin/portal UI."""
+    return RedirectResponse(url="/admin/agents", status_code=status.HTTP_302_FOUND)
 
 
 @app.get("/api/architect/status")
@@ -152,8 +208,70 @@ def list_agents_page(
     agents = db.scalars(select(Agent).order_by(Agent.created_at.desc())).all()
     groups: dict[str, list[Agent]] = {}
     for agent in agents:
-        groups.setdefault(agent.user_id or "Sin grupo", []).append(agent)
+        definition = agent.definition or {}
+        group_name = definition.get("group") if agent.agent_code else None
+        groups.setdefault(group_name or agent.user_id or "Sin grupo", []).append(agent)
     return templates.TemplateResponse(request, "admin_agents.html", {"groups": groups, "agents": agents})
+
+
+@app.post("/admin/agents/import")
+def import_master_agents(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    result = sync_master_agents(db)
+    return RedirectResponse(
+        url=f"/admin/agents?imported={result.created}&updated={result.updated}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@app.get("/admin/usage")
+def usage_page(
+    request: Request,
+    period: str = "day",
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    rows, total = usage_by_agent(db, period=period)
+    clients_rows, clients_total = profitability_by_client(db, period="month")
+    return templates.TemplateResponse(
+        request,
+        "admin_usage.html",
+        {"rows": rows, "total": total, "period": period, "clients_rows": clients_rows, "clients_total": clients_total},
+    )
+
+
+@app.get("/api/usage", response_model=UsageOut)
+def api_usage(
+    period: str = "day",
+    client: str | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    rows, total = usage_by_agent(db, period=period, client_id=client)
+    return UsageOut(period=period, by_agent=[UsageByAgentOut(**row) for row in rows], total_usd=total)
+
+
+@app.get("/api/me/usage", response_model=UsageOut)
+def api_my_usage(
+    request: Request,
+    period: str = "day",
+    db: Session = Depends(get_db),
+):
+    client = get_current_client(request, db)
+    rows, total = usage_by_agent(db, period=period, client_id=client.id)
+    return UsageOut(period=period, by_agent=[UsageByAgentOut(**row) for row in rows], total_usd=total)
+
+
+@app.get("/api/profitability", response_model=ProfitabilityOut)
+def api_profitability(
+    period: str = "month",
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    rows, total = profitability_by_client(db, period=period)
+    return ProfitabilityOut(period=period, by_client=[ProfitabilityByClientOut(**row) for row in rows], total_usd=total)
 
 
 @app.get("/admin/agents/{agent_id}")
@@ -167,8 +285,9 @@ def agent_detail_page(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     definition_json = json.dumps(agent.definition or {}, indent=2, ensure_ascii=False)
+    usage = agent_usage_summary(db, agent.id, period="month")
     return templates.TemplateResponse(
-        request, "admin_agent_detail.html", {"agent": agent, "definition_json": definition_json}
+        request, "admin_agent_detail.html", {"agent": agent, "definition_json": definition_json, "usage": usage}
     )
 
 
@@ -222,10 +341,14 @@ def run_agent_with_crew(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     try:
-        result = run_crew(agent, payload.input)
+        outcome = run_agent_service(db, agent, payload.input)
+    except AgentPausedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Error ejecutando CrewAI: {exc}") from exc
-    return CrewRunResponse(result=result)
+        raise HTTPException(status_code=502, detail=f"Error ejecutando el agente: {exc}") from exc
+    return CrewRunResponse(
+        result=outcome.result, cost_usd=outcome.cost_usd, tier_used=outcome.tier_used, cached=outcome.cached
+    )
 
 
 def _client_out(client: Client, db: Session) -> ClientOut:
@@ -390,10 +513,14 @@ def run_my_agent(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     try:
-        result = run_crew(agent, payload.input, user_id=str(client.id))
+        outcome = run_agent_service(db, agent, payload.input, user_id=str(client.id), client_id=client.id)
+    except AgentPausedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Error ejecutando CrewAI: {exc}") from exc
-    return CrewRunResponse(result=result)
+        raise HTTPException(status_code=502, detail=f"Error ejecutando el agente: {exc}") from exc
+    return CrewRunResponse(
+        result=outcome.result, cost_usd=outcome.cost_usd, tier_used=outcome.tier_used, cached=outcome.cached
+    )
 
 
 @app.get("/admin/clients/{client_id}/agents/{agent_id}/schedule")

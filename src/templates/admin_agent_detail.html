@@ -69,6 +69,15 @@
             <div><strong>Estado:</strong> {{ agent.status }}</div>
             <div><strong>Requerimiento original:</strong> {{ agent.requirement or "-" }}</div>
             <div><strong>Creado:</strong> {{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+            {% if agent.daily_budget_usd %}<div><strong>Presupuesto diario:</strong> ${{ "%.2f"|format(agent.daily_budget_usd) }}</div>{% endif %}
+        </div>
+
+        <div class="crew-box">
+            <h2>Consumo (últimos 30 días)</h2>
+            <div>Gasto hoy: <strong>${{ "%.4f"|format(usage.spend_today_usd) }}</strong></div>
+            <div>Gasto del período: <strong>${{ "%.4f"|format(usage.spend_period_usd) }}</strong></div>
+            <div>Corridas: {{ usage.runs }} &middot; Tokens: {{ usage.tokens_in }} in / {{ usage.tokens_out }} out</div>
+            <p><a href="/admin/usage">Ver consumo de todos los agentes &rarr;</a></p>
         </div>
         <form method="post" action="/admin/agents/{{ agent.id }}">
             <label for="definition_json"><strong>Definición (JSON)</strong></label><br>
@@ -108,7 +117,12 @@
                         body: JSON.stringify({ input: input || null }),
                     });
                     const data = await resp.json();
-                    resultBox.textContent = resp.ok ? data.result : ("⚠️ " + (data.detail || "Error desconocido"));
+                    if (resp.ok) {
+                        const meta = `[tier: ${data.tier_used}${data.cached ? " · desde caché" : ""} · costo: $${data.cost_usd.toFixed(4)}]`;
+                        resultBox.textContent = meta + "\n\n" + data.result;
+                    } else {
+                        resultBox.textContent = "⚠️ " + (data.detail || "Error desconocido");
+                    }
                 } catch (err) {
                     resultBox.textContent = "⚠️ Error: " + err;
                 }

@@ -69,6 +69,14 @@
             font-size: 0.85rem;
         }
         .agent-card .result { white-space: pre-wrap; font-size: 0.8rem; margin-top: 8px; }
+        .usage-box {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+        .usage-box h2 { margin-top: 0; font-size: 1.05rem; }
     </style>
 </head>
 <body>
@@ -85,6 +93,11 @@
                 <input type="text" id="toolkit-input" placeholder="ej: instagram, linkedin, gmail">
                 <button onclick="connectToolkit()">Conectar</button>
             </div>
+        </div>
+
+        <div class="usage-box">
+            <h2>Mi consumo (últimos 30 días)</h2>
+            <div id="usage-summary">Cargando...</div>
         </div>
 
         <div id="agents-container"></div>
@@ -117,6 +130,19 @@
             `).join("") + '</div>';
         }
 
+        async function loadUsage() {
+            const resp = await fetch("/api/me/usage?period=month");
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const box = document.getElementById("usage-summary");
+            if (!data.by_agent.length) {
+                box.innerHTML = "Todavía no tenés ejecuciones registradas.";
+                return;
+            }
+            box.innerHTML = `<div>Gasto total: <strong>$${data.total_usd.toFixed(4)}</strong></div>` +
+                data.by_agent.map(a => `<div>${a.agent_name}: $${a.spend_period_usd.toFixed(4)} (${a.runs} corridas)</div>`).join("");
+        }
+
         async function connectToolkit() {
             const toolkit = document.getElementById("toolkit-input").value.trim();
             if (!toolkit) return;
@@ -140,7 +166,12 @@
                     body: JSON.stringify({ input: input || null }),
                 });
                 const data = await resp.json();
-                resultBox.textContent = resp.ok ? data.result : ("⚠️ " + (data.detail || "Error desconocido"));
+                if (resp.ok) {
+                    const meta = `[tier: ${data.tier_used}${data.cached ? " · desde caché" : ""} · costo: $${data.cost_usd.toFixed(4)}]`;
+                    resultBox.textContent = meta + "\n\n" + data.result;
+                } else {
+                    resultBox.textContent = "⚠️ " + (data.detail || "Error desconocido");
+                }
             } catch (err) {
                 resultBox.textContent = "⚠️ Error: " + err;
             }
@@ -152,6 +183,7 @@
         }
 
         loadMe();
+        loadUsage();
     </script>
 </body>
 </html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consumo y costos | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page { max-width: 1100px; margin: 60px auto; padding: 0 24px; }
+        .period-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .period-tabs a {
+            padding: 6px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            background: var(--white);
+            box-shadow: var(--shadow);
+            font-size: 0.85rem;
+        }
+        .period-tabs a.active { background: var(--emerald); color: var(--gold); font-weight: 600; }
+        .total-box {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 32px;
+        }
+        .admin-table th, .admin-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(205, 163, 73, 0.2);
+            font-size: 0.9rem;
+        }
+        .admin-table th {
+            background: var(--emerald);
+            color: var(--gold);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+        }
+        .budget-bar { width: 100px; height: 8px; border-radius: 4px; background: #e6e1d4; overflow: hidden; }
+        .budget-bar-fill { height: 100%; background: var(--emerald); }
+        .budget-bar-fill.warn { background: #c99a2e; }
+        .budget-bar-fill.over { background: #7a1f1f; }
+        .status-paused { color: #7a1f1f; font-weight: 600; }
+        .admin-empty { text-align: center; color: var(--text-muted); padding: 30px 0; }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <h1>Consumo y costos</h1>
+        <p><a href="/admin/agents">&larr; Volver a agentes</a></p>
+
+        <div class="period-tabs">
+            <a href="/admin/usage?period=day" class="{{ 'active' if period == 'day' }}">Hoy</a>
+            <a href="/admin/usage?period=week" class="{{ 'active' if period == 'week' }}">Últimos 7 días</a>
+            <a href="/admin/usage?period=month" class="{{ 'active' if period == 'month' }}">Últimos 30 días</a>
+        </div>
+
+        <div class="total-box">Gasto total del período: <strong>${{ "%.4f"|format(total) }}</strong></div>
+
+        {% if rows %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Agente</th>
+                    <th>Estado</th>
+                    <th>Gasto hoy</th>
+                    <th>Presupuesto diario</th>
+                    <th>Gasto del período</th>
+                    <th>Corridas</th>
+                    <th>Tokens (in/out)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.agent_name }}</td>
+                    <td class="{{ 'status-paused' if row.status == 'paused' }}">{{ row.status }}</td>
+                    <td>${{ "%.4f"|format(row.spend_today_usd) }}</td>
+                    <td>
+                        {% if row.daily_budget_usd %}
+                        ${{ "%.2f"|format(row.daily_budget_usd) }}
+                        <div class="budget-bar">
+                            {% set ratio = (row.spend_today_usd / row.daily_budget_usd) if row.daily_budget_usd else 0 %}
+                            <div class="budget-bar-fill {{ 'over' if ratio >= 1 else ('warn' if ratio >= 0.8 else '') }}"
+                                 style="width: {{ [ratio * 100, 100] | min }}%"></div>
+                        </div>
+                        {% else %}
+                        sin límite
+                        {% endif %}
+                    </td>
+                    <td>${{ "%.4f"|format(row.spend_period_usd) }}</td>
+                    <td>{{ row.runs }}</td>
+                    <td>{{ row.tokens_in }} / {{ row.tokens_out }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Todavía no hay ejecuciones registradas en este período.</p>
+        {% endif %}
+
+        <h2>Consumo por cliente (últimos 30 días)</h2>
+        {% if clients_rows %}
+        <table class="admin-table">
+            <thead>
+                <tr><th>Cliente</th><th>Gasto</th><th>Corridas</th></tr>
+            </thead>
+            <tbody>
+                {% for row in clients_rows %}
+                <tr>
+                    <td>{{ row.client_name }}</td>
+                    <td>${{ "%.4f"|format(row.spend_period_usd) }}</td>
+                    <td>{{ row.runs }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Todavía no hay consumo asociado a clientes.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

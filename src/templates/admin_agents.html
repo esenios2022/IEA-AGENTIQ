@@ -57,13 +57,52 @@
             color: var(--text-muted);
             padding: 40px 0;
         }
+        .import-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0 24px;
+        }
+        .import-box button {
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .import-msg { font-size: 0.85rem; color: var(--text-muted); }
+        .agent-card .budget { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+        .agent-card .paused-banner {
+            font-size: 0.75rem;
+            color: #7a1f1f;
+            background: #fbe4e4;
+            border-radius: 6px;
+            padding: 4px 8px;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
     {% include "_header.html" %}
     <main class="admin-page">
-        <h1>Agentes creados por Obatalá</h1>
-        <p><a href="/admin/clients">Ver clientes &rarr;</a> &middot; <a href="/architect-chat">Crear agente con Obatalá &rarr;</a></p>
+        <h1>Agentes</h1>
+        <p>
+            <a href="/admin/clients">Ver clientes &rarr;</a>
+            &middot; <a href="/architect-chat">Crear agente con Obatalá &rarr;</a>
+            &middot; <a href="/admin/usage">Ver consumo y costos &rarr;</a>
+            &middot; <a href="/admin/knowledge">Base de conocimiento &rarr;</a>
+        </p>
+        <form class="import-box" method="post" action="/admin/agents/import">
+            <button type="submit">Importar / actualizar los 16 agentes maestros</button>
+            {% if request.query_params.get("imported") is not none %}
+            <span class="import-msg">
+                Creados: {{ request.query_params.get("imported") }} &middot;
+                Actualizados: {{ request.query_params.get("updated") }}
+            </span>
+            {% endif %}
+        </form>
         {% if agents %}
             {% for group_name, group_agents in groups.items() %}
             <div class="group-block">
@@ -72,8 +111,14 @@
                     {% for agent in group_agents %}
                     <div class="agent-card">
                         <span class="role-tag">{{ agent.role }}</span>
-                        <h3>{{ agent.name }}</h3>
+                        <h3>{{ agent.name }}{% if agent.definition and agent.definition.orixa %} <small>({{ agent.definition.orixa }})</small>{% endif %}</h3>
+                        {% if agent.status == "paused" %}
+                        <div class="paused-banner">Pausado por presupuesto diario &mdash; se reactiva mañana</div>
+                        {% endif %}
                         <div class="status">{{ agent.status }} &middot; {{ agent.created_at.strftime("%Y-%m-%d") }}</div>
+                        {% if agent.daily_budget_usd %}
+                        <div class="budget">Presupuesto: ${{ "%.2f"|format(agent.daily_budget_usd) }}/día</div>
+                        {% endif %}
                         <div class="links">
                             <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>
                             <a href="/agentes/{{ agent.id }}" target="_blank">Probar chat</a>

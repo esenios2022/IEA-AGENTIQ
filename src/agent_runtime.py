@@ -8,7 +8,7 @@ from src.models import Agent
 MODEL = "claude-sonnet-4-6"
 
 
-def _system_prompt_for(agent: Agent) -> str:
+def system_prompt_for(agent: Agent) -> str:
     definition = agent.definition or {}
     instructions = definition.get("instructions") or {}
     if instructions.get("system_prompt"):
@@ -25,7 +25,7 @@ class AgentRuntime:
     def __init__(self, agent: Agent, api_key: str | None = None):
         self.agent = agent
         self.client = Anthropic(api_key=api_key or settings.anthropic_api_key)
-        self.system_prompt = _system_prompt_for(agent)
+        self.system_prompt = system_prompt_for(agent)
         self.conversation_history: list[dict[str, str]] = []
 
     def reply(self, user_message: str) -> str:

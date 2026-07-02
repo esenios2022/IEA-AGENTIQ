@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import select
 
-from src.crew_runtime import run_crew
+from src.agent_service import run as run_agent_service
 from src.database import SessionLocal
 from src.models import Agent, ClientAgent
 
@@ -34,8 +34,10 @@ def _run_due_schedules() -> None:
             if agent is None:
                 continue
             try:
-                result = run_crew(agent, link.schedule_input, user_id=str(link.client_id))
-                link.last_result = result
+                outcome = run_agent_service(
+                    db, agent, link.schedule_input, user_id=str(link.client_id), client_id=link.client_id
+                )
+                link.last_result = outcome.result
             except Exception as exc:
                 link.last_result = f"Error: {exc}"
 
