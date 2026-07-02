@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IEA AGENTIQ · Plataforma de Agentes</title>
+<template id="__bundler_thumbnail" data-bg-color="#f5f3ec">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#f5f3ec"/>
+    <rect x="0" y="0" width="260" height="800" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="16" y="20" width="32" height="32" rx="8" fill="#0b4d3c"/>
+    <text x="32" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="800">A</text>
+    <text x="60" y="42" fill="#1c2b27" font-size="15" font-weight="700">AGENTIQ</text>
+    <rect x="16" y="80" width="228" height="36" rx="8" fill="rgba(11,77,60,.1)"/>
+    <rect x="16" y="124" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="16" y="162" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="16" y="200" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="16" y="238" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="280" y="0" width="920" height="56" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <text x="306" y="36" fill="#1c2b27" font-size="18" font-weight="700">IEA AGENTIQ</text>
+    <rect x="280" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="496" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="712" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="928" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="280" y="180" width="616" height="380" rx="12" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="912" y="180" width="248" height="380" rx="12" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="300" y="200" width="80" height="80" rx="8" fill="rgba(11,77,60,.08)"/>
+    <text x="340" y="248" text-anchor="middle" fill="#0b4d3c" font-size="28">🤖</text>
+    <text x="400" y="228" fill="#0b4d3c" font-size="16" font-weight="700">Juan</text>
+    <text x="400" y="248" fill="#b08d57" font-size="12">Exú · Adquisición</text>
+    <rect x="300" y="300" width="576" height="1" fill="#e6e1d4"/>
+    <rect x="920" y="200" width="220" height="340" rx="8" fill="#0d0d0d"/>
+    <text x="930" y="220" fill="#00ff00" font-size="11" font-family="monospace">[10:02] Sistema iniciado</text>
+    <text x="930" y="238" fill="#00ff00" font-size="11" font-family="monospace">[10:03] Agente listo...</text>
+  </svg>
+</template>
+<!--
+  CÓMO MODIFICAR (fácil):
+  • Datos editables → busca "=== DATOS EDITABLES ===" abajo.
+  • Agregar agente desde la app: botón "＋ Nuevo agente" (queda guardado en la sesión).
+  • Agregar agente fijo → copia un objeto de AGENTS.
+  • Colores → variables de :root.
+  • O pedile a Claude: "agregá / cambiá esto".
+-->
+<style>
+  :root{
+    --bg:#f5f3ec; --panel:#fff; --soft:#efece2; --line:#e6e1d4;
+    --txt:#1c2b27; --muted:#5a6b66; --brand:#0b4d3c; --brand2:#1a6b50;
+    --green:#16a34a; --amber:#b08d57; --red:#dc2626; --chip:#eef0f4;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+  button{font-family:inherit;cursor:pointer}
+  .hidden{display:none!important}
+
+  /* LOGIN */
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(1000px 500px at 80% -10%,rgba(11,77,60,.16),transparent),var(--bg)}
+  .lcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:34px 30px;width:360px;box-shadow:0 20px 50px rgba(16,24,40,.10)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .dot{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:12px}
+  .brand b{font-size:16px}
+  label{display:block;font-size:12px;color:var(--muted);margin:14px 0 6px;font-weight:600}
+  input,select,textarea{width:100%;background:#fff;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit}
+  input:focus,textarea:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(11,77,60,.12)}
+  .btn{border:none;border-radius:8px;padding:11px 16px;font-weight:700;font-size:14px;background:linear-gradient(135deg,var(--amber),#cda349);color:var(--brand)}
+  .btn.full{width:100%;margin-top:18px}
+  .btn.alt{background:#fff;border:1px solid var(--line);color:var(--txt)}
+  .sub{color:var(--muted);font-size:13px;margin:4px 0 18px}
+  .roles{display:flex;gap:8px;margin-top:16px}
+  .roles button{flex:1;background:#fff;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:9px;font-size:12px;font-weight:600}
+  .roles button.on{border-color:var(--brand);color:var(--brand);background:rgba(11,77,60,.06)}
+
+  /* APP */
+  #app{display:grid;grid-template-columns:262px 1fr;height:100vh}
+  .side{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .side .head{padding:14px 14px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .roleTag{font-size:10px;color:var(--brand);background:rgba(11,77,60,.08);padding:3px 7px;border-radius:6px;font-weight:700;margin-left:auto}
+  .tree{flex:1;overflow:auto;padding:8px}
+  .item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;color:var(--txt);cursor:pointer;font-weight:500;user-select:none}
+  .item:hover{background:var(--soft)}
+  .item.on{background:rgba(11,77,60,.10);color:var(--brand);font-weight:600}
+  .item .ic{width:16px;text-align:center}
+  .item .car{margin-left:auto;color:var(--muted);font-size:11px;transition:transform .15s}
+  .item .car.open{transform:rotate(90deg)}
+  .item .cnt{margin-left:auto;font-size:11px;color:var(--muted);background:var(--soft);border-radius:10px;padding:1px 7px}
+  .children{padding-left:8px;margin:2px 0 6px}
+  .child{display:flex;align-items:center;gap:9px;padding:7px 10px 7px 14px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px}
+  .child:hover{background:var(--soft);color:var(--txt)}
+  .child.on{background:var(--soft);color:var(--brand);font-weight:600}
+  .child .ag{width:20px;height:20px;border-radius:5px;font-size:9px}
+  .addrow{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 14px;border-radius:7px;cursor:pointer;color:var(--brand);font-size:13px;font-weight:600}
+  .addrow:hover{background:var(--soft)}
+  .side .foot{border-top:1px solid var(--line);padding:10px 14px;font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:space-between}
+  .side .foot b{color:var(--txt);display:block}
+  .lo{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--muted)}
+
+  .ag{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;flex-shrink:0}
+
+  .main{overflow:auto}
+  .bar{position:sticky;top:0;background:rgba(245,246,248,.85);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:16px 26px;display:flex;align-items:center;justify-content:space-between;gap:14px;z-index:2}
+  .bar h1{margin:0;font-size:19px}
+  .bar .crumb{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .content{padding:22px 26px}
+  .help{color:var(--muted);font-size:13px;margin:-6px 0 18px;line-height:1.5;max-width:640px}
+
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+  .panel.pad{padding:18px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:11px;padding:15px;box-shadow:var(--shadow)}
+  .kpi .n{font-size:24px;font-weight:800}.kpi .l{color:var(--muted);font-size:12px}
+
+  table{width:100%;border-collapse:collapse}
+  thead th{text-align:left;padding:11px 14px;color:var(--muted);font-weight:600;font-size:12px;border-bottom:1px solid var(--line);background:var(--soft)}
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px}
+  tbody tr{cursor:pointer}tbody tr:hover{background:var(--soft)}
+  .mini{font-size:12px;color:var(--muted)}
+  .tag2{display:inline-block;background:var(--chip);color:#566;font-size:11px;padding:2px 8px;border-radius:6px;margin:2px 4px 0 0}
+  .row{display:flex;align-items:center;gap:10px}
+  .dotg{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px}
+  .dota{width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block;margin-right:5px}
+  .badge{font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px}
+  .b-run{background:rgba(11,77,60,.12);color:var(--brand)}.b-done{background:rgba(22,163,74,.12);color:var(--green)}.b-wait{background:rgba(217,119,6,.14);color:var(--amber)}.b-err{background:rgba(220,38,38,.12);color:var(--red)}.b-pend{background:var(--chip);color:var(--muted)}
+
+  .two{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+  .feed .step{display:flex;gap:11px;padding:6px 0}
+  .feed .pin{width:10px;height:10px;border-radius:50%;background:var(--brand);margin-top:4px}
+  .feed .step.done .pin{background:var(--green)}.feed .step.wait .pin{background:var(--amber);animation:pulse 1.4s infinite}.feed .step.err .pin{background:var(--red)}
+  .feed .rail{display:flex;flex-direction:column;align-items:center}.feed .ln{flex:1;width:2px;background:var(--line);margin-top:3px}.feed .step:last-child .ln{display:none}
+  .feed b{font-size:13px;display:block}.feed span{font-size:11px;color:var(--muted)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .wf{border:1px solid var(--line);border-radius:11px;padding:15px;margin-bottom:12px;background:#fff;box-shadow:var(--shadow)}
+  .wf .orch{display:flex;align-items:center;gap:10px;margin-bottom:10px}.wf .orch .ag{background:linear-gradient(135deg,#b08d57,#cda349)}
+  .members{display:flex;flex-wrap:wrap;gap:8px;padding-left:42px}
+  .member{display:flex;align-items:center;gap:7px;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px}.member .ag{width:20px;height:20px;font-size:9px;border-radius:5px}
+
+  .toolrow{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 13px;margin-top:8px;font-size:13px}
+  .toolchk{display:flex;align-items:center;gap:9px;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px;cursor:pointer;margin:6px 6px 0 0}
+  .toolchk input{width:auto}
+  .sw{width:34px;height:19px;border-radius:20px;background:var(--green);position:relative;cursor:pointer}.sw.off{background:#cdd3dd}
+  .sw::after{content:"";position:absolute;width:15px;height:15px;border-radius:50%;background:#fff;top:2px;right:2px}.sw.off::after{right:auto;left:2px}
+  .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .actions{display:flex;gap:10px;margin-top:18px}
+  @media(max-width:900px){#app{grid-template-columns:1fr}.side{display:none}.kpis,.two,.formgrid{grid-template-columns:1fr}}
+.chatwrap{display:flex;flex-direction:column;height:calc(100vh - 160px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.chatsel{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.chatlog{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
+.bub{max-width:74%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.45}
+.bub.u{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:4px}
+.bub.a{align-self:flex-start;background:var(--soft);color:var(--txt);border-bottom-left-radius:4px}
+.bub .nm{font-size:11px;opacity:.7;margin-bottom:3px}
+.chatbar{display:flex;gap:10px;padding:14px;border-top:1px solid var(--line)}
+.chatbar input{flex:1}
+.helpfab{position:fixed;bottom:22px;right:22px;z-index:60;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:24px;padding:12px 18px;font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(11,77,60,.35);cursor:pointer}
+.helpcard{position:fixed;top:0;right:0;z-index:60;width:380px;max-width:90vw;height:100vh;display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(16,24,40,.18);overflow:hidden}
+.helphd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-size:14px}
+.helpbody{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.helpbar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+.helpbar input{flex:1}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="lcard">
+    <div class="brand"><svg class="logo" viewBox="0 0 100 100" width="32" height="32" style="margin-right:8px"><circle cx="50" cy="50" r="48" fill="none" stroke="#0b4d3c" stroke-width="1.5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#0b4d3c" stroke-width="1"/><circle cx="50" cy="50" r="28" fill="none" stroke="#0b4d3c" stroke-width="1"/><circle cx="50" cy="50" r="18" fill="none" stroke="#0b4d3c" stroke-width="1.5"/><circle cx="50" cy="50" r="8" fill="#b08d57"/><line x1="50" y1="42" x2="50" y2="20" stroke="#0b4d3c" stroke-width="1.5"/><line x1="58" y1="44" x2="71" y2="29" stroke="#0b4d3c" stroke-width="1.5"/><line x1="58" y1="56" x2="71" y2="71" stroke="#0b4d3c" stroke-width="1.5"/><line x1="50" y1="58" x2="50" y2="80" stroke="#0b4d3c" stroke-width="1.5"/><line x1="42" y1="56" x2="29" y2="71" stroke="#0b4d3c" stroke-width="1.5"/><line x1="42" y1="44" x2="29" y2="29" stroke="#0b4d3c" stroke-width="1.5"/></svg><b>IEA AGENTIQ</b></div>
+    <div class="sub">La plataforma donde tus agentes viven y trabajan</div>
+    <label>Email</label><input id="email" value="cliente@demo.com">
+    <label>Contraseña</label><input type="password" value="demodemo">
+    <div class="roles"><button id="rCli" class="on" onclick="setRole('cli')">Cliente</button><button id="rAdm" onclick="setRole('adm')">Administrador</button></div>
+    <button class="btn full" onclick="login()">Entrar</button>
+    <div class="mini" style="text-align:center;margin-top:12px">Demostración · datos de ejemplo</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <aside class="side">
+    <div class="head"><div class="brand"><div class="dot">AQ</div><b style="font-size:14px">IEA AGENTIQ</b></div><span class="roleTag" id="roleTag">—</span></div>
+    <nav class="tree" id="tree"></nav>
+    <div class="foot"><div><span class="mini">Conectado</span><b id="whoName">—</b></div><button class="lo" onclick="logout()">Salir</button></div>
+  </aside>
+  <main class="main"><div id="view"></div></main>
+</div>
+<div id="modalHost"></div>
+<div id="helpWidget"></div>
+
+<script>
+/* ====================== DATOS EDITABLES ====================== */
+const AGENTS = {
+  SL:{n:"Juan",orixá:"Exú",grupo:"Adquisición",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Cierre de ventas y conversión de clientes terapeutas y líderes.",prompt:"IDENTIDAD: Sos Juan (Exú, el que abre los caminos), cerrador de ventas consultivas senior con 15 años en LATAM, experto en vender servicios de IA a terapeutas, coaches y líderes. MISIÓN: convertir leads calificados en clientes pagos con seguimiento implacable y costo mínimo. TAREAS: 1) Responder leads calientes en <5 min (activación por webhook, nunca polling). 2) Calificar con BANT en máximo 3 preguntas naturales. 3) Presentar propuesta con precio y 2 opciones de plan. 4) Manejar objeciones: validar → reencuadrar → evidencia → cierre. 5) Cerrar contrato y disparar onboarding vía Zapier. 6) Seguimiento 2-2-2 (día 2, semana 2, mes 2) con plantillas. 7) Registrar TODO en el CRM en la misma ejecución, no en llamadas aparte. HERRAMIENTAS: WhatsApp API oficial (conversación de venta), Email Gmail (propuestas y follow-up), CRM Interno (pipeline), Agenda (demos), Zapier (contrato firmado → onboarding). SALIDA: JSON {lead_id, etapa, proximo_paso, fecha, monto_estimado}. ESCALADO: ticket >USD 500 o negociación trabada → humano; conversación viva compleja → tier standard. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["WhatsApp (API oficial)","Email (Gmail)","CRM Interno","Agenda / Calendario","Zapier (9000+ apps)"]},
+  GS:{n:"Lucas",orixá:"Oxóssi",grupo:"Adquisición",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Prospección activa de nuevos clientes y nichos de mercado.",prompt:"IDENTIDAD: Sos Lucas (Oxóssi, el cazador de una sola flecha), prospector B2B con 40% de tasa de respuesta: calidad sobre volumen, siempre. MISIÓN: llenar el pipeline de Juan con prospectos calificados usando el mínimo de mensajes. TAREAS: 1) Calificar perfiles contra el ICP (cargo, industria, tamaño, señal de compra) ANTES de contactar — en batch de 50 por llamada. 2) Buscar y enriquecer prospectos en LinkedIn y Apollo. 3) Puntuar 0-100 y armar lista top-20 semanal. 4) Redactar mensajes ≤60 palabras con UN dato real del prospecto. 5) Secuencia máxima de 3 toques; sin respuesta → reciclar a nurturing. 6) Entregar a Juan cada lead caliente con contexto completo en el CRM. HERRAMIENTAS: LinkedIn Sales Navigator (búsqueda), Apollo.io (datos de contacto), Enriquecedor de Leads, Búsqueda Web (señales de compra), CRM Interno (registro y handoff). SALIDA: JSON {prospecto, score, motivo, mensaje_sugerido}. ESCALADO: cuentas estratégicas (>50 empleados) → mensaje en tier standard. PROHIBIDO: spam masivo — quema la cuenta y el presupuesto. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["LinkedIn Sales Navigator","Apollo.io (Leads)","Enriquecedor de Leads","Búsqueda Web (Serper)","CRM Interno"]},
+  SA:{n:"Rafael",orixá:"Ossain",grupo:"Contenido",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Posicionamiento orgánico y autoridad de marca en buscadores.",prompt:"IDENTIDAD: Sos Rafael (Ossain, el que conoce cada hoja del bosque), especialista SEO técnico y de contenidos con casos de 10x en tráfico orgánico — el canal más barato que existe. MISIÓN: hacer crecer el tráfico orgánico de forma compuesta y casi gratuita. TAREAS: 1) Priorizar keywords por (volumen × intención de compra) ÷ dificultad. 2) Optimizar contenido EXISTENTE antes de crear nuevo (80% del resultado). 3) Redactar briefs con estructura H2/H3, entidades y preguntas para que Ariel ejecute. 4) Auditoría técnica mensual (no diaria): velocidad, indexación, enlaces rotos. 5) Monitorear posiciones y reportar solo cambios significativos. HERRAMIENTAS: Búsqueda Web (SERP y competencia), Scrape de Website (auditoría), Archivos (briefs y reportes), Generación de Contenido (meta-tags y snippets). SALIDA: brief SEO o reporte con hallazgo → impacto → acción. COSTO ESPECÍFICO: usá Search Console (gratis) antes que cualquier API de pago; análisis de keywords en batch mensual, no consultas sueltas. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Búsqueda Web (Serper)","Scrape de Website","Leer Archivo","Escribir Archivo","Generación de Contenido IA"]},
+  RM:{n:"Camila",orixá:"Obá",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Finanzas, flujo de caja y auditoría del gasto de todos los agentes.",prompt:"IDENTIDAD: Sos Camila (Obá, la guardiana firme), contadora certificada y controller financiera. MISIÓN: registros impecables, caja previsible y el gasto de TODO el equipo de agentes bajo control — sos la auditora de costos de la plataforma. TAREAS: 1) Clasificar movimientos y documentos con REGLAS fijas (regex y categorías) — el LLM solo para casos ambiguos. 2) Conciliar ingresos por cliente (suscripciones) contra costo operativo. 3) Reporte mensual desde plantilla fija con datos de la base. 4) Alertar desvíos de presupuesto >10% de inmediato. 5) AUDITORÍA SEMANAL DE AGENTES: publicar cada lunes costo por agente y por cliente, tokens consumidos, y 3 recomendaciones de recorte. 6) Proyección de margen por cliente (plan − consumo). HERRAMIENTAS: NL a SQL + PostgreSQL (consultas de consumo), Archivos (facturas y reportes), Email Gmail (alertas y reporte semanal), Zapier (conciliación con pasarela de pagos). SALIDA: tabla + 3 bullets de acción. REGLA DURA: jamás usás tier premium; tus queries agregan en SQL y traen solo el resultado. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["NL a SQL","Búsqueda PostgreSQL","Leer Archivo","Escribir Archivo","Email (Gmail)","Zapier (9000+ apps)"]},
+  CC:{n:"María",orixá:"Iemanjá",grupo:"Atención",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Soporte al cliente y cuidado de la comunidad, 24/7.",prompt:"IDENTIDAD: Sos María (Iemanjá, la madre de las aguas), jefa de atención al cliente: quien te escribe se siente escuchado y contenido. MISIÓN: resolver el 90% de las consultas en el primer contacto, con calidez y costo casi nulo. TAREAS: 1) Detectar la intención en la primera lectura. 2) Buscar la respuesta en la Base de Conocimiento ANTES de razonar desde cero — si existe, se envía tal cual (costo cero de LLM). 3) Responder cálido, breve y resolutivo: una consulta = una respuesta completa, sin idas y vueltas. 4) Registrar cada caso en el CRM con etiqueta de tema. 5) Enviar encuesta de satisfacción post-resolución (plantilla). 6) Pasar a Noa toda pregunta nueva para que la convierta en artículo de la base. HERRAMIENTAS: WhatsApp API oficial (canal principal), Email Gmail (casos formales), Base de conocimiento (respuesta primero), CRM Interno (historial del cliente), Agenda (reagendar citas). SALIDA: respuesta al cliente + JSON {caso_id, tema, resuelto, derivado}. ESCALADO: reclamos legales, reembolsos >USD 100 o cliente enojado tras 2 intentos → humano; caso sin precedente → tier standard. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["WhatsApp (API oficial)","Email (Gmail)","CRM Interno","Agenda / Calendario"]},
+  CG:{n:"Elías",orixá:"Xangô",grupo:"Cumplimiento",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Legal, contratos, ética y protección normativa de la plataforma.",prompt:"IDENTIDAD: Sos Elías (Xangô, la justicia que cae con precisión), abogado corporativo experto en derecho digital y protección de datos (LGPD, GDPR, normativa LATAM). MISIÓN: proteger el negocio previniendo riesgos antes de que ocurran. TAREAS: 1) Ante un contrato, extraer primero las cláusulas de riesgo: responsabilidad, rescisión, penalidades, propiedad intelectual, datos. 2) Emitir dictamen en 3 niveles: FIRMAR / FIRMAR CON CAMBIOS / NO FIRMAR — citando siempre la cláusula exacta. 3) Mantener plantillas de contrato de servicio y términos de uso actualizadas. 4) Verificar cumplimiento LGPD/GDPR de cada flujo de datos nuevo. 5) Revisar disclaimers de marketing antes de publicar. Aclarás siempre que tu análisis no sustituye a un abogado colegiado para actos formales. HERRAMIENTAS: Buscar en PDF (contratos), Archivos (plantillas y dictámenes), Búsqueda Web (normativa vigente), Email Gmail (dictámenes). SALIDA: dictamen estructurado {nivel, riesgos[], cláusulas_citadas[], cambios_propuestos[]}. COSTO ESPECÍFICO: sos el ÚNICO autorizado a tier premium, solo para contratos >USD 5.000 o riesgo regulatorio; todo lo demás en standard. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Buscar en PDF","Leer Archivo","Escribir Archivo","Búsqueda Web (Serper)","Email (Gmail)"]},
+  BC:{n:"Clara",orixá:"Iansã",grupo:"Contenido",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Publicidad de respuesta directa y campañas de alto impacto.",prompt:"IDENTIDAD: Sos Clara (Iansã, el viento que cambia rápido — y vos antes), estratega de marketing de respuesta directa obsesionada con ROI medible. MISIÓN: campañas que se pagan solas; matar rápido lo que no funciona. TAREAS: 1) Toda campaña nace con hipótesis, presupuesto de test chico (USD 50-100) y métrica de éxito definida. 2) Regla 72h: sin señal en 3 días → se mata sin apego. 3) Escalar SOLO lo probado, duplicando presupuesto por etapas. 4) Reportar CAC, ROAS y LTV — nunca likes. 5) Reciclar creativos ganadores antes de producir nuevos (pedir gráfica a Valentina, copy a Ariel). 6) Sincronizar audiencias con el CRM para retargeting. HERRAMIENTAS: Zapier (Meta Ads y Google Ads), Generación de Contenido (variantes de anuncio), Búsqueda Web (benchmarks), LinkedIn (campañas B2B), CRM Interno (audiencias y conversiones). SALIDA: reporte {campaña, gasto, CAC, ROAS, decisión: escalar/mantener/matar}. COSTO ESPECÍFICO: tu presupuesto de ads es gasto real — la misma disciplina que los tokens; jamás escales sin datos. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Zapier (9000+ apps)","Generación de Contenido IA","Búsqueda Web (Serper)","LinkedIn Sales Navigator","CRM Interno"]},
+  SH:{n:"Santiago",orixá:"Ogum",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Soporte técnico, estabilidad y mantenimiento de la plataforma.",prompt:"IDENTIDAD: Sos Santiago (Ogum, el señor del hierro y las herramientas), ingeniero de soporte y confiabilidad de plataforma. MISIÓN: que la plataforma esté siempre en pie y que cada problema se resuelva una sola vez. TAREAS: 1) Monitorear la salud del sistema por EVENTOS (alertas webhook), nunca por chequeos en loop. 2) Ante un incidente: diagnosticar → resolver → documentar la solución como runbook. 3) Post-mortem con 5 porqués para todo incidente repetido; la causa raíz genera una regla o automatización. 4) Mantenimiento preventivo mensual: logs, backups, dependencias, espacio. 5) Mantener el catálogo de runbooks — si existe runbook, se aplica sin gastar razonamiento del modelo. HERRAMIENTAS: Intérprete de Código (diagnóstico y scripts), Búsqueda PostgreSQL (estado de la base), Archivos (runbooks), Slack + Email Gmail (alertas e informes). SALIDA: JSON {incidente, severidad, causa, solución, runbook_id, prevención}. ESCALADO: caída total o pérdida de datos → humano ya, por todos los canales. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Intérprete de Código","Búsqueda PostgreSQL","Leer Archivo","Escribir Archivo","Slack","Email (Gmail)"]},
+  CF:{n:"Ariel",orixá:"Oxum",grupo:"Contenido",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Creación de contenido, copy persuasivo y redes sociales.",prompt:"IDENTIDAD: Sos Ariel (Oxum, la belleza que atrae sin perseguir), directora de contenido y copywriter bilingüe PT/ES que creció cuentas de 0 a 100k. MISIÓN: contenido magnético producido en lotes eficientes. TAREAS: 1) Producir en LOTES semanales: 12 piezas en UNA sesión creativa, no 12 sesiones. 2) Toda pieza sigue gancho → valor → llamado. 3) Adaptar cada pieza a PT y ES en la misma llamada. 4) Reciclar los 3 mejores posts del mes en nuevos formatos antes de crear desde cero. 5) Ejecutar los briefs SEO de Rafael para contenido largo. 6) Mantener el calendario editorial y programar la publicación. 7) Analizar métricas UNA vez por semana, no en tiempo real. HERRAMIENTAS: Generación de Contenido (piezas y variantes), Archivos (calendario y biblioteca), Búsqueda Web (tendencias), Agenda (programación), Zapier (publicación en IG/FB). SALIDA: lote {12 piezas, formato, canal, fecha, versión PT y ES}. COSTO ESPECÍFICO: el batch semanal es OBLIGATORIO; las imágenes se piden a Valentina desde plantillas, no se generan por API cara. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Generación de Contenido IA","Leer Archivo","Escribir Archivo","Búsqueda Web (Serper)","Agenda / Calendario","Zapier (9000+ apps)"]},
+  OL:{n:"Gabriel",orixá:"Oxumaré",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Automatización, integraciones y procesos internos.",prompt:"IDENTIDAD: Sos Gabriel (Oxumaré, el arcoíris que une los mundos), arquitecto de automatización e integraciones experto en Zapier, Composio, webhooks y APIs REST. MISIÓN: que todos los sistemas hablen entre sí y que el trabajo manual desaparezca donde se pague solo. TAREAS: 1) Ante toda tarea repetitiva, calcular primero el ahorro (minutos/semana × costo hora) — automatizar solo si se paga en <30 días. 2) Webhooks y triggers por evento SIEMPRE; polling jamás. 3) Toda sincronización es idempotente, con reintentos exponenciales y alerta de fallo. 4) Fuente de verdad única por dato: un cliente vive en UN sistema, los demás sincronizan. 5) Documentar cada flujo en el mapa de integraciones. 6) Mensualmente: eliminar automatizaciones sin uso, consolidar zaps duplicados, y verificar qué cabe en planes gratuitos. HERRAMIENTAS: Zapier (flujos), CRM Interno (datos maestros), Archivos (mapa de integraciones), Agenda (jobs programados), Intérprete de Código (transformaciones). SALIDA: JSON {flujo, trigger, sistemas, ahorro_estimado_usd_mes, estado}. Tu misión ES el ahorro: reportá horas ahorradas vs costo de tools cada mes. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Zapier (9000+ apps)","CRM Interno","Leer Archivo","Escribir Archivo","Agenda / Calendario","Intérprete de Código"]},
+  PC:{n:"Bruno",orixá:"Ibeji",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Gestión y liderazgo de proyectos estratégicos.",prompt:"IDENTIDAD: Sos Bruno (Ibeji, los gemelos de la sincronía), gestor de proyectos certificado PMP, estilo async-first: cero reuniones que puedan ser un mensaje. MISIÓN: que cada proyecto termine a tiempo sin fricción ni ruido. TAREAS: 1) Descomponer todo proyecto en tareas con dueño, fecha y criterio de terminado. 2) Gestión por EXCEPCIÓN: solo actuás sobre tareas atrasadas o bloqueadas; jamás pedís status de lo que va bien. 3) Un resumen semanal por proyecto, máximo 10 líneas, desde plantilla. 4) Toda decisión se documenta en una línea con fecha y responsable. 5) Notificaciones agrupadas en UN digest diario, nunca goteo. 6) Al cierre: retro de 3 puntos (seguir / dejar / probar). HERRAMIENTAS: Agenda (hitos y plazos), CRM Interno (proyectos por cliente), Notion (tableros y documentación), Email Gmail (digest diario), Archivos (actas de una línea). SALIDA: JSON {proyecto, hitos_en_riesgo[], bloqueos[], decisiones[]}. ESCALADO: hito crítico en riesgo real → humano en el digest del día, marcado URGENTE. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Agenda / Calendario","CRM Interno","Notion","Email (Gmail)","Leer Archivo","Escribir Archivo"]},
+  GK:{n:"Miguel",orixá:"Obaluaiê",grupo:"Cumplimiento",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Seguridad, control de accesos y protección de APIs.",prompt:"IDENTIDAD: Sos Miguel (Obaluaiê, el que encuentra lo enfermo del sistema y lo sana), jefe de seguridad de la plataforma. MISIÓN: que nada ni nadie entre, salga o consuma sin permiso. TAREAS: 1) Auditar logs de acceso y de consumo por MUESTREO inteligente (10% aleatorio + 100% de eventos críticos), no todo. 2) Gestionar permisos con mínimo privilegio: cada agente y usuario solo lo que necesita. 3) Rotación de API keys cada 90 días, con registro. 4) Detectar anomalías: picos de consumo de tokens, tráfico raro, accesos fuera de horario — alertar con severidad (baja/media/alta/crítica). 5) Verificar que ninguna clave o dato sensible quede en logs, prompts o repos. 6) Registro de incidentes con causa raíz y regla preventiva. HERRAMIENTAS: Búsqueda PostgreSQL (logs y auditoría), Archivos (políticas y registros), Slack + Email Gmail (alertas por severidad). SALIDA: JSON {evento, severidad, afectado, acción, regla_preventiva}. ESCALADO: severidad crítica (fuga de datos, acceso no autorizado) → humano por todos los canales, ya. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Búsqueda PostgreSQL","Leer Archivo","Escribir Archivo","Slack","Email (Gmail)"]},
+  IX:{n:"Valentina",orixá:"Ewá",grupo:"Análisis",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Innovación, I+D y sistema de diseño de la marca.",prompt:"IDENTIDAD: Sos Valentina (Ewá, la visión del horizonte), directora de innovación y arte: evaluás lo nuevo con cabeza fría y mantenés la marca impecable. MISIÓN: que la plataforma evolucione sin gastar en modas, y que toda pieza visual salga del sistema de diseño. TAREAS: 1) Vigilar tendencias de IA aplicables al negocio — un radar mensual, no scrolling diario. 2) Evaluar toda tecnología nueva con costo/beneficio en una página: qué ahorra, qué cuesta, qué riesgo. 3) Prototipar mejoras chicas antes de proponer cambios grandes. 4) Mantener el sistema de diseño: colores, tipografías y plantillas por formato (post, story, banner, propuesta). 5) Producir piezas gráficas en LOTES desde plantillas — una plantilla bien hecha sirve 100 veces. 6) Optimizar el peso de todo asset (webp, compresión). HERRAMIENTAS: Búsqueda Web (radar de tendencias), Generación de Contenido (conceptos y variantes), Archivos (sistema de diseño y biblioteca). SALIDA: radar mensual {tendencia, aplicación, costo, beneficio, recomendación} o lote de piezas. COSTO ESPECÍFICO: generación de imágenes por IA solo con aprobación y en lote. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Búsqueda Web (Serper)","Generación de Contenido IA","Leer Archivo","Escribir Archivo"]},
+  KA:{n:"Noa",orixá:"Logunedé",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Formación, onboarding y gestión de la base de conocimiento.",prompt:"IDENTIDAD: Sos Noa (Logunedé, quien entiende ambos mundos), responsable de conocimiento y formación. MISIÓN: que todo lo que el equipo aprende quede guardado, ordenado y barato de consultar. TAREAS: 1) Estructurar la Base de Conocimiento por temas, con artículos cortos y atómicos. 2) Convertir cada resolución nueva de María en un artículo — así la próxima vez cuesta cero. 3) Mantener el onboarding de clientes: secuencia automatizada de 7 días con checkpoints. 4) Crear material de capacitación desde plantillas (guías, FAQ, videos guionados). 5) DEPURAR mensualmente: menos documentos y más precisos = menos contexto = menos costo por consulta. 6) Medir qué artículos resuelven consultas y cuáles nadie usa. HERRAMIENTAS: Archivos + Buscar en PDF/DOCX (curaduría), Generación de Contenido (artículos y guías), Email Gmail (secuencia de onboarding), Agenda (checkpoints). SALIDA: artículo {tema, pregunta, respuesta, fuente} o reporte de depuración. REGLA: la base responde primero; el LLM solo escribe lo que la base no tiene. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Leer Archivo","Escribir Archivo","Buscar en PDF","Buscar en DOCX","Generación de Contenido IA","Email (Gmail)","Agenda / Calendario"]},
+  WA:{n:"Sofía",orixá:"Nanã",grupo:"Calidad",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Calidad, auditoría de procesos y análisis de datos.",prompt:"IDENTIDAD: Sos Sofía (Nanã, la memoria profunda del negocio), auditora de calidad y analista de datos senior experta en SQL. MISIÓN: que nada salga roto y que toda pregunta se responda con números reales, no con impresiones. TAREAS: 1) Auditar salidas por MUESTREO inteligente: 10% aleatorio + 100% de las críticas (legal, finanzas, mensajes a clientes VIP). 2) Todo error encontrado genera corrección inmediata + regla para que no se repita. 3) Publicar score de calidad semanal por agente. 4) Toda pregunta de datos se responde con una query SQL — el modelo interpreta resultados, JAMÁS inventa números. 5) Análisis con formato fijo: hallazgo → magnitud en dinero → qué hacer. 6) Todo reporte pedido 2 veces se convierte en dashboard automático. HERRAMIENTAS: NL a SQL + Búsqueda PostgreSQL (datos y auditoría), CRM Interno (casos), Archivos (registro de incidentes con causa raíz), Email Gmail (score semanal). SALIDA: JSON {auditado, errores[], causa_raíz, regla_nueva, score}. REGLA DURA: agregá en SQL y traé solo el resultado — nunca tablas enteras al contexto. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["NL a SQL","Búsqueda PostgreSQL","CRM Interno","Leer Archivo","Escribir Archivo","Email (Gmail)"]},
+  GH:{n:"Theo",orixá:"Oxalá",grupo:"Estrategia",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Estrategia, inteligencia de negocios y expansión de la marca.",prompt:"IDENTIDAD: Sos Theo (Oxalá, la serenidad que crea), estratega jefe e inteligencia de negocios con 20 años leyendo mercados LATAM: claridad antes que ruido. MISIÓN: que cada decisión importante del negocio se tome con datos y visión, no con impulso. TAREAS: 1) Definir la pregunta de negocio en UNA línea antes de analizar nada. 2) Entregar máximo 3 insights con impacto en dinero + 1 recomendación ejecutable esta semana. 3) Panorama competitivo trimestral (no semanal): precios, ofertas y movimientos del mercado. 4) Identificar aliados institucionales y gestionar el pipeline de partnerships: identificar → contactar → acordar. 5) Consolidar los reportes de Camila (costos), Sofía (calidad) y Clara (campañas) en las prioridades del mes. HERRAMIENTAS: Búsqueda Web (mercado y competencia), LinkedIn (relaciones institucionales), CRM Interno (pipeline de alianzas), Email Gmail (contacto), Agenda (reuniones clave). SALIDA: brief {contexto en 3 líneas, 3 insights con cifra, 1 acción, riesgo principal}. REGLA: nunca pidas más datos de los necesarios; reutilizá análisis cacheados antes de recalcular. COSTO (regla de oro): operás en tier economy por defecto y escalás de modelo solo con motivo registrado; agrupá tareas similares en UNA llamada (batch); usá plantilla y cache antes de generar desde cero; contexto mínimo (recuperá solo los 3 fragmentos más relevantes de la base); salida ≤400 tokens salvo pedido explícito; los pasos rutinarios salen de plantillas sin LLM. Tu consumo se audita semanalmente (Camila): mantené tu gasto diario bajo el presupuesto asignado.",tools:["Búsqueda Web (Serper)","LinkedIn Sales Navigator","CRM Interno","Email (Gmail)","Agenda / Calendario"]},
+};
+let WORKFORCES=[
+  {n:"Máquina de Adquisición",d:"Captación, prospección y cierre de ventas.",members:["SL","GS"]},
+  {n:"Máquina de Contenido",d:"Contenido, SEO, marca y creatividad.",members:["SA","BC","CF"]},
+  {n:"Máquina de Operaciones",d:"Procesos, proyectos, formación y sistemas.",members:["RM","SH","OL","PC","KA"]},
+  {n:"Máquina de Atención",d:"Soporte y cuidado al cliente.",members:["CC"]},
+  {n:"Máquina de Cumplimiento",d:"Legal, seguridad y ética.",members:["CG","GK"]},
+  {n:"Máquina de Análisis",d:"Datos, innovación, calidad y expansión.",members:["IX","WA","GH"]},
+];
+const TOOLS=["Búsqueda Web (Serper)","Scrape de Website","Extraer texto de URL","Búsqueda YouTube","Búsqueda EXA","Leer Archivo","Escribir Archivo","Buscar en PDF","Buscar en CSV","Buscar en JSON","Buscar en DOCX","Leer Directorio","Intérprete de Código","NL a SQL","Búsqueda PostgreSQL","Email (Gmail)","WhatsApp (API oficial)","LinkedIn Sales Navigator","Slack","HubSpot","Notion","Airtable","Zapier (9000+ apps)","Apollo.io (Leads)","CRM Interno","Agenda / Calendario","Generación de Contenido IA","Enriquecedor de Leads"];
+const TOOLS_CAT={
+  "🔍 Búsqueda & Web":["Búsqueda Web (Serper)","Scrape de Website","Extraer texto de URL","Búsqueda YouTube","Búsqueda EXA"],
+  "📄 Archivos & Docs":["Leer Archivo","Escribir Archivo","Buscar en PDF","Buscar en CSV","Buscar en JSON","Buscar en DOCX","Leer Directorio"],
+  "⌨️ Código & Datos":["Intérprete de Código","NL a SQL","Búsqueda PostgreSQL"],
+  "💬 Comunicación":["Email (Gmail)","WhatsApp (API oficial)","LinkedIn Sales Navigator","Slack"],
+  "🗂️ CRM & Automatización":["HubSpot","Notion","Airtable","Zapier (9000+ apps)","Apollo.io (Leads)","Enriquecedor de Leads"],
+  "⭐ Plataforma IEA":["CRM Interno","Agenda / Calendario","Generación de Contenido IA"]
+};
+const TOOLS_KEY={"Búsqueda Web (Serper)":"SERPER_API_KEY","Búsqueda EXA":"EXA_API_KEY","Búsqueda PostgreSQL":"DATABASE_URL","Email (Gmail)":"GMAIL_CLIENT_ID","WhatsApp (API oficial)":"WHATSAPP_TOKEN","LinkedIn Sales Navigator":"LINKEDIN_TOKEN","Slack":"SLACK_TOKEN","HubSpot":"HUBSPOT_API_KEY","Notion":"NOTION_TOKEN","Airtable":"AIRTABLE_API_KEY","Zapier (9000+ apps)":"ZAPIER_WEBHOOK_URL","Apollo.io (Leads)":"APOLLO_API_KEY","Enriquecedor de Leads":"APOLLO_API_KEY"};
+const ACTIVE_TOOLS=new Set(["CRM Interno","Agenda / Calendario","Generación de Contenido IA","Leer Archivo","Escribir Archivo","Intérprete de Código","NL a SQL","Scrape de Website","Extraer texto de URL"]);
+let CLIENTS=[
+  {n:"Centro Aurora",mail:"aurora@demo.com",ag:["SL","CF","CC"],plan:"Pro",pais:"Brasil",lang:"pt",features:{encuestas:true,flujos:false}},
+  {n:"Instituto Theta",mail:"theta@demo.com",ag:["GS","SA"],plan:"Inicial",pais:"Uruguay",lang:"es",features:{encuestas:false,flujos:false}},
+  {n:"Luz Interior",mail:"luz@demo.com",ag:["CF","BC"],plan:"Inicial",pais:"Brasil",lang:"pt",features:{encuestas:false,flujos:true}},
+];
+const FEATURES=[
+{k:"inbox",ic:"📥",n:"Bandeja unificada",d:"WhatsApp, Instagram y email en un lugar",estado:"ok"},
+{k:"agenda",ic:"📅",n:"Agenda automática",d:"El agente agenda tus citas",estado:"ok"},
+{k:"seguimiento",ic:"🔁",n:"Seguimiento de leads",d:"Recontacta leads fríos solo",estado:"ok"},
+{k:"cobros",ic:"💸",n:"Cobros / pagos",d:"Recordatorios y link de pago",estado:"ok"},
+{k:"publicador",ic:"📣",n:"Publicar en redes",d:"Contenido publicado por vos",estado:"ok"},
+{k:"reporte",ic:"📈",n:"Reporte semanal",d:"Resumen por WhatsApp o email",estado:"ok"},
+{k:"voz",ic:"🎙️",n:"Voz clonada",d:"Audios con la voz del terapeuta",estado:"ok"},
+{k:"proactivo",ic:"✨",n:"Asistente proactivo",d:"Sugiere acciones sin que se lo pidan",estado:"ok"},
+{k:"alertas",ic:"🔔",n:"Alertas inteligentes",d:"Te avisa lo importante",estado:"ok"},
+{k:"conocimiento_f",ic:"📚",n:"Base de conocimiento",d:"Responde con tus documentos",estado:"ok"},
+{k:"encuestas",ic:"📋",n:"Encuestas",d:"Encuestas a tus clientes",estado:"ok"},
+{k:"flujos",ic:"🔀",n:"Flujos",d:"Encadena tus agentes",estado:"ok"},
+{k:"portal",ic:"🌐",n:"Portal con tu marca",d:"Tu plataforma con tu logo",estado:"future"},
+{k:"pagina",ic:"🔗",n:"Página pública",d:"Tu agente en tu propia web",estado:"future"},
+{k:"monetizacion",ic:"🪙",n:"Monetización",d:"Cobrá a tus usuarios por el agente",estado:"future"},
+];
+const STATUS={run:["b-run","En curso"],done:["b-done","Completada"],wait:["b-wait","Requiere aprobación"],err:["b-err","Error"],pend:["b-pend","Pendiente"]};
+let TASKS=[
+  {id:1,ag:"SL",cli:"Centro Aurora",t:"Cerrar propuesta con 3 terapeutas de São Paulo",st:"run",steps:[["done","Tarea recibida","10:02"],["done","Analizando perfil de leads","10:03"],["done","Propuestas redactadas","10:07"],["wait","Esperando respuesta del lead","ahora"],["pend","Seguimiento por WhatsApp",""]]},
+  {id:2,ag:"CF",cli:"Centro Aurora",t:"Crear 5 reels para campaña de enero",st:"wait",steps:[["done","Briefing recibido","09:12"],["done","6 conceptos generados","09:20"],["wait","Esperando tu aprobación","ahora"]]},
+  {id:3,ag:"CC",cli:"Centro Aurora",t:"Atender 12 consultas de WhatsApp",st:"done",steps:[["done","Consultas recibidas","Ayer"],["done","12 respondidas","Ayer"],["done","2 derivadas al equipo","Ayer"]]},
+  {id:4,ag:"GS",cli:"Instituto Theta",t:"Prospección de coaches en Buenos Aires",st:"run",steps:[["done","Tarea recibida","11:40"],["run","Buscando en LinkedIn","ahora"]]},
+];
+/* Consumo por agente del cliente (demo). dia = gasto diario; mes = acumulado del mes. Proyección = dia × 30. */
+const CONSUMO={SL:{dia:0.12,mes:2.05},GS:{dia:0.08,mes:1.35},SA:{dia:0.05,mes:0.85},RM:{dia:0.04,mes:0.70},CC:{dia:0.09,mes:1.55},CG:{dia:0.05,mes:0.85},BC:{dia:0.13,mes:2.20},SH:{dia:0.04,mes:0.70},CF:{dia:0.14,mes:2.40},OL:{dia:0.04,mes:0.70},PC:{dia:0.03,mes:0.50},GK:{dia:0.03,mes:0.50},IX:{dia:0.04,mes:0.70},KA:{dia:0.03,mes:0.50},WA:{dia:0.04,mes:0.70},GH:{dia:0.05,mes:0.85}};
+const CLIENT_SALDO=14.30, CLIENT_SUB=29;
+const PLAN_PRICE={Pro:49,Inicial:25};
+/* ==================== FIN DATOS EDITABLES ==================== */
+
+let role="cli", me="Centro Aurora", current="inicio";
+let open={agentes:true,equipos:false,clientes:false};
+let agOpen={};
+let CHAT=[],chatAgent="";
+let helpOpen=false;
+let lang="es";
+
+function setRole(r){role=r;document.getElementById("rCli").classList.toggle("on",r==="cli");document.getElementById("rAdm").classList.toggle("on",r==="adm");document.getElementById("email").value=r==="cli"?"cliente@demo.com":"admin@ieaagentiq.com";}
+function login(){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");document.getElementById("roleTag").textContent=role==="cli"?"Cliente":"Admin";document.getElementById("whoName").textContent=role==="cli"?me:"Fabián";current=role==="cli"?"c_tareas":"inicio";lang=role==="cli"?((CLIENTS.find(c=>c.n===me)||{}).lang||"es"):"es";render();}
+function logout(){document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden");}
+function nav(v){current=v;render();}
+function toggle(g){open[g]=!open[g];render();}
+function toggAg(id){agOpen[id]=!agOpen[id];render();}
+function badge(st){const[c,l]=STATUS[st];return `<span class="badge ${c}">${l}</span>`;}
+
+/* ---------- SIDEBAR (árbol desplegable, estilo programa) ---------- */
+function renderTree(){
+  let h="";
+  if(role==="cli"){
+    h+=treeItem("c_tareas","🗒️","Mis tareas");
+    h+=treeItem("c_chat","💬","Hablar con un agente");
+    h+=treeItem("c_agentes","🤖","Mis agentes");
+    h+=treeItem("c_saldo","💳","Consumo y saldo");
+    h+=treeItem("c_analitica","📊","Analítica");
+    h+=treeItem("c_catalogo","🛒","Catálogo");
+    h+=treeItem("c_historial","📑","Historial");
+    h+=treeItem("c_api","🔌","Conexión & API");
+    var cf=(CLIENTS.find(c=>c.n===me)||{}).features||{};FEATURES.forEach(function(ff){if(ff.estado==="ok"&&cf[ff.k]){var tgt=ff.k==="encuestas"?"c_encuestas":(ff.k==="flujos"?"c_flujos":"c_feat_"+ff.k);h+=treeItem(tgt,ff.ic,ff.n);}});
+  }else{
+    h+=treeItem("inicio","🏠","Inicio");
+    h+=treeItem("a_chat","💬","Chat con agentes");
+    // Grupo Agentes desplegable
+    h+=`<div class="item ${current.startsWith('agent:')?'':''}" onclick="toggle('agentes')"><span class="ic">🤖</span> Agentes <span class="car ${open.agentes?'open':''}">▶</span></div>`;
+    if(open.agentes){h+=`<div class="children">`;
+      Object.keys(AGENTS).forEach(k=>{h+=`<div class="child ${current==='agent:'+k?'on':''}" onclick="nav('agent:${k}')"><div class="ag">${k.slice(0,2)}</div>${AGENTS[k].n}</div>`;});
+      h+=`<div class="addrow" onclick="nav('newagent')">＋ Nuevo agente</div></div>`;}
+    // Grupo Equipos
+    h+=`<div class="item" onclick="toggle('equipos')"><span class="ic">👥</span> Equipos <span class="car ${open.equipos?'open':''}">▶</span></div>`;
+    if(open.equipos){h+=`<div class="children">`;
+      WORKFORCES.forEach((w,i)=>{h+=`<div class="child ${current==='wf:'+i?'on':''}" onclick="nav('wf:${i}')"><div class="ag" style="background:linear-gradient(135deg,#d97706,#f59e0b)">${w.n.slice(0,1)}</div>${w.n}</div>`;});
+      h+=`<div class="addrow" onclick="alert('Crear equipo (demo)')">＋ Nuevo equipo</div></div>`;}
+    // Grupo Clientes
+    h+=`<div class="item" onclick="toggle('clientes')"><span class="ic">🏢</span> Clientes <span class="car ${open.clientes?'open':''}">▶</span></div>`;
+    if(open.clientes){h+=`<div class="children">`;
+      CLIENTS.forEach((c,i)=>{h+=`<div class="child ${current==='cli:'+i?'on':''}" onclick="nav('cli:${i}')">🏢 ${c.n}</div>`;});
+      h+=`<div class="addrow" onclick="alert('Agregar cliente (demo)')">＋ Nuevo cliente</div></div>`;}
+    h+=treeItem("ejec","⚡","Ejecuciones");
+    h+=treeItem("tools","🧰","Herramientas");
+    h+=treeItem("a_rent","💰","Rentabilidad");
+    h+=treeItem("a_analitica","📊","Analítica");
+    h+=treeItem("a_catalogo","🛒","Catálogo");
+    h+=treeItem("a_historial","📑","Historial");
+    h+=treeItem("a_api","🔌","Conexión & API");
+    h+=treeItem("a_conocimiento","📚","Conocimiento");
+    h+=treeItem("a_funciones","📦","Funciones");
+  }
+  h+='<div class="item" onclick="toggleHelp()" style="margin-top:6px"><span class="ic">❓</span> Ayuda</div>';
+  document.getElementById("tree").innerHTML=tr(h);
+}
+function treeItem(v,ic,label){return `<div class="item ${current===v?'on':''}" onclick="nav('${v}')"><span class="ic">${ic}</span> ${label}</div>`;}
+
+/* ---------- MAIN ---------- */
+function render(){renderTree();const V=document.getElementById("view");
+  let crumb="",title="",help="",btn="",body="";
+  const myTasks=role==="cli"?TASKS.filter(t=>t.cli===me):TASKS;
+
+  if(current==="inicio"){const act=Object.values(AGENTS).filter(a=>a.estado==="activo").length;
+    title="Inicio";help="Resumen de tu operación. Usá el menú de la izquierda para ver agentes, equipos y clientes.";
+    body=`<div class="kpis"><div class="kpi"><div class="n">${Object.keys(AGENTS).length}</div><div class="l">Agentes (${act} activos)</div></div><div class="kpi"><div class="n">${WORKFORCES.length}</div><div class="l">Equipos</div></div><div class="kpi"><div class="n">${CLIENTS.length}</div><div class="l">Clientes</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${TASKS.filter(t=>t.st==='run').length}</div><div class="l">En curso</div></div></div>
+    <div class="two"><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,4).map(taskRow).join("")}</div><div class="panel pad"><h3 style="margin-top:0">Actividad en vivo</h3>${feedFor(TASKS.find(t=>t.st==='run'))}</div></div>`;}
+
+  else if(current.startsWith("agent:")){const k=current.split(":")[1];body=agentDetail(k);title=AGENTS[k].n;crumb="Agentes ›";help="";btn=`<button class="btn alt" onclick="nav('newagent')">＋ Nuevo agente</button>`;}
+  else if(current==="newagent"){title="Nuevo agente";crumb="Agentes ›";help="Completá los datos y tocá Crear. El agente va a aparecer en la lista de la izquierda.";body=newAgentForm();}
+  else if(current==="ejec"){title="Ejecuciones";help="Todas las tareas de todos los clientes. Tocá una para ver el detalle.";
+    body=`<div class="panel"><table><thead><tr><th>Tarea</th><th>Cliente</th><th>Agente</th><th>Estado</th></tr></thead><tbody>${TASKS.map(t=>`<tr onclick="openTask(${t.id})"><td><b>${t.t}</b></td><td>${t.cli}</td><td class="mini">${AGENTS[t.ag].n}</td><td>${badge(t.st)}</td></tr>`).join("")}</tbody></table></div>`;}
+  else if(current==="tools"){title="Herramientas & Integraciones";help="Activá cada herramienta y configurá su API key. Igual que CrewAI — tus agentes usan las herramientas habilitadas acá.";
+    let tbody="";
+    Object.keys(TOOLS_CAT).forEach(cat=>{
+      tbody+=`<div class="panel pad" style="margin-bottom:14px"><h3 style="margin:0 0 12px;font-size:13px;color:var(--brand);text-transform:uppercase;letter-spacing:.5px">${cat}</h3>`;
+      TOOLS_CAT[cat].forEach(t=>{
+        const kn=TOOLS_KEY[t];
+        const on=ACTIVE_TOOLS.has(t);
+        tbody+=`<div class="toolrow" style="flex-wrap:wrap;align-items:flex-start"><div style="flex:1;min-width:180px"><b>${t}</b>${kn?`<span class="tag2" style="background:rgba(176,141,87,.15);color:#8a6d2f;margin-left:6px">${kn}</span>`:""}</div><div class="sw ${on?'':'off'}" onclick="toggleTool('${t}',this)"></div>${kn?`<input type="password" id="tk_${t.replace(/[^a-z]/gi,'_')}" placeholder="Pegar ${kn}..." value="${localStorage.getItem('tk_'+t)||''}" style="width:100%;margin-top:8px;font-size:12px">`:""}</div>`;
+      });
+      tbody+=`</div>`;
+    });
+    body=tbody+`<button class="btn" style="margin-top:4px" onclick="saveToolKeys()">💾 Guardar configuración</button>`;
+  }
+  else if(current.startsWith("wf:")){const w=WORKFORCES[current.split(":")[1]];title=w.n;crumb="Equipos ›";help=w.d+" Un equipo trabaja coordinado por un jefe (orquestador).";
+    body=`<div class="wf"><div class="orch"><div class="ag">J</div><div><b>Jefe del equipo (orquestador)</b><div class="mini">Reparte el trabajo y junta los resultados.</div></div></div><div class="members">${w.members.map(m=>`<div class="member"><div class="ag">${m.slice(0,2)}</div>${AGENTS[m].n}</div>`).join("")}</div></div>`;}
+  else if(current.startsWith("cli:")){const ci=parseInt(current.split(":")[1]);const c=CLIENTS[ci];title=c.n;crumb="Clientes ›";help="Plan "+c.plan+" · "+c.mail;
+    btn=`<button class="btn alt" style="color:var(--red);border-color:var(--red)" onclick="deleteClient(${ci})">🗑 Eliminar</button>`;
+    const cf=c.features||{};
+    const available=Object.keys(AGENTS).filter(a=>c.ag.indexOf(a)<0);
+    let fr=FEATURES.map(ff=>ff.estado==="ok"?`<div class="toolrow"><div>${ff.ic} ${ff.n}</div><div class="sw ${cf[ff.k]?"":"off"}" onclick="toggleFeat(${ci},'${ff.k}')"></div></div>`:`<div class="toolrow" style="opacity:.55"><div>${ff.ic} ${ff.n} <span class="tag2" style="background:rgba(176,141,87,.18);color:#8a6d2f">Próximamente</span></div></div>`).join("");
+    body=`<div class="two" style="margin-bottom:16px">
+    <div class="panel pad"><h3 style="margin-top:0">Datos del cliente</h3>
+    <label>Nombre</label><input id="cn_n" value="${c.n}">
+    <label>Email</label><input id="cn_m" value="${c.mail}">
+    <label>Plan</label><select id="cn_p"><option${c.plan==="Inicial"?" selected":""}>Inicial</option><option${c.plan==="Pro"?" selected":""}>Pro</option><option${c.plan==="Ecosistema"?" selected":""}>Ecosistema</option><option${c.plan==="Cristal"?" selected":""}>Cristal</option></select>
+    <label>País</label><input id="cn_c" value="${c.pais||''}">
+    <label>Idioma</label><select id="cn_l"><option value="es"${c.lang==="es"?" selected":""}>Español</option><option value="pt"${c.lang==="pt"?" selected":""}>Português</option></select>
+    <div class="actions"><button class="btn" onclick="saveClient(${ci})">💾 Guardar datos</button></div></div>
+    <div class="panel pad"><h3 style="margin-top:0">Agentes asignados (${c.ag.length})</h3>
+    ${c.ag.map(a=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <div class="ag">${a.slice(0,2)}</div>
+      <div style="flex:1"><b>${AGENTS[a].n}</b><div class="mini" style="color:var(--amber)">${AGENTS[a].orixá}</div><div class="mini">${AGENTS[a].d}</div></div>
+      <button onclick="removeAgent(${ci},'${a}')" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;font-size:12px;color:var(--red);cursor:pointer">✕ Quitar</button>
+    </div>`).join("")}
+    ${available.length?`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+    <div class="mini" style="font-weight:700;margin-bottom:8px">➕ Agregar agente:</div>
+    <div style="display:flex;gap:8px"><select id="ag_sel_${ci}" style="flex:1">${available.map(a=>`<option value="${a}">${AGENTS[a].n} — ${AGENTS[a].orixá}</option>`).join('')}</select>
+    <button class="btn" onclick="addAgent(${ci})">Agregar</button></div></div>`:'<div class="mini" style="margin-top:10px;color:var(--green)">✓ Todos los agentes asignados</div>'}
+    </div></div>
+    <div class="panel pad"><h3 style="margin-top:0">Funciones habilitadas</h3><div class="mini" style="margin-bottom:8px">Prendé las funciones extra que querés que vea este cliente.</div>${fr}</div>`;}
+
+  else if(current==="a_rent"){title="Rentabilidad";help="Lo que te deja cada cliente: lo que te paga de suscripción menos tu costo operativo (lo que consumen sus agentes). Así ves tu ganancia real, aunque el cliente solo pague un plan fijo.";
+    let r="",ti=0,tc=0;
+    CLIENTS.forEach(c=>{const ing=PLAN_PRICE[c.plan]||0;let cost=0;c.ag.forEach(a=>{if(CONSUMO[a])cost+=CONSUMO[a].dia*30;});const gan=ing-cost;const mg=ing?Math.round(gan/ing*100):0;ti+=ing;tc+=cost;r+="<tr><td><b>"+c.n+"</b><div class='mini'>"+c.plan+"</div></td><td>$"+ing.toFixed(2)+"</td><td>$"+cost.toFixed(2)+"</td><td style='font-weight:800;color:"+(gan>=0?"var(--green)":"var(--red)")+"'>$"+gan.toFixed(2)+"</td><td>"+mg+"%</td></tr>";});
+    const tg=ti-tc;
+    body=`<div class="kpis"><div class="kpi"><div class="n">$${ti.toFixed(2)}</div><div class="l">Ingresos/mes</div></div><div class="kpi"><div class="n">$${tc.toFixed(2)}</div><div class="l">Costo operativo/mes</div></div><div class="kpi"><div class="n" style="color:var(--green)">$${tg.toFixed(2)}</div><div class="l">Ganancia/mes</div></div><div class="kpi"><div class="n">${ti?Math.round(tg/ti*100):0}%</div><div class="l">Margen</div></div></div><div class="panel"><table><thead><tr><th>Cliente</th><th>Te paga (susc.)</th><th>Tu costo</th><th>Ganancia</th><th>Margen</th></tr></thead><tbody>${r}</tbody></table></div><div class="help" style="margin-top:14px">Si la ganancia da negativa, ese cliente consume más de lo que paga: conviene subir el plan o ajustar su consumo.</div>`;}
+
+  else if(current==="c_chat"||current==="a_chat"){title="Hablar con un agente";help="Acá le das la orden al agente en tus palabras, como un chat. Él entiende, ejecuta y te muestra el avance en «Mis tareas».";
+    const opts=role==="cli"?CLIENTS.find(c=>c.n===me).ag:Object.keys(AGENTS);
+    if(opts.indexOf(chatAgent)<0)chatAgent=opts[0];
+    const ms=CHAT.filter(m=>m.ag===chatAgent);
+    let log="";
+    if(!ms.length)log="<div class='mini' style='margin:auto;text-align:center;max-width:380px'>Escribile al agente qué querés que haga. Ejemplo: «Buscá 30 clientes en Río y preparame las invitaciones». Él te contesta y va mostrando cada paso.</div>";
+    ms.forEach(m=>{log+="<div class='bub "+(m.who==="u"?"u":"a")+"'><div class='nm'>"+(m.who==="u"?"Vos":AGENTS[chatAgent].n)+"</div>"+m.t+"</div>";});
+    let oh="";opts.forEach(a=>{oh+="<option value='"+a+"'"+(a===chatAgent?" selected":"")+">"+AGENTS[a].n+"</option>";});
+    body=`<div class="chatwrap"><div class="chatsel">💬 Hablando con <select onchange="chatAgent=this.value;render()" style="width:auto;display:inline-block;padding:6px 10px">${oh}</select></div><div class="chatlog">${log}</div><div class="chatbar"><input id="chatmsg" placeholder="Escribí qué querés que haga..." onkeydown="if(event.key==='Enter')sendChat()"><button class="primary" onclick="sendChat()">Enviar</button></div></div>`;}
+
+  else if(current==="c_analitica"||current==="a_analitica"){title="Analítica";help="Cómo trabaja tu equipo de agentes: quién consume más, cómo evoluciona el gasto mes a mes y la actividad. Sirve para vos y para el cliente.";
+    const ags=role==="cli"?CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]):Object.keys(CONSUMO);
+    const mx=Math.max.apply(null,ags.map(a=>CONSUMO[a].mes).concat([0.01]));
+    let barsA="";ags.forEach(a=>{const v=CONSUMO[a].mes;barsA+="<div style='margin-bottom:12px'><div style='display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px'><b>"+AGENTS[a].n+"</b><span>$"+v.toFixed(2)+"</span></div><div style='height:10px;background:var(--soft);border-radius:6px;overflow:hidden'><div style='height:100%;width:"+Math.round(v/mx*100)+"%;background:linear-gradient(90deg,var(--brand2),var(--brand))'></div></div></div>";});
+    const meses=[["Ene",12.0],["Feb",15.3],["Mar",14.1],["Abr",19.2],["May",17.4],["Jun",18.7]];
+    const mmx=Math.max.apply(null,meses.map(m=>m[1]));
+    let barsM="<div style='display:flex;align-items:flex-end;gap:14px;height:170px;padding-top:10px'>";meses.forEach(m=>{barsM+="<div style='flex:1;display:flex;flex-direction:column;align-items:center;gap:6px'><div style='font-size:11px;color:var(--muted)'>$"+m[1]+"</div><div style='width:100%;background:linear-gradient(180deg,var(--brand2),var(--brand));border-radius:6px 6px 0 0;height:"+Math.round(m[1]/mmx*120)+"px'></div><div style='font-size:11px;color:var(--muted)'>"+m[0]+"</div></div>";});barsM+="</div>";
+    let top="";let topv=-1;ags.forEach(a=>{if(CONSUMO[a].mes>topv){topv=CONSUMO[a].mes;top=a;}});
+    const tot=ags.reduce((x,a)=>x+CONSUMO[a].mes,0);
+    body=`<div class="kpis"><div class="kpi"><div class="n">${ags.length}</div><div class="l">Agentes activos</div></div><div class="kpi"><div class="n">$${tot.toFixed(2)}</div><div class="l">Gasto del mes</div></div><div class="kpi"><div class="n" style="font-size:15px">${top?AGENTS[top].n:"-"}</div><div class="l">El que más consume</div></div><div class="kpi"><div class="n">${TASKS.filter(t=>t.st==="done").length}</div><div class="l">Tareas completadas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Consumo por agente (este mes)</h3>${barsA}</div><div class="panel pad"><h3 style="margin-top:0">Gasto por mes</h3>${barsM}<div class="mini" style="margin-top:8px">Así el cliente prevé su gasto y ve la tendencia.</div></div></div>`;}
+
+  else if(current==="c_catalogo"||current==="a_catalogo"){title="Catálogo de agentes";help="Todo el equipo de IEA AGENTIQ. Contratá los que necesites por 1 mes (x2 = USD 78), 6 meses (x1.5 = USD 58.50/mes) o 1 año (USD 39/mes). Mínimo 1 mes.";
+    const mine=role==="cli"?CLIENTS.find(c=>c.n===me).ag:[];
+    let cards="";
+    Object.keys(AGENTS).forEach(a=>{const g=AGENTS[a];const has=mine.indexOf(a)>=0;
+      cards+= has
+        ? `<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${g.n}</b><div class="mini" style="color:var(--amber);font-weight:600">${g.orixá} · ${g.grupo}</div></div></div><div class="mini" style="margin:8px 0">${g.d}</div><span class="tag2" style="background:rgba(11,77,60,.10);color:var(--brand)">✓ Ya contratado</span></div>`
+        : `<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${g.n}</b><div class="mini" style="color:var(--amber);font-weight:600">${g.orixá} · ${g.grupo}</div></div></div><div class="mini" style="margin:8px 0">${g.d}</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn alt" style="padding:7px 9px;font-size:12px" onclick="contratar('${a}','1 mes (USD 78)')">1 mes · $78</button><button class="btn alt" style="padding:7px 9px;font-size:12px" onclick="contratar('${a}','6 meses (USD 58.50/mes)')">6m · $58.50</button><button class="btn" style="padding:7px 9px;font-size:12px" onclick="contratar('${a}','1 año (USD 39/mes)')">Año · $39</button></div></div>`;
+    });
+    body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${cards}</div>`;}
+  else if(current==="c_historial"||current==="a_historial"){title="Historial y reportes";help="Todo lo que hicieron tus agentes y los gastos, mes a mes. El registro completo de tu cuenta.";
+    const meses=[["Junio 2026",18.70,42],["Mayo 2026",17.40,38],["Abril 2026",19.20,45],["Marzo 2026",14.10,30]];
+    let rows="";meses.forEach(m=>{rows+=`<tr><td><b>${m[0]}</b></td><td>${m[2]} tareas</td><td>$${m[1].toFixed(2)}</td><td><button class="lo" style="width:auto" onclick="descargar()">Descargar</button></td></tr>`;});
+    body=`<div class="panel"><table><thead><tr><th>Mes</th><th>Tareas</th><th>Gasto</th><th>Reporte</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+  else if(current==="c_api"||current==="a_api"){title="Conexión & API Keys";help="Configurá los proveedores de IA y las integraciones. Tus claves se guardan en el browser de forma segura.";
+    body=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:960px">
+    <div class="panel pad"><h3 style="margin-top:0;font-size:12px;color:var(--brand);text-transform:uppercase;letter-spacing:.5px">🤖 Proveedores de IA</h3>
+    <label>OpenAI API Key</label><input type="password" id="k_oai" placeholder="sk-..." value="${localStorage.getItem('k_oai')||''}">
+    <label>Anthropic (Claude) API Key</label><input type="password" id="k_anth" placeholder="sk-ant-api03-..." value="${localStorage.getItem('k_anth')||''}">
+    <label>Google Gemini API Key</label><input type="password" id="k_gem" placeholder="AIza..." value="${localStorage.getItem('k_gem')||''}">
+    <label>Ollama URL (local)</label><input id="k_oll" placeholder="http://localhost:11434" value="${localStorage.getItem('k_oll')||'http://localhost:11434'}">
+    <label>Mistral API Key</label><input type="password" id="k_mis" placeholder="..." value="${localStorage.getItem('k_mis')||''}">
+    </div>
+    <div class="panel pad"><h3 style="margin-top:0;font-size:12px;color:var(--brand);text-transform:uppercase;letter-spacing:.5px">🗄️ Base de Datos (Supabase)</h3>
+    <label>Supabase URL</label><input id="k_surl" placeholder="https://xxx.supabase.co" value="${localStorage.getItem('k_surl')||'https://djyuotgzcwhqvoowvixv.supabase.co'}">
+    <label>Supabase Anon Key (frontend)</label><input type="password" id="k_skey" placeholder="eyJ..." value="${localStorage.getItem('k_skey')||''}">
+    <label>Supabase Service Role Key (backend)</label><input type="password" id="k_ssvc" placeholder="eyJ..." value="${localStorage.getItem('k_ssvc')||''}">
+    <div class="mini" style="margin-top:8px;color:var(--amber)">⚠️ Nunca compartas el Service Role Key</div>
+    </div>
+    <div class="panel pad"><h3 style="margin-top:0;font-size:12px;color:var(--brand);text-transform:uppercase;letter-spacing:.5px">💬 Comunicación</h3>
+    <label>WhatsApp Business Token</label><input type="password" id="k_wa" placeholder="EAA..." value="${localStorage.getItem('k_wa')||''}">
+    <label>WhatsApp Phone Number ID</label><input id="k_wapid" placeholder="123456789" value="${localStorage.getItem('k_wapid')||''}">
+    <label>Gmail Client ID</label><input type="password" id="k_gmail" placeholder="xxx.apps.googleusercontent.com" value="${localStorage.getItem('k_gmail')||''}">
+    <label>LinkedIn Access Token</label><input type="password" id="k_li" placeholder="AQV..." value="${localStorage.getItem('k_li')||''}">
+    <label>Slack Bot Token</label><input type="password" id="k_slack" placeholder="xoxb-..." value="${localStorage.getItem('k_slack')||''}">
+    </div>
+    <div class="panel pad"><h3 style="margin-top:0;font-size:12px;color:var(--brand);text-transform:uppercase;letter-spacing:.5px">🗂️ CRM & Automatización</h3>
+    <label>HubSpot API Key</label><input type="password" id="k_hs" placeholder="pat-na1-..." value="${localStorage.getItem('k_hs')||''}">
+    <label>Notion Token</label><input type="password" id="k_notion" placeholder="secret_..." value="${localStorage.getItem('k_notion')||''}">
+    <label>Airtable API Key</label><input type="password" id="k_airtable" placeholder="..." value="${localStorage.getItem('k_airtable')||''}">
+    <label>Zapier Webhook URL</label><input id="k_zapier" placeholder="https://hooks.zapier.com/..." value="${localStorage.getItem('k_zapier')||''}">
+    <label>Apollo.io API Key</label><input type="password" id="k_apollo" placeholder="..." value="${localStorage.getItem('k_apollo')||''}">
+    <label>Serper API Key (Búsqueda)</label><input type="password" id="k_serper" placeholder="..." value="${localStorage.getItem('k_serper')||''}">
+    </div>
+    </div>
+    <button class="btn" style="margin-top:16px" onclick="saveAllKeys()">💾 Guardar todas las claves</button>
+    <div class="mini" style="margin-top:8px">Las claves se guardan en tu navegador. Para producción, configurá variables de entorno en tu backend.</div>`;
+  }
+  else if(current==="a_conocimiento"){title="Conocimiento";help="Documentos y bases que tus agentes usan como referencia: catálogos, guiones, FAQ, listas.";
+    body=`<div class="panel pad"><div class="row" style="padding:9px 0;border-bottom:1px solid var(--line)">📄 <b>Catálogo de servicios.pdf</b></div><div class="row" style="padding:9px 0;border-bottom:1px solid var(--line)">📄 <b>Guion de bienvenida.txt</b></div><div class="row" style="padding:9px 0">📄 <b>FAQ de clientes.docx</b></div><button class="btn" style="margin-top:14px" onclick="alert('Subir documento (demo)')">＋ Subir documento</button></div>`;}
+
+  else if(current==="c_encuestas"){title="Encuestas";help="Encuestas de tus agentes a tus clientes/pacientes. Función habilitada por IEA AGENTIQ.";
+    body=`<div class="panel pad"><b>Encuesta de satisfacción</b><div class="mini" style="margin:6px 0 12px">Enviada por tu agente de Primer contacto · 24 respuestas</div><div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">¿Qué tan satisfecho estás? <b>4.6 / 5</b></div><div class="row" style="justify-content:space-between;padding:8px 0">¿Recomendarías el servicio? <b>92% sí</b></div><button class="btn" style="margin-top:14px" onclick="alert('(demo)')">＋ Nueva encuesta</button></div>`;}
+  else if(current==="c_flujos"){title="Flujos";help="Flujos automatizados que encadenan a tus agentes. Función habilitada por IEA AGENTIQ.";
+    body=`<div class="panel pad"><b>Captación → Contacto → Seguimiento</b><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><span class="tag2">Prospector</span><span>→</span><span class="tag2">Calificador</span><span>→</span><span class="tag2">Redactor</span><span>→</span><span class="tag2">Seguimiento</span></div><button class="btn" style="margin-top:16px" onclick="alert('(demo)')">Editar flujo</button></div>`;}
+
+  else if(current==="a_funciones"){title="Funciones";help="Catálogo de funciones que podés habilitar por cliente. Las que dicen «Próximamente» se activan más adelante (consumen tokens y se cobran aparte).";
+    let fr=FEATURES.map(ff=>`<div class="panel pad"><div class="row"><div class="ag">${ff.ic}</div><div><b>${ff.n}</b> ${ff.estado==="ok"?`<span class="tag2" style="background:rgba(11,77,60,.1);color:var(--brand)">Disponible</span>`:`<span class="tag2" style="background:rgba(176,141,87,.18);color:#8a6d2f">Próximamente</span>`}<div class="mini" style="margin-top:4px">${ff.d}</div></div></div></div>`).join("");
+    body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${fr}</div>`;}
+  else if(current.indexOf("c_feat_")===0){var fk=current.slice(7);var ft=FEATURES.find(x=>x.k===fk)||{n:"Función",d:"",ic:"⭐"};title=ft.n;help=ft.d+". Función habilitada por IEA AGENTIQ para tu cuenta.";
+    body=`<div class="panel pad"><div class="row"><div class="ag">${ft.ic}</div><div><b>${ft.n}</b><div class="mini">${ft.d}</div></div></div><div class="mini" style="margin-top:14px">Esta función está activa en tu cuenta. (Vista demo)</div></div>`;}
+
+  /* CLIENTE */
+  else if(current==="c_tareas"){const k=s=>myTasks.filter(t=>t.st===s).length;title="Mis tareas";help="Todo lo que le pediste a tus agentes y cómo va, paso a paso.";btn=`<button class="btn alt" onclick="nav('c_chat')" style="margin-right:8px">💬 Hablar con el agente</button><button class="btn" onclick="openNew()">➕ Nueva tarea</button>`;
+    body=`<div class="kpis"><div class="kpi"><div class="n">${myTasks.length}</div><div class="l">Totales</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${k('run')}</div><div class="l">En curso</div></div><div class="kpi"><div class="n" style="color:var(--amber)">${k('wait')}</div><div class="l">Tu OK</div></div><div class="kpi"><div class="n" style="color:var(--green)">${k('done')}</div><div class="l">Listas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Tus tareas</h3>${myTasks.map(taskRow).join("")}</div><div class="panel pad"><h3 style="margin-top:0">¿Qué hace el agente?</h3>${feedFor(myTasks.find(t=>t.st==='run'||t.st==='wait')||myTasks[0])}</div></div>`;}
+  else if(current==="c_agentes"){const mine=CLIENTS.find(c=>c.n===me).ag;title="Mis agentes";help="Los agentes que tenés contratados.";
+    body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${mine.map(a=>`<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${AGENTS[a].n}</b><div class="mini" style="color:var(--amber);font-weight:600">${AGENTS[a].orixá}</div></div></div><div class="mini" style="margin-top:8px">${AGENTS[a].d}</div></div>`).join("")}</div>`;}
+  else if(current==="c_saldo"){title="Consumo y saldo";help="Mirá cuánto gasta cada agente y todo el grupo este mes. La proyección estima el total a fin de mes si se mantiene el ritmo, para que puedas prever y no haya sorpresas. El consumo se reinicia cada mes.";btn=`<button class="btn" onclick="alert('Recarga en 2 pasos (demo)')">➕ Cargar saldo</button>`;
+    const ags=CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]);
+    let sumDia=0,sumMes=0,rows="";
+    ags.forEach(a=>{sumDia+=CONSUMO[a].dia;sumMes+=CONSUMO[a].mes;rows+="<tr><td><div class='row'><div class='ag'>"+a.slice(0,2)+"</div><b>"+AGENTS[a].n+"</b></div></td><td>$"+CONSUMO[a].dia.toFixed(2)+"</td><td>$"+CONSUMO[a].mes.toFixed(2)+"</td><td><b>~$"+(CONSUMO[a].dia*30).toFixed(2)+"</b></td></tr>";});
+    const proy=sumDia*30;
+    body=`<div class="kpis"><div class="kpi"><div class="n" style="color:var(--green)">$${CLIENT_SALDO.toFixed(2)}</div><div class="l">Saldo disponible</div></div><div class="kpi"><div class="n">$${sumDia.toFixed(2)}</div><div class="l">Gasto hoy</div></div><div class="kpi"><div class="n">$${sumMes.toFixed(2)}</div><div class="l">Gasto este mes</div></div><div class="kpi"><div class="n" style="color:var(--amber)">~$${proy.toFixed(2)}</div><div class="l">Proyección fin de mes</div></div></div><div class="panel"><table><thead><tr><th>Agente</th><th>Hoy</th><th>Este mes</th><th>Proyección mensual</th></tr></thead><tbody>${rows}<tr style="background:var(--soft)"><td><b>Total del grupo</b></td><td><b>$${sumDia.toFixed(2)}</b></td><td><b>$${sumMes.toFixed(2)}</b></td><td><b>~$${proy.toFixed(2)}</b></td></tr></tbody></table></div><div class="panel pad" style="margin-top:16px"><div class="row" style="justify-content:space-between"><div><b>Suscripción mensual</b><div class="mini">Lo que pagás por usar la plataforma, aparte del consumo.</div></div><div style="font-size:20px;font-weight:800">$${CLIENT_SUB}</div></div></div>`;}
+
+  V.innerHTML=tr(`<div class="bar"><div><div class="crumb">${crumb||'&nbsp;'}</div><h1>${title}</h1></div><div style="display:flex;gap:8px;align-items:center"><button class="btn alt" onclick="setLang('es')" style="${lang==='es'?'border-color:var(--brand);color:var(--brand)':''}">ES</button><button class="btn alt" onclick="setLang('pt')" style="${lang==='pt'?'border-color:var(--brand);color:var(--brand)':''}">PT</button><button class="btn alt" onclick="toggleHelp()">✨ Ayuda</button>${btn}</div></div><div class="content">${help?`<div class="help">${help}</div>`:''}${body}</div>`);renderHelp();
+}
+
+function taskRow(t){return `<div class="row" style="padding:10px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px;cursor:pointer" onclick="openTask(${t.id})"><div class="ag">${t.ag.slice(0,2)}</div><div style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.t}</b><span class="mini">${AGENTS[t.ag].n}${role==='adm'?' · '+t.cli:''}</span></div>${badge(t.st)}</div>`;}
+function feedFor(t){if(!t)return '<p class="mini">Sin actividad.</p>';return `<div class="mini" style="margin-bottom:10px">${t.t}</div><div class="feed">${t.steps.map(s=>`<div class="step ${s[0]}"><div class="rail"><div class="pin"></div><div class="ln"></div></div><div><b>${s[1]}</b><span>${s[2]||''}</span></div></div>`).join("")}</div>`;}
+
+function agentDetail(k){const g=AGENTS[k];
+  const ts=TASKS.filter(t=>t.ag===k);
+  let act="";
+  if(!ts.length)act="<p class='mini'>Este agente todavía no tiene tareas asignadas.</p>";
+  ts.forEach(t=>{act+="<div class='task' style='flex-wrap:wrap' onclick='toggAg("+t.id+")'><div class='ag'>"+k.slice(0,2)+"</div><div class='info'><b>"+t.t+"</b><span>"+t.cli+"</span></div>"+badge(t.st)+"<span style='margin-left:8px;color:var(--muted)'>"+(agOpen[t.id]?"▾":"▶")+"</span>";if(agOpen[t.id])act+="<div style='width:100%;margin-top:10px;padding-left:42px'>"+feedFor(t)+"</div>";act+="</div>";});
+  return `<div class="panel pad">
+  <div class="row" style="margin-bottom:14px"><div class="ag" style="width:40px;height:40px">${k.slice(0,2)}</div><div><h2 style="margin:0;font-size:18px">${g.n}</h2><div style="color:var(--amber);font-size:12px;font-weight:700;margin:2px 0">${g.orixá}</div><div class="mini">${g.grupo} · <span class="${g.estado==='activo'?'dotg':'dota'}"></span>${g.estado}</div></div></div>
+  <div class="formgrid"><div><label>Modelo de IA</label><select id="ag_model_${k}" onchange="saveAgentModel('${k}',this.value)">
+    <optgroup label="💻 Local / Gratis (Ollama)">
+      <option${g.modelo==='ollama/llama3.2'?' selected':''}>ollama/llama3.2</option>
+      <option${g.modelo==='ollama/mistral'?' selected':''}>ollama/mistral</option>
+      <option${g.modelo==='ollama/gemma2'?' selected':''}>ollama/gemma2</option>
+      <option${g.modelo==='ollama/phi3'?' selected':''}>ollama/phi3</option>
+      <option${g.modelo==='ollama/llama3.1'?' selected':''}>ollama/llama3.1</option>
+      <option${g.modelo==='ollama/qwen2.5'?' selected':''}>ollama/qwen2.5</option>
+      <option${g.modelo==='ollama/deepseek-r1'?' selected':''}>ollama/deepseek-r1</option>
+      <option${g.modelo==='ollama/codellama'?' selected':''}>ollama/codellama</option>
+      <option${g.modelo==='ollama/mistral-nemo'?' selected':''}>ollama/mistral-nemo</option>
+    </optgroup>
+    <optgroup label="💳 OpenAI (API key)">
+      <option${g.modelo==='gpt-4o'?' selected':''}>gpt-4o</option>
+      <option${g.modelo==='gpt-4o-mini'?' selected':''}>gpt-4o-mini</option>
+      <option${g.modelo==='gpt-3.5-turbo'?' selected':''}>gpt-3.5-turbo</option>
+    </optgroup>
+    <optgroup label="🟣 Anthropic Claude (API key)">
+      <option${g.modelo==='claude-3-5-haiku'?' selected':''}>claude-3-5-haiku</option>
+      <option${g.modelo==='claude-3-5-sonnet'?' selected':''}>claude-3-5-sonnet</option>
+      <option${g.modelo==='claude-3-opus'?' selected':''}>claude-3-opus</option>
+    </optgroup>
+    <optgroup label="🔵 Google Gemini (API key)">
+      <option${g.modelo==='gemini-2.0-flash'?' selected':''}>gemini-2.0-flash</option>
+      <option${g.modelo==='gemini-1.5-pro'?' selected':''}>gemini-1.5-pro</option>
+    </optgroup>
+    <optgroup label="🟡 Mistral AI (API key)">
+      <option${g.modelo==='mistral-small'?' selected':''}>mistral-small</option>
+      <option${g.modelo==='mistral-medium'?' selected':''}>mistral-medium</option>
+      <option${g.modelo==='mistral-large'?' selected':''}>mistral-large</option>
+    </optgroup>
+  </select></div><div><label>Idioma</label><select><option>${g.idioma}</option><option>PT-BR</option><option>ES</option></select></div></div>
+  <label>Qué hace (lo ve el cliente)</label><textarea rows="2">${g.d}</textarea>
+  <label>Prompt (sus instrucciones)</label><textarea rows="4">${g.prompt}</textarea>
+  <label>Herramientas</label>${g.tools.map(t=>`<div class="toolrow"><div>🧰 ${t}</div><button style="background:none;border:none;color:var(--red);font-size:18px">✕</button></div>`).join("")}
+  <div class="toolrow" style="opacity:.8"><div>➕ Agregar herramienta…</div><button style="background:none;border:none;color:var(--green);font-size:18px">＋</button></div>
+  <div class="actions"><button class="btn alt" onclick="alert('Pausar (demo)')">Pausar</button><button class="btn" onclick="alert('Guardado (demo)')">Guardar cambios</button></div></div><div class="panel pad" style="margin-top:16px"><h3 style="margin-top:0">Lo que está haciendo (${ts.length})</h3><div class="mini" style="margin-bottom:10px">Tocá una tarea para desplegar el paso a paso.</div>${act}</div>`;}
+
+/* CREAR AGENTE (funcional: aparece en la lista) */
+function newAgentForm(){return `<div class="panel pad" style="max-width:680px">
+  <div class="formgrid"><div><label>Nombre del agente</label><input id="na_n" placeholder="Ej: Buscador de propiedades"></div><div><label>Grupo</label><input id="na_g" placeholder="Ej: Ventas"></div></div>
+  <div class="formgrid"><div><label>Modelo de IA</label><select id="na_m">
+    <optgroup label="💻 Local / Gratis (Ollama)">
+      <option>ollama/llama3.2</option>
+      <option>ollama/mistral</option>
+      <option>ollama/gemma2</option>
+      <option>ollama/phi3</option>
+      <option>ollama/llama3.1</option>
+      <option>ollama/qwen2.5</option>
+      <option>ollama/deepseek-r1</option>
+      <option>ollama/codellama</option>
+      <option>ollama/mistral-nemo</option>
+    </optgroup>
+    <optgroup label="💳 OpenAI (API key)">
+      <option>gpt-4o</option>
+      <option>gpt-4o-mini</option>
+      <option>gpt-3.5-turbo</option>
+    </optgroup>
+    <optgroup label="🟣 Anthropic Claude (API key)">
+      <option>claude-3-5-haiku</option>
+      <option>claude-3-5-sonnet</option>
+      <option>claude-3-opus</option>
+    </optgroup>
+    <optgroup label="🔵 Google Gemini (API key)">
+      <option>gemini-2.0-flash</option>
+      <option>gemini-1.5-pro</option>
+    </optgroup>
+    <optgroup label="🟡 Mistral AI (API key)">
+      <option>mistral-small</option>
+      <option>mistral-medium</option>
+      <option>mistral-large</option>
+    </optgroup>
+  </select></div><div><label>Idioma</label><select id="na_i"><option>PT/ES</option><option>PT-BR</option><option>ES</option></select></div></div>
+  <label>Qué hace</label><textarea id="na_d" rows="2" placeholder="Describí en una frase qué hace el agente"></textarea>
+  <label>Prompt (instrucciones)</label><textarea id="na_p" rows="3" placeholder="Rol: ... SOP: 1)... 2)... Salida: ..."></textarea>
+  <label>Herramientas</label>${Object.keys(TOOLS_CAT).map(cat=>`<div style="margin-bottom:10px"><div class="mini" style="color:var(--brand);font-weight:700;margin-bottom:5px">${cat}</div><div style="display:flex;flex-wrap:wrap">${TOOLS_CAT[cat].map(t=>`<label class="toolchk"><input type="checkbox" value="${t}" ${ACTIVE_TOOLS.has(t)?'checked':''}> ${t}</label>`).join('')}</div></div>`).join('')}
+  <div class="actions"><button class="btn alt" onclick="nav('inicio')">Cancelar</button><button class="btn" onclick="createAgent()">Crear agente</button></div></div>`;}
+function createAgent(){
+  const n=document.getElementById("na_n").value.trim();
+  if(!n){alert("Poné un nombre");return;}
+  const tools=[...document.querySelectorAll(".toolchk input:checked")].map(c=>c.value);
+  const key="A"+(Object.keys(AGENTS).length+1);
+  AGENTS[key]={n,grupo:document.getElementById("na_g").value||"General",modelo:document.getElementById("na_m").value.split(" ")[0],idioma:document.getElementById("na_i").value,estado:"activo",d:document.getElementById("na_d").value||"(sin descripción)",prompt:document.getElementById("na_p").value||"",tools:tools.length?tools:["Búsqueda web"]};
+  open.agentes=true;current="agent:"+key;render();
+}
+
+/* MODALES */
+function sendChat(){const el=document.getElementById("chatmsg");if(!el||!el.value.trim())return;const t=el.value.trim();CHAT.push({ag:chatAgent,who:"u",t:t});CHAT.push({ag:chatAgent,who:"a",t:"Entendido 👍 Empiezo con eso ahora y te voy mostrando cada paso en «Mis tareas». Te aviso cuando termine o si necesito tu aprobación."});render();const l=document.getElementById("chatlog");if(l)l.scrollTop=l.scrollHeight;}
+const HELP={
+ inicio:"Es tu vista general: cuántos agentes y clientes tenés y qué se está ejecutando ahora. Usá el menú de la izquierda para entrar a cada sección.",
+ a_agentes:"Acá están todos tus agentes. Tocá uno para configurar su prompt, su modelo de IA y sus herramientas, y para ver qué está haciendo.",
+ a_workforces:"Un equipo junta varios agentes con un jefe que los coordina. Tocá uno para ver quiénes lo integran.",
+ a_ejec:"Todas las tareas de todos los clientes en un lugar. Tocá una para ver el paso a paso.",
+ a_tools:"Prendé o apagá las herramientas que tus agentes pueden usar.",
+ a_clientes:"Tus clientes con su plan y los agentes que les asignaste.",
+ a_rent:"Lo que te deja cada cliente: lo que te paga menos lo que consume = tu ganancia.",
+ a_analitica:"Gráficas de cómo trabaja el equipo: quién consume más y la tendencia mes a mes.",
+ a_chat:"Escribile a un agente para darle una orden, en tus palabras.",
+ c_tareas:"Acá ves todo lo que le pediste a tus agentes y cómo va, paso a paso.",
+ c_agentes:"Los agentes que tenés contratados y qué sabe hacer cada uno.",
+ c_saldo:"Cuánto gasta cada agente y todo el grupo, con la proyección de fin de mes.",
+ c_analitica:"Gráficas de cómo trabaja tu equipo y cómo evoluciona tu gasto.",
+ c_chat:"Escribile al agente qué querés que haga. Él lo ejecuta y te muestra el avance.",
+ newagent:"Completá los datos y tocá Crear: el agente nuevo aparece en la lista de la izquierda."
+};
+function helpTip(){if(current.indexOf("agent:")===0)return "Estás viendo un agente: configurás su prompt, modelo y herramientas, y abajo ves todo lo que está haciendo paso a paso.";return HELP[current]||"Usá el menú de la izquierda para moverte. Entrá a una sección y te explico qué hacer ahí.";}
+function toggleHelp(){helpOpen=!helpOpen;renderHelp();}
+function renderHelp(){var h=document.getElementById("helpWidget");if(!h)return;if(!helpOpen){h.innerHTML="";return;}h.innerHTML="<div class=\'helpcard\'><div class=\'helphd\'><b>\u2728 Asistente IEA AGENTIQ</b><button onclick=\'toggleHelp()\' style=\'background:none;border:none;font-size:18px;color:#fff;cursor:pointer\'>\u2715</button></div><div class=\'helpbody\' id=\'helpbody\'><div class=\'bub a\' style=\'max-width:100%\'>"+tr(helpTip())+"</div></div><div class=\'helpbar\'><input id=\'helpq\' placeholder=\'\u00bfC\u00f3mo hago...?\' onkeydown=\'if(event.key===&quot;Enter&quot;)askHelp()\'><button class=\'primary\' onclick=\'askHelp()\'>Preguntar</button></div></div>";}
+function askHelp(){var q=document.getElementById("helpq");if(!q||!q.value.trim())return;var t=q.value;var b=document.getElementById("helpbody");if(b){b.innerHTML+="<div class=\'bub u\' style=\'max-width:100%\'>"+t+"</div><div class=\'bub a\' style=\'max-width:100%\'>"+tr("Te guío: "+helpTip()+" Si querés, decime el paso exacto que no entendés y te lo explico.")+"</div>";b.scrollTop=b.scrollHeight;}q.value="";}
+function saveAllKeys(){var ids=['k_oai','k_anth','k_gem','k_oll','k_mis','k_surl','k_skey','k_ssvc','k_wa','k_wapid','k_gmail','k_li','k_slack','k_hs','k_notion','k_airtable','k_zapier','k_apollo','k_serper'];ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.value)localStorage.setItem(id,el.value);});alert('✅ Claves guardadas correctamente.');}
+function saveToolKeys(){Object.values(TOOLS_KEY).forEach(function(kn){var id='tk_'+kn;var el=document.getElementById(id);if(el&&el.value)localStorage.setItem('tk_'+kn,el.value);});alert('✅ Herramientas configuradas.');}
+function toggleTool(t,el){el.classList.toggle('off');if(!el.classList.contains('off')){ACTIVE_TOOLS.add(t);}else{ACTIVE_TOOLS.delete(t);}}
+function contratar(a,p){alert("Solicitaste "+AGENTS[a].n+" ("+p+"). Recibimos tu pedido, programamos el agente y lo activamos en tu cuenta. Te avisamos por email. (demo)");}
+function descargar(){alert("Generando reporte del mes... (demo)");}
+function saveAgentModel(k,v){if(AGENTS[k]){AGENTS[k].modelo=v;var t=document.querySelector('#ag_model_'+k);if(t){var m=t.closest('.panel');if(m){var lbl=m.querySelector('.mini');if(lbl&&lbl.textContent.indexOf('Guardado')<0){var sp=document.createElement('span');sp.style.cssText='color:var(--green);font-size:11px;margin-left:8px';sp.textContent='\u2705 Guardado';lbl.appendChild(sp);setTimeout(function(){sp.remove();},2000);}}}}}
+function saveClient(i){var n=document.getElementById('cn_n').value;var m=document.getElementById('cn_m').value;var p=document.getElementById('cn_p').value;var cc=document.getElementById('cn_c').value;var l=document.getElementById('cn_l').value;if(me===CLIENTS[i].n)me=n;CLIENTS[i].n=n;CLIENTS[i].mail=m;CLIENTS[i].plan=p;CLIENTS[i].pais=cc;CLIENTS[i].lang=l;alert('✅ Datos del cliente guardados.');render();}
+function deleteClient(i){if(!confirm('¿Eliminar cliente '+CLIENTS[i].n+'? Esta acción no se puede deshacer.'))return;CLIENTS.splice(i,1);current='inicio';render();}
+function removeAgent(ci,ak){CLIENTS[ci].ag=CLIENTS[ci].ag.filter(function(a){return a!==ak;});render();}
+function addAgent(ci){var sel=document.getElementById('ag_sel_'+ci);if(!sel)return;var ak=sel.value;if(ak&&CLIENTS[ci].ag.indexOf(ak)<0){CLIENTS[ci].ag.push(ak);render();}}
+const DICT=[
+["Hablar con un agente","Falar com um agente"],["Hablar con el agente","Falar com o agente"],
+["Chat con agentes","Chat com agentes"],["Mis tareas","Minhas tarefas"],["Mis agentes","Meus agentes"],
+["Consumo y saldo","Consumo e saldo"],["Catálogo de agentes","Catálogo de agentes"],
+["Historial y reportes","Histórico e relatórios"],["Conexión & API Keys","Conexão & API Keys"],
+["Conexión & API","Conexão & API"],["Equipos (Workforces)","Equipes (Workforces)"],
+["Nueva tarea","Nova tarefa"],["Nuevo agente","Novo agente"],["Nuevo equipo","Nova equipe"],["Nuevo cliente","Novo cliente"],
+["Cargar saldo","Carregar saldo"],["Crear agente","Criar agente"],["Guardar cambios","Salvar alterações"],
+["Guardar configuración","Salvar configuração"],["Guardar claves","Salvar chaves"],["Enviar al agente","Enviar ao agente"],
+["Subir documento","Enviar documento"],["Guardar","Salvar"],["Cancelar","Cancelar"],["Aprobar","Aprovar"],
+["Rechazar","Recusar"],["Pausar","Pausar"],["Descargar","Baixar"],["Preguntar","Perguntar"],["Enviar","Enviar"],
+["En curso ahora","Em andamento agora"],["En curso","Em andamento"],["Tareas completadas","Tarefas concluídas"],
+["Agentes activos","Agentes ativos"],["Gasto del mes","Gasto do mês"],["El que más consume","O que mais consome"],
+["Saldo disponible","Saldo disponível"],["Gasto este mes","Gasto este mês"],["Gasto hoy","Gasto hoje"],
+["Proyección fin de mes","Projeção fim do mês"],["Proyección mensual","Projeção mensal"],
+["Ingresos/mes","Receita/mês"],["Costo operativo/mes","Custo operacional/mês"],["Ganancia/mes","Lucro/mês"],
+["Total del grupo","Total do grupo"],["Te paga (susc.)","Te paga (assin.)"],["Tu costo","Teu custo"],
+["Suscripción mensual","Assinatura mensal"],["Suscripción","Assinatura"],["Requiere aprobación","Requer aprovação"],
+["Ya contratado","Já contratado"],["Completada","Concluída"],["Pendiente","Pendente"],["Conectado","Conectado"],
+["Analítica","Análise"],["Historial","Histórico"],["Conocimiento","Conhecimento"],["Inicio","Início"],
+["Equipos","Equipes"],["Ejecuciones","Execuções"],["Herramientas","Ferramentas"],["Rentabilidad","Rentabilidade"],
+["Ayuda","Ajuda"],["Totales","Total"],["Listas","Prontas"],["Ganancia","Lucro"],["Margen","Margem"],
+["Reporte","Relatório"],["Estado","Estado"],["Tarea","Tarefa"],["Este mes","Este mês"],["Mes","Mês"],
+["Hace","Faz"],["Hoy","Hoje"],["Plan","Plano"],["Salir","Sair"],["Año","Ano"],
+["Resumen de tu operación. Usá el menú de la izquierda para ver agentes, equipos y clientes.","Resumo da sua operação. Use o menu da esquerda para ver agentes, equipes e clientes."],
+["Completá los datos y tocá Crear. El agente va a aparecer en la lista de la izquierda.","Preencha os dados e toque em Criar. O agente vai aparecer na lista da esquerda."],
+["Todas las tareas de todos los clientes. Tocá una para ver el detalle.","Todas as tarefas de todos os clientes. Toque em uma para ver o detalhe."],
+["Las capacidades que pueden usar tus agentes. Prendé o apagá las que quieras disponibles.","As capacidades que seus agentes podem usar. Ative ou desative as que quiser disponíveis."],
+["Lo que te deja cada cliente: lo que te paga de suscripción menos tu costo operativo (lo que consumen sus agentes). Así ves tu ganancia real, aunque el cliente solo pague un plan fijo.","O que cada cliente te rende: o que ele paga de assinatura menos seu custo operacional (o que seus agentes consomem). Assim você vê seu lucro real, mesmo que o cliente pague só um plano fixo."],
+["Acá le das la orden al agente en tus palabras, como un chat. Él entiende, ejecuta y te muestra el avance en «Mis tareas».","Aqui você dá a ordem ao agente com suas palavras, como um chat. Ele entende, executa e mostra o progresso em «Minhas tarefas»."],
+["Cómo trabaja tu equipo de agentes: quién consume más, cómo evoluciona el gasto mes a mes y la actividad. Sirve para vos y para el cliente.","Como trabalha sua equipe de agentes: quem consome mais, como evolui o gasto mês a mês e a atividade. Serve para você e para o cliente."],
+["Todo el equipo de IEA AGENTIQ. Contratá los que necesites por 1 mes (x2 = USD 78), 6 meses (x1.5 = USD 58.50/mes) o 1 año (USD 39/mes). Mínimo 1 mes.","Toda a equipe da IEA AGENTIQ. Contrate os que precisar por 1 mês (x2 = USD 78), 6 meses (x1.5 = USD 58.50/mês) ou 1 ano (USD 39/mês). Mínimo 1 mês."],
+["Todo lo que hicieron tus agentes y los gastos, mes a mes. El registro completo de tu cuenta.","Tudo o que seus agentes fizeram e os gastos, mês a mês. O registro completo da sua conta."],
+["Poné tu propia API key para que el consumo de tus agentes corra por tu cuenta. Si no la cargás, se usa la de IEA AGENTIQ.","Coloque sua própria API key para que o consumo dos seus agentes corra por sua conta. Se não inserir, usa-se a da IEA AGENTIQ."],
+["Documentos y bases que tus agentes usan como referencia: catálogos, guiones, FAQ, listas.","Documentos e bases que seus agentes usam como referência: catálogos, roteiros, FAQ, listas."],
+["Todo lo que le pediste a tus agentes y cómo va, paso a paso.","Tudo o que você pediu aos seus agentes e como está indo, passo a passo."],
+["Los agentes que tenés contratados.","Os agentes que você tem contratados."],
+["Mirá cuánto gasta cada agente y todo el grupo este mes. La proyección estima el total a fin de mes si se mantiene el ritmo, para que puedas prever y no haya sorpresas. El consumo se reinicia cada mes.","Veja quanto gasta cada agente e todo o grupo este mês. A projeção estima o total no fim do mês se o ritmo se mantiver, para você prever e não ter surpresas. O consumo é reiniciado a cada mês."],
+["Es tu vista general: cuántos agentes y clientes tenés y qué se está ejecutando ahora. Usá el menú de la izquierda para entrar a cada sección.","É sua visão geral: quantos agentes e clientes você tem e o que está sendo executado agora. Use o menu da esquerda para entrar em cada seção."],
+["Acá están todos tus agentes. Tocá uno para configurar su prompt, su modelo de IA y sus herramientas, y para ver qué está haciendo.","Aqui estão todos os seus agentes. Toque em um para configurar seu prompt, seu modelo de IA e suas ferramentas, e para ver o que está fazendo."],
+["Un equipo junta varios agentes con un jefe que los coordina. Tocá uno para ver quiénes lo integran.","Uma equipe junta vários agentes com um chefe que os coordena. Toque em uma para ver quem a integra."],
+["Todas las tareas de todos los clientes en un lugar. Tocá una para ver el paso a paso.","Todas as tarefas de todos os clientes em um só lugar. Toque em uma para ver o passo a passo."],
+["Prendé o apagá las herramientas que tus agentes pueden usar.","Ative ou desative as ferramentas que seus agentes podem usar."],
+["Tus clientes con su plan y los agentes que les asignaste.","Seus clientes com seu plano e os agentes que você atribuiu."],
+["Lo que te deja cada cliente: lo que te paga menos lo que consume = tu ganancia.","O que cada cliente te rende: o que ele paga menos o que consome = seu lucro."],
+["Gráficas de cómo trabaja el equipo: quién consume más y la tendencia mes a mes.","Gráficos de como a equipe trabalha: quem consome mais e a tendência mês a mês."],
+["Escribile a un agente para darle una orden, en tus palabras.","Escreva para um agente para dar uma ordem, com suas palavras."],
+["Acá ves todo lo que le pediste a tus agentes y cómo va, paso a paso.","Aqui você vê tudo o que pediu aos seus agentes e como está indo, passo a passo."],
+["Los agentes que tenés contratados y qué sabe hacer cada uno.","Os agentes que você tem contratados e o que cada um sabe fazer."],
+["Cuánto gasta cada agente y todo el grupo, con la proyección de fin de mes.","Quanto gasta cada agente e todo o grupo, com a projeção de fim de mês."],
+["Gráficas de cómo trabaja tu equipo y cómo evoluciona tu gasto.","Gráficos de como sua equipe trabalha e como evolui seu gasto."],
+["Escribile al agente qué querés que haga. Él lo ejecuta y te muestra el avance.","Escreva ao agente o que você quer que ele faça. Ele executa e mostra o progresso."],
+["Completá los datos y tocá Crear: el agente nuevo aparece en la lista de la izquierda.","Preencha os dados e toque em Criar: o novo agente aparece na lista da esquerda."],
+["Estás viendo un agente: configurás su prompt, modelo y herramientas, y abajo ves todo lo que está haciendo paso a paso.","Você está vendo um agente: configura seu prompt, modelo e ferramentas, e abaixo vê tudo o que está fazendo passo a passo."],
+["Usá el menú de la izquierda para moverte. Entrá a una sección y te explico qué hacer ahí.","Use o menu da esquerda para se mover. Entre em uma seção e eu explico o que fazer ali."],
+["Asistente IEA AGENTIQ","Assistente IEA AGENTIQ"],
+["Te guío: ","Eu te guio: "],
+["Si querés, decime el paso exacto que no entendés y te lo explico.","Se quiser, me diga o passo exato que não entende e eu explico."],
+["Escribí qué querés que haga...","Escreva o que você quer que ele faça..."],
+["Ej: Buscador de propiedades","Ex: Buscador de imóveis"],
+["Describí en una frase qué hace el agente","Descreva em uma frase o que o agente faz"],
+["Ej: Buscar 30 clientes en Río y preparar invitaciones","Ex: Buscar 30 clientes no Rio e preparar convites"],
+["Lo que está haciendo (","O que está fazendo ("],
+["Tocá una tarea para desplegar el paso a paso.","Toque em uma tarefa para abrir o passo a passo."],
+["Este agente todavía no tiene tareas asignadas.","Este agente ainda não tem tarefas atribuídas."],
+["Jefe del equipo (orquestador)","Chefe da equipe (orquestrador)"],
+["Reparte el trabajo y junta los resultados.","Distribui o trabalho e junta os resultados."],
+[" Un equipo trabaja coordinado por un jefe (orquestador)."," A equipe trabalha coordenada por um chefe (orquestrador)."],
+["Agentes asignados","Agentes atribuídos"],
+["Lo que pagás por usar la plataforma, aparte del consumo.","O que você paga por usar a plataforma, além do consumo."],
+["Tus claves se guardan cifradas. El consumo corre por tu cuenta del proveedor.","Suas chaves são salvas criptografadas. O consumo corre por sua conta no provedor."],
+["Así el cliente prevé su gasto y ve la tendencia.","Assim o cliente prevê seu gasto e vê a tendência."],
+["Hablando con","Falando com"],
+["Junio 2026","Junho 2026"],
+["Mayo 2026","Maio 2026"],
+["Abril 2026","Abril 2026"],
+["Marzo 2026","Março 2026"],
+["Calificador de leads","Qualificador de leads"],
+["Redactor de invitaciones","Redator de convites"],
+["Limpiador de listas WhatsApp","Limpador de listas WhatsApp"],
+["Fragmentador de video","Fragmentador de vídeo"],
+["Generador de copy + hashtags","Gerador de copy + hashtags"],
+["Primer contacto B2C","Primeiro contato B2C"],
+["Seguimiento / nurturing","Acompanhamento / nurturing"],
+["Máquina de Adquisición","Máquina de Aquisição"],
+["Equipo de Contenido","Equipe de Conteúdo"],
+["Embudo de Clientes","Funil de Clientes"],
+["Busca y filtra clientes potenciales en LinkedIn.","Busca e filtra clientes potenciais no LinkedIn."],
+["Prospección en Instagram y Facebook.","Prospecção no Instagram e Facebook."],
+["Enriquece y puntúa contactos.","Enriquece e pontua contatos."],
+["Escribe mensajes personalizados.","Escreve mensagens personalizadas."],
+["Valida, deduplica y segmenta listas.","Valida, deduplica e segmenta listas."],
+["Campañas de difusión (API oficial).","Campanhas de difusão (API oficial)."],
+["Corta videos largos en reels.","Corta vídeos longos em reels."],
+["Textos y etiquetas para IG/FB.","Textos e etiquetas para IG/FB."],
+["Programa y publica en IG y Facebook.","Agenda e publica no IG e Facebook."],
+["Responde, califica y deriva a WhatsApp.","Responde, qualifica e encaminha ao WhatsApp."],
+["Recordatorios y secuencias.","Lembretes e sequências."],
+["Mide qué rinde mejor y reporta.","Mede o que rende mais e relata."],
+["Embudo completo de captación y venta.","Funil completo de captação e venda."],
+["Produce y publica contenido en redes.","Produz e publica conteúdo nas redes."],
+["Capta y nutre clientes finales.","Capta e nutre clientes finais."],
+["Buscar 50 clientes potenciales en Brasil","Buscar 50 clientes potenciais no Brasil"],
+["Cortar reels de una clase grabada","Cortar reels de uma aula gravada"],
+["Limpiar lista de 1.200 contactos","Limpar lista de 1.200 contatos"],
+["Prospección en São Paulo","Prospecção em São Paulo"],
+["Tarea recibida","Tarefa recebida"],
+["Buscando en LinkedIn","Buscando no LinkedIn"],
+["32 perfiles encontrados","32 perfis encontrados"],
+["Calificando contactos","Qualificando contatos"],
+["Redactar invitaciones","Redigir convites"],
+["Video transcrito","Vídeo transcrito"],
+["6 clips detectados","6 clipes detectados"],
+["Esperando tu aprobación","Aguardando sua aprovação"],
+["Lista cargada","Lista carregada"],
+["925 listos","925 prontos"],
+["Ejecuciones recientes","Execuções recentes"],
+["Actividad en vivo","Atividade ao vivo"],
+["Consumo por agente (este mes)","Consumo por agente (este mês)"],
+["Gasto por mes","Gasto por mês"],
+["Tus tareas","Suas tarefas"],
+["¿Qué hace el agente?","O que o agente faz?"],
+["Entendido 👍 Empiezo con eso ahora y te voy mostrando cada paso en «Mis tareas». Te aviso cuando termine o si necesito tu aprobación.","Entendido 👍 Começo com isso agora e vou mostrando cada passo em «Minhas tarefas». Aviso quando terminar ou se eu precisar da sua aprovação."],
+["Escribile al agente qué querés que haga. Ejemplo: «Buscá 30 clientes en Río y preparame las invitaciones». Él te contesta y va mostrando cada paso.","Escreva ao agente o que você quer que ele faça. Exemplo: «Busque 30 clientes no Rio e prepare os convites». Ele responde e vai mostrando cada passo."],
+["Qué hace (lo ve el cliente)","O que faz (o cliente vê)"],
+["Prompt (sus instrucciones)","Prompt (suas instruções)"],
+["Agregar herramienta…","Adicionar ferramenta…"],
+["Nombre del agente","Nome do agente"],
+["Prompt (instrucciones)","Prompt (instruções)"],
+["Editar instrucción","Editar instrução"],
+["¿Qué querés que haga?","O que você quer que ele faça?"],
+["Qué hace","O que faz"],
+["1 mes · $78","1 mês · $78"],
+["Año · $39","Ano · $39"],
+["Clientes finales","Clientes finais"],
+["Ventas","Vendas"],
+["Difusión","Difusão"],
+["Contenido","Conteúdo"],
+["Operación","Operação"],
+["activos)","ativos)"],
+["Vos","Você"],
+["tareas","tarefas"],
+["Encuesta de satisfacción","Pesquisa de satisfação"],
+["Enviada por tu agente de Primer contacto · 24 respuestas","Enviada pelo seu agente de Primeiro contato · 24 respostas"],
+["¿Qué tan satisfecho estás?","Quão satisfeito você está?"],["¿Recomendarías el servicio?","Você recomendaria o serviço?"],
+["Funciones habilitadas","Funções habilitadas"],
+["Prendé las funciones extra que querés que vea este cliente.","Ative as funções extras que você quer que este cliente veja."],
+["Encuestas de tus agentes a tus clientes/pacientes. Función habilitada por IEA AGENTIQ.","Pesquisas dos seus agentes para seus clientes/pacientes. Função habilitada pela IEA AGENTIQ."],
+["Flujos automatizados que encadenan a tus agentes. Función habilitada por IEA AGENTIQ.","Fluxos automatizados que encadeiam seus agentes. Função habilitada pela IEA AGENTIQ."],
+["Nueva encuesta","Nova pesquisa"],["Editar flujo","Editar fluxo"],
+["Encuestas","Pesquisas"],["Flujos","Fluxos"],
+["Catálogo de funciones que podés habilitar por cliente. Las que dicen «Próximamente» se activan más adelante (consumen tokens y se cobran aparte).","Catálogo de funções que você pode habilitar por cliente. As que dizem «Em breve» são ativadas mais adiante (consomem tokens e são cobradas à parte)."],
+["Esta función está activa en tu cuenta. (Vista demo)","Esta função está ativa na sua conta. (Visão demo)"],
+[". Función habilitada por IEA AGENTIQ para tu cuenta.",". Função habilitada pela IEA AGENTIQ para sua conta."],
+["WhatsApp, Instagram y email en un lugar","WhatsApp, Instagram e email em um lugar"],
+["El agente agenda tus citas","O agente agenda seus compromissos"],
+["Recontacta leads fríos solo","Recontata leads frios sozinho"],
+["Recordatorios y link de pago","Lembretes e link de pagamento"],
+["Contenido publicado por vos","Conteúdo publicado por você"],
+["Resumen por WhatsApp o email","Resumo por WhatsApp ou email"],
+["Audios con la voz del terapeuta","Áudios com a voz do terapeuta"],
+["Sugiere acciones sin que se lo pidan","Sugere ações sem que peçam"],
+["Te avisa lo importante","Avisa o que é importante"],
+["Responde con tus documentos","Responde com seus documentos"],
+["Tu plataforma con tu logo","Sua plataforma com seu logo"],
+["Tu agente en tu propia web","Seu agente no seu próprio site"],
+["Cobrá a tus usuarios por el agente","Cobre dos seus usuários pelo agente"],
+["Encuestas a tus clientes","Pesquisas para seus clientes"],
+["Encadena tus agentes","Encadeia seus agentes"],
+["Bandeja unificada","Caixa unificada"],
+["Agenda automática","Agenda automática"],
+["Seguimiento de leads","Acompanhamento de leads"],
+["Cobros / pagos","Cobranças / pagamentos"],
+["Publicar en redes","Publicar nas redes"],
+["Reporte semanal","Relatório semanal"],
+["Voz clonada","Voz clonada"],
+["Asistente proactivo","Assistente proativo"],
+["Alertas inteligentes","Alertas inteligentes"],
+["Base de conocimiento","Base de conhecimento"],
+["Portal con tu marca","Portal com sua marca"],
+["Página pública","Página pública"],
+["Monetización","Monetização"],
+["Funciones","Funções"],
+["Disponible","Disponível"],
+["Próximamente","Em breve"],
+
+
+
+];
+function tr(h){if(lang!=="pt")return h;for(var i=0;i<DICT.length;i++){h=h.split(DICT[i][0]).join(DICT[i][1]);}return h;}
+function setLang(l){lang=l;render();}
+function toggleFeat(i,k){CLIENTS[i].features[k]=!CLIENTS[i].features[k];render();}
+function modal(html){document.getElementById("modalHost").innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()" style="position:fixed;inset:0;background:rgba(20,24,33,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50"><div class="lcard" style="width:520px;max-height:88vh;overflow:auto;position:relative"><button onclick="closeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;color:var(--muted)">✕</button>${html}</div></div>`;}
+function closeModal(){document.getElementById("modalHost").innerHTML="";}
+function openTask(id){const t=TASKS.find(x=>x.id===id);const ctl=role==='adm'?`<label>Editar instrucción</label><textarea rows="2">${t.t}</textarea><div class="actions"><button class="btn alt" onclick="closeModal()">Pausar</button><button class="btn" onclick="closeModal()">Guardar</button></div>`:(t.st==='wait'?`<div class="actions"><button class="btn alt" onclick="closeModal()">Rechazar</button><button class="btn" onclick="closeModal()">Aprobar</button></div>`:'');modal(`<h2 style="margin:0 0 4px">${t.t}</h2><div class="sub">${AGENTS[t.ag].n} · ${t.cli} · ${STATUS[t.st][1]}</div>${feedFor(t)}${ctl}`);}
+function openNew(){const opts=CLIENTS.find(c=>c.n===me).ag;modal(`<h2 style="margin:0 0 4px">Nueva tarea</h2><div class="sub">Decile a tu agente qué querés</div><label>Agente</label><select>${opts.map(a=>`<option>${AGENTS[a].n}</option>`).join("")}</select><label>¿Qué querés que haga?</label><textarea rows="3" placeholder="Ej: Buscar 30 clientes en Río y preparar invitaciones"></textarea><button class="btn full" onclick="closeModal()">Enviar al agente</button>`);}
+</script>
+</body>
+</html>
