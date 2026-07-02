@@ -1,0 +1,54 @@
+"""Runs recurring agent orders (e.g. "every week") in the background."""
+
+from datetime import datetime, timedelta
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import select
+
+from src.crew_runtime import run_crew
+from src.database import SessionLocal
+from src.models import Agent, ClientAgent
+
+CHECK_INTERVAL_SECONDS = 300
+
+FREQUENCY_DELTAS = {
+    "daily": timedelta(days=1),
+    "weekly": timedelta(days=7),
+}
+
+
+def _run_due_schedules() -> None:
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        due = db.scalars(
+            select(ClientAgent).where(
+                ClientAgent.schedule_frequency.isnot(None),
+                ClientAgent.next_run_at.isnot(None),
+                ClientAgent.next_run_at <= now,
+            )
+        ).all()
+
+        for link in due:
+            agent = db.get(Agent, link.agent_id)
+            if agent is None:
+                continue
+            try:
+                result = run_crew(agent, link.schedule_input, user_id=str(link.client_id))
+                link.last_result = result
+            except Exception as exc:
+                link.last_result = f"Error: {exc}"
+
+            link.last_run_at = now
+            delta = FREQUENCY_DELTAS.get(link.schedule_frequency, timedelta(days=7))
+            link.next_run_at = now + delta
+            db.commit()
+    finally:
+        db.close()
+
+
+def start_scheduler() -> BackgroundScheduler:
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(_run_due_schedules, "interval", seconds=CHECK_INTERVAL_SECONDS)
+    scheduler.start()
+    return scheduler

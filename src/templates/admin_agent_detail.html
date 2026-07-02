@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ agent.name }} | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page {
+            max-width: 860px;
+            margin: 60px auto;
+            padding: 0 24px;
+        }
+        .admin-back { display: inline-block; margin-bottom: 20px; color: inherit; }
+        .admin-meta {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+        .admin-meta div { margin-bottom: 6px; }
+        textarea {
+            width: 100%;
+            min-height: 480px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+            padding: 16px;
+            border-radius: var(--radius);
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 14px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .crew-box {
+            margin-top: 32px;
+            padding: 18px 22px;
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        .crew-box textarea { min-height: 60px; margin-bottom: 10px; }
+        #crew-result {
+            white-space: pre-wrap;
+            margin-top: 14px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <a class="admin-back" href="/admin/agents">&larr; Volver a Agentes</a>
+        <h1>{{ agent.name }}</h1>
+        <div class="admin-meta">
+            <div><strong>ID:</strong> {{ agent.id }}</div>
+            <div><strong>Rol:</strong> {{ agent.role }}</div>
+            <div><strong>Estado:</strong> {{ agent.status }}</div>
+            <div><strong>Requerimiento original:</strong> {{ agent.requirement or "-" }}</div>
+            <div><strong>Creado:</strong> {{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        </div>
+        <form method="post" action="/admin/agents/{{ agent.id }}">
+            <label for="definition_json"><strong>Definición (JSON)</strong></label><br>
+            <textarea id="definition_json" name="definition_json" spellcheck="false">{{ definition_json }}</textarea>
+            <br>
+            <button type="submit">Guardar cambios</button>
+        </form>
+
+        <div class="crew-box">
+            <h2>Conectar herramienta real (Composio)</h2>
+            <p>Conectá Gmail, WhatsApp, Google Sheets, etc. para que este agente los use de verdad.</p>
+            <form method="get" action="/admin/agents/{{ agent.id }}/connect">
+                <input type="text" name="toolkit" placeholder="ej: gmail, whatsapp, googlesheets" required
+                       style="padding:10px 12px; border-radius:8px; border:1px solid rgba(205,163,73,0.3); margin-right:8px;">
+                <button type="submit">Conectar</button>
+            </form>
+        </div>
+
+        <div class="crew-box">
+            <h2>Ejecutar con CrewAI</h2>
+            <p>Corre este agente de verdad, usando la definición guardada arriba.</p>
+            <textarea id="crew-input" placeholder="(Opcional) Contexto extra para esta corrida..."></textarea>
+            <br>
+            <button type="button" onclick="runCrew()">Ejecutar</button>
+            <div id="crew-result"></div>
+        </div>
+
+        <script>
+            async function runCrew() {
+                const resultBox = document.getElementById("crew-result");
+                const input = document.getElementById("crew-input").value.trim();
+                resultBox.textContent = "Ejecutando... esto puede tardar unos segundos.";
+                try {
+                    const resp = await fetch(window.location.pathname.replace("/admin/agents/", "/api/agents/") + "/run", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ input: input || null }),
+                    });
+                    const data = await resp.json();
+                    resultBox.textContent = resp.ok ? data.result : ("⚠️ " + (data.detail || "Error desconocido"));
+                } catch (err) {
+                    resultBox.textContent = "⚠️ Error: " + err;
+                }
+            }
+        </script>
+    </main>
+</body>
+</html>

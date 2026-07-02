@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page { max-width: 960px; margin: 60px auto; padding: 0 24px; }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 32px;
+        }
+        .admin-table th, .admin-table td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid rgba(205, 163, 73, 0.2);
+            font-size: 0.95rem;
+        }
+        .admin-table th {
+            background: var(--emerald);
+            color: var(--gold);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+        .admin-empty { text-align: center; color: var(--text-muted); padding: 20px 0; }
+        .new-client-form {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+        }
+        .new-client-form label { display: block; font-size: 0.85rem; margin: 14px 0 6px; }
+        .new-client-form input {
+            width: 100%;
+            max-width: 360px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            box-sizing: border-box;
+        }
+        .agent-checks { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+        .agent-checks label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+            font-size: 0.85rem;
+            background: rgba(205, 163, 73, 0.08);
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .agent-checks input { width: auto; }
+        button[type="submit"] {
+            margin-top: 18px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .tag2 {
+            display: inline-block;
+            background: rgba(205, 163, 73, 0.15);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin: 2px 4px 0 0;
+        }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <h1>Clientes</h1>
+        <p><a href="/admin/agents">Ver agentes &rarr;</a></p>
+        {% if clients_with_agents %}
+        <table class="admin-table">
+            <thead>
+                <tr><th>Nombre</th><th>Email</th><th>Agentes asignados</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for client, agents in clients_with_agents %}
+                <tr>
+                    <td>{{ client.name }}</td>
+                    <td>{{ client.email }}</td>
+                    <td>
+                        {% if agents %}
+                            {% for a in agents %}<span class="tag2">{{ a.name }}</span>{% endfor %}
+                        {% else %}
+                            <span class="mini">Sin agentes</span>
+                        {% endif %}
+                    </td>
+                    <td><a href="/admin/clients/{{ client.id }}">Editar</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Todavía no hay clientes creados.</p>
+        {% endif %}
+
+        <h2>Nuevo cliente</h2>
+        <form class="new-client-form" method="post" action="/admin/clients">
+            <label for="name">Nombre</label>
+            <input type="text" id="name" name="name" required>
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" name="password" required>
+            <label>Agentes a asignar</label>
+            <div class="agent-checks">
+                {% for agent in agents %}
+                <label><input type="checkbox" name="agent_ids" value="{{ agent.id }}"> {{ agent.name }}</label>
+                {% endfor %}
+            </div>
+            <button type="submit">Crear cliente</button>
+        </form>
+    </main>
+</body>
+</html>

@@ -48,7 +48,7 @@ h1, h2, h3 {
 .container {
     max-width: 1180px;
     margin: 0 auto;
-    padding: 0 60px;
+    padding: 0 24px;
 }
 
 /* Buttons */
@@ -104,8 +104,6 @@ h1, h2, h3 {
 .header__inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 60px;
     justify-content: space-between;
     padding: 14px 24px;
     gap: 24px;
@@ -808,95 +806,8 @@ h1, h2, h3 {
 /* Pricing */
 .pricing-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 28px;
-}
-
-/* Agentes Grid - 4 columnas FIJO */
-.agents-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
-    margin-top: 40px;
-    width: 100%;
-}
-
-.agent-card {
-    background: white;
-    border: 1px solid #e0d5c7;
-    border-radius: 12px;
-    padding: 24px;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 280px;
-}
-
-.agent-card:hover {
-    border-color: #b08d57;
-    box-shadow: 0 8px 24px rgba(11, 77, 60, 0.1);
-    transform: translateY(-4px);
-}
-
-.agent-card__icon {
-    font-size: 40px;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 50px;
-    width: 50px;
-}
-
-.agent-card h4 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: #0b4d3c;
-    margin: 12px 0;
-    line-height: 1.3;
-}
-
-.agent-card p {
-    font-size: 14px;
-    color: #666;
-    line-height: 1.5;
-    margin: 0;
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-}
-
-@media (max-width: 1200px) {
-    .agents-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-    }
-}
-
-@media (max-width: 768px) {
-    .agents-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-    }
-    
-    .agent-card h4 {
-        font-size: 16px;
-    }
-    
-    .agent-card p {
-        font-size: 13px;
-    }
-}
-
-@media (max-width: 480px) {
-    .agents-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 .pricing-card {
@@ -1228,16 +1139,16 @@ h1, h2, h3 {
             </a>
             <nav class="nav" id="nav">
                 <a href="#mision">Misión</a>
+                <a href="#resultados">Resultados</a>
+                <a href="#soluciones">Soluciones</a>
                 <a href="#catalogo">Catálogo</a>
                 <a href="#agentes">Agentes</a>
+                <a href="#bienestar">Bienestar</a>
+                <a href="#inversion">Inversión</a>
+                <a href="#especializacion">Especialización</a>
                 <a href="#faq">FAQ</a>
             </nav>
-            <a href="/login" class="btn btn--outline header__cta" style="margin-right:10px">Entrar a la plataforma</a><a href="https://calendly.com/esenios2022/30min" target="_blank" rel="noopener" class="btn btn--gold header__cta">Agendar Auditoría Estructural</a>
-            <div class="lang-switcher" style="display:flex; gap:6px; align-items:center; margin:0 15px;">
-                <button class="lang-btn lang-btn--active" data-lang="es" style="padding:6px 10px; border:1px solid #b08d57; background:transparent; color:#0b4d3c; cursor:pointer; font-size:0.85rem; font-weight:600; border-radius:3px;">ES</button>
-                <span style="color:#ddd;">|</span>
-                <button class="lang-btn" data-lang="pt" style="padding:6px 10px; border:1px solid transparent; background:transparent; color:#999; cursor:pointer; font-size:0.85rem; font-weight:600; border-radius:3px;">PT</button>
-            </div>
+            <a href="IEA_AGENTIQ_Plataforma.html" class="btn btn--outline header__cta" style="margin-right:10px">Entrar a la plataforma</a><a href="https://calendly.com/esenios2022/30min" target="_blank" rel="noopener" class="btn btn--gold header__cta">Agendar Auditoría Estructural</a>
             <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav">
                 <span></span><span></span><span></span>
             </button>
@@ -1402,18 +1313,22 @@ h1, h2, h3 {
             </div>
             <div class="cards-grid cards-grid--4">
                 <div class="card">
+                    <div class="card__icon"><svg class="icon"><use href="#icon-inbox"/></svg></div>
                     <h3>Arquitectura Ejecutiva</h3>
                     <p>Gestión de Correo y Agenda. Un agente que clasifica tus correos, redacta respuestas con tu tono de voz y reestructura tu calendario automáticamente para proteger tu tiempo de enfoque.</p>
                 </div>
                 <div class="card">
+                    <div class="card__icon"><svg class="icon"><use href="#icon-file-text"/></svg></div>
                     <h3>Arquitectura de Marketing y Contenido</h3>
                     <p>Sistemas que investigan tendencias, redactan artículos y programan publicaciones a gran escala manteniendo intacta la identidad de tu marca.</p>
                 </div>
                 <div class="card">
+                    <div class="card__icon"><svg class="icon"><use href="#icon-folder"/></svg></div>
                     <h3>Arquitectura de Operaciones Internas</h3>
                     <p>Un "empleado digital" que vive en tu Slack o gestor de tareas, priorizando mensajes urgentes y conectando a tu equipo con la información histórica de la empresa.</p>
                 </div>
                 <div class="card">
+                    <div class="card__icon"><svg class="icon"><use href="#icon-settings"/></svg></div>
                     <h3>Arquitectura de Desarrollo Ágil</h3>
                     <p>Transformamos instrucciones en lenguaje natural en aplicaciones web funcionales y flujos de trabajo personalizados para automatizar tus tareas más repetitivas.</p>
                 </div>
@@ -1429,87 +1344,18 @@ h1, h2, h3 {
                 <h2>Las piezas con las que armamos tu arquitectura</h2>
                 <p>Cada arquitectura se construye combinando estos agentes especializados, a medida de las necesidades de tu negocio.</p>
             </div>
-            <div class="agents-grid">
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M20 6h-8V4c0-1.1-.9-2-2-2s-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-2 10h-4v4h-4v-4H6v-2h4V8h4v6h4v2z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Ventas</h4>
-                    <p>Captura, califica y cierra leads automáticamente por WhatsApp.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.47-.148-.67.15-.23.297-.921 1.165-.113 1.395.806.23 1.534.541 2.404 1.09.393.231.748.063 1.019-.196.27-.258.855-.855 1.084-1.146.229-.29.048-.566-.1-.755-.149-.191-.67-.867-.967-1.167-.297-.3-.594-.342-.870-.348-.276-.005-.529-.148-.848-.148-.319 0-.848.149-1.148.447-.299.298-.11.957.221 1.513.33.556 1.049 1.851 2.263 2.936 1.214 1.085 2.271 1.439 2.562 1.514.291.075.629.046.856-.296.227-.342.762-1.019.965-1.367.203-.348.102-.656-.05-.919-.152-.263-.67-.867-.967-1.167z"/><path d="M12 0C5.383 0 0 5.383 0 12s5.383 12 12 12 12-5.383 12-12S18.617 0 12 0zm0 21.6c-5.297 0-9.6-4.303-9.6-9.6s4.303-9.6 9.6-9.6 9.6 4.303 9.6 9.6-4.303 9.6-9.6 9.6z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de WhatsApp</h4>
-                    <p>Comunicación fluida: atiende, vende y resuelve por WhatsApp Business.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Email</h4>
-                    <p>Automatiza campañas, responde consultas y nutre leads por email.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Contenido</h4>
-                    <p>Crea, publica y gestiona contenido en redes sociales automáticamente.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de CRM</h4>
-                    <p>Organiza y sincroniza todos tus contactos y datos de clientes.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M15.5 1h-8C6.12 1 5 2.12 5 3.5v17C5 21.88 6.12 23 7.5 23h8c1.38 0 2.5-1.12 2.5-2.5v-17C18 2.12 16.88 1 15.5 1zm-4 21c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5-4H7V4h9v14z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Prospección</h4>
-                    <p>Identifica y califica prospectos en tu mercado objetivo automáticamente.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Calendario</h4>
-                    <p>Programa reuniones, recordatorios y agendar citas sin fricciones.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Reportes</h4>
-                    <p>Genera análisis en tiempo real de tu negocio para decisiones rápidas.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente SEO</h4>
-                    <p>Optimiza tu presencia online y posiciona tu marca en buscadores.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Onboarding</h4>
-                    <p>Recibe nuevos clientes y guíalos en su primer paso con tu producto.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Investigación</h4>
-                    <p>Busca, resumen y sintetiza información de internet automáticamente.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente Legal</h4>
-                    <p>Entiende contratos, comprueba regulaciones y protege tu negocio.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.91-1.11-3.6-3.71-4.04V2h-2.7v2.05C7.56 4.5 6.51 5.74 6.51 7.54c0 2.6 2.01 3.9 5.29 4.86 2.29.59 3 1.25 3 2.32 0 .99-.75 1.85-2.54 1.85-1.65 0-2.5-.72-2.6-2.05h-2.21c.13 2.05 1.25 3.41 3.81 3.87V22h2.7v-2.15c1.79-.29 2.65-1.12 2.65-2.44 0-2.3-2.25-3.64-5.29-4.42z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Finanzas</h4>
-                    <p>Automatiza facturación, contabilidad y gestión financiera completa.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Inteligencia de Negocio</h4>
-                    <p>Analiza datos y da insights estratégicos para crecer tu empresa.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.89 1.97 1.74 1.97 2.95V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de RRHH</h4>
-                    <p>Gestiona equipo, nómina, capacitación y cultura empresa automáticamente.</p>
-                </div>
-                <div class="agent-card">
-                    <div class="agent-card__icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L19 9h-6z" fill="#0b4d3c"/></svg></div>
-                    <h4>Agente de Documentos</h4>
-                    <p>Organiza, clasifica y gestiona todos tus documentos inteligentemente.</p>
-                </div>
+            <div class="chips-grid">
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-briefcase"/></svg></span> Agente de Ventas</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-image"/></svg></span> Agente de Contenido &amp; Redes</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-mail"/></svg></span> Agente de Email</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-smartphone"/></svg></span> Agente de WhatsApp</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-database"/></svg></span> Agente de CRM / Base de Datos</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-search"/></svg></span> Agente de Prospección</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-calendar"/></svg></span> Agente de Calendario</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-bar-chart"/></svg></span> Agente de Reportes</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-target"/></svg></span> Agente SEO</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-compass"/></svg></span> Agente de Onboarding</div>
+                <div class="chip"><span class="chip__icon"><svg class="icon"><use href="#icon-book-open"/></svg></span> Agente de Investigación &amp; Resúmenes</div>
             </div>
         </div>
     </section>
@@ -1551,25 +1397,30 @@ h1, h2, h3 {
     <section class="section section--alt" id="roi">
         <div class="container">
             <div class="section__header">
-                <span class="tag tag--center">Cómo Funciona</span>
-                <h2>3 Pasos Simples para Comenzar</h2>
-                <p>Desde la decisión hasta tener tus agentes trabajando para ti en poco tiempo.</p>
+                <span class="tag tag--center">Calculadora de ROI</span>
+                <h2>Descubrí cuánto podrías estar ahorrando</h2>
+                <p>Respondé estas preguntas y te mostramos una estimación de lo que un agente de IA podría ahorrarle a tu equipo cada mes.</p>
             </div>
-            <div class="how-it-works">
-                <div class="how-it-works__step">
-                    <div class="how-it-works__number">1</div>
-                    <h3>Elige tu Plan</h3>
-                    <p>Selecciona cuántos agentes necesitas (1, 3, 8 o 16) según las áreas de tu negocio que querés automatizar.</p>
+            <div class="roi">
+                <div class="roi__form">
+                    <label>
+                        ¿Cuántas horas por semana dedica tu equipo a tareas repetitivas (responder correos, mensajes, agendar)?
+                        <input type="number" id="roi-hours" min="0" value="10" placeholder="Ej: 10">
+                    </label>
+                    <label>
+                        ¿Cuántas personas realizan estas tareas?
+                        <input type="number" id="roi-people" min="1" value="2" placeholder="Ej: 2">
+                    </label>
+                    <label>
+                        Costo promedio por hora de cada persona (USD)
+                        <input type="number" id="roi-rate" min="0" value="8" placeholder="Ej: 8">
+                    </label>
+                    <button class="btn btn--gold" id="roi-calculate">Calcular mi ahorro</button>
                 </div>
-                <div class="how-it-works__step">
-                    <div class="how-it-works__number">2</div>
-                    <h3>Configura tus Agentes</h3>
-                    <p>Conecta tus herramientas (WhatsApp, Email, CRM) y personaliza cada agente con tus datos y instrucciones específicas.</p>
-                </div>
-                <div class="how-it-works__step">
-                    <div class="how-it-works__number">3</div>
-                    <h3>Lanzate a Crecer</h3>
-                    <p>Tus agentes comienzan a trabajar inmediatamente. Recibe soporte continuo y actualizaciones automáticas.</p>
+                <div class="roi__result" id="roi-result">
+                    <span class="roi__result-label">Ahorro estimado por mes</span>
+                    <span class="roi__result-value" id="roi-value">$0</span>
+                    <span class="roi__result-sub" id="roi-sub">Completá el formulario para ver tu estimación</span>
                 </div>
             </div>
         </div>
@@ -1598,8 +1449,8 @@ h1, h2, h3 {
                 </div>
                 <div class="pricing-card">
                     <span class="pricing-card__step">Plan Integración</span>
-                    <h3>3 Agentes</h3>
-                    <p class="pricing-card__price">US$117 / mes</p>
+                    <h3>4 Agentes</h3>
+                    <p class="pricing-card__price">US$99 / mes</p>
                     <p>Varios agentes trabajando en conjunto para cubrir más áreas de tu negocio, conectados entre sí.</p>
                     <ul>
                         <li>4 agentes del catálogo</li>
@@ -1609,8 +1460,8 @@ h1, h2, h3 {
                 </div>
                 <div class="pricing-card pricing-card--featured">
                     <span class="pricing-card__step">Plan Ecosistema</span>
-                    <h3>8 Agentes</h3>
-                    <p class="pricing-card__price">US$312 / mes<br><small>-10% plan anual</small></p>
+                    <h3>6 Agentes</h3>
+                    <p class="pricing-card__price">US$179 / mes</p>
                     <p>Una red de agentes que automatiza de punta a punta: ventas, atención, contenido y administración.</p>
                     <ul>
                         <li>6 agentes del catálogo</li>
@@ -1620,13 +1471,24 @@ h1, h2, h3 {
                 </div>
                 <div class="pricing-card">
                     <span class="pricing-card__step">Plan Cristal</span>
-                    <h3>16 Agentes</h3>
-                    <p class="pricing-card__price">US$624 / mes<br><small>-15% plan anual</small></p>
+                    <h3>Todos los Agentes</h3>
+                    <p class="pricing-card__price">US$349 / mes</p>
                     <p>Acceso completo a los 11 agentes del catálogo, ideal para empresas en expansión.</p>
                     <ul>
                         <li>Los 11 agentes del catálogo</li>
                         <li>Implementación y soporte completo</li>
                         <li>Actualizaciones prioritarias</li>
+                    </ul>
+                </div>
+                <div class="pricing-card">
+                    <span class="pricing-card__step">Plan Diamante</span>
+                    <h3>A Medida</h3>
+                    <p class="pricing-card__price">Consultanos</p>
+                    <p>Un equipo dedicado te desarrolla 2 a 3 agentes nuevos cada mes, según las necesidades de tu empresa. Contrato anual.</p>
+                    <ul>
+                        <li>Desarrollo continuo de agentes a medida</li>
+                        <li>Contrato mínimo de 1 año</li>
+                        <li>Acompañamiento dedicado</li>
                     </ul>
                 </div>
             </div>
@@ -1788,6 +1650,26 @@ h1, h2, h3 {
 
     <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Calculadora de ROI
+    const calculateBtn = document.getElementById('roi-calculate');
+    const hoursInput = document.getElementById('roi-hours');
+    const peopleInput = document.getElementById('roi-people');
+    const rateInput = document.getElementById('roi-rate');
+    const resultValue = document.getElementById('roi-value');
+    const resultSub = document.getElementById('roi-sub');
+
+    calculateBtn.addEventListener('click', () => {
+        const hours = parseFloat(hoursInput.value) || 0;
+        const people = parseFloat(peopleInput.value) || 0;
+        const rate = parseFloat(rateInput.value) || 0;
+
+        const weeklySavings = hours * people * rate;
+        const monthlySavings = weeklySavings * 4;
+
+        resultValue.textContent = `$${monthlySavings.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+        resultSub.textContent = `Equivalente a ${(hours * people * 4).toLocaleString('en-US')} horas/mes liberadas para tu equipo`;
+    });
+
     // Menú móvil
     const navToggle = document.getElementById('nav-toggle');
     const nav = document.getElementById('nav');
@@ -1869,35 +1751,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-</script>
-
-<script>
-// Funcionalidad cambio de idioma
-document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const lang = this.getAttribute('data-lang');
-        
-        // Cambiar estilo del botón activo
-        document.querySelectorAll('.lang-btn').forEach(b => {
-            b.classList.remove('lang-btn--active');
-            b.style.border = '1px solid transparent';
-            b.style.color = '#999';
-        });
-        this.classList.add('lang-btn--active');
-        this.style.border = '1px solid #b08d57';
-        this.style.color = '#0b4d3c';
-        
-        // Cambiar idioma sin alert
-        if(lang === 'pt') {
-            document.documentElement.lang = 'pt-BR';
-            console.log('Idioma cambiado a Portugués');
-        } else {
-            document.documentElement.lang = 'es';
-            console.log('Idioma: Español');
-        }
-    });
-});
 </script>
 </body>
 </html>

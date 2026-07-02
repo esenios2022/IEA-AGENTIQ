@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ client.name }} | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page { max-width: 720px; margin: 60px auto; padding: 0 24px; }
+        .admin-back { display: inline-block; margin-bottom: 20px; color: inherit; }
+        .admin-meta {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+        .admin-meta div { margin-bottom: 6px; }
+        form {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+        }
+        label { display: block; font-size: 0.85rem; margin: 14px 0 6px; }
+        input {
+            width: 100%;
+            max-width: 360px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            box-sizing: border-box;
+        }
+        .agent-checks { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+        .agent-checks label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+            font-size: 0.85rem;
+            background: rgba(205, 163, 73, 0.08);
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .agent-checks input { width: auto; }
+        button {
+            margin-top: 18px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <a class="admin-back" href="/admin/clients">&larr; Volver a Clientes</a>
+        <h1>{{ client.name }}</h1>
+        <div class="admin-meta">
+            <div><strong>Email:</strong> {{ client.email }}</div>
+            <div><strong>Creado:</strong> {{ client.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        </div>
+        <form method="post" action="/admin/clients/{{ client.id }}">
+            <label for="name">Nombre</label>
+            <input type="text" id="name" name="name" value="{{ client.name }}" required>
+            <label>Agentes asignados</label>
+            <div class="agent-checks">
+                {% for agent in agents %}
+                <label>
+                    <input type="checkbox" name="agent_ids" value="{{ agent.id }}" {% if agent.id|string in assigned_ids %}checked{% endif %}>
+                    {{ agent.name }}
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit">Guardar cambios</button>
+        </form>
+
+        {% if assigned_ids %}
+        <h2 style="margin-top:32px;">Tareas programadas</h2>
+        <div class="admin-meta">
+            {% for agent in agents if agent.id|string in assigned_ids %}
+            {% set link = schedule_links.get(agent.id|string) %}
+            <div style="margin-bottom:14px;">
+                <strong>{{ agent.name }}</strong> —
+                {% if link and link.schedule_frequency %}
+                    programado {{ link.schedule_frequency }}
+                    {% if link.last_run_at %}(última corrida: {{ link.last_run_at.strftime("%Y-%m-%d %H:%M") }}){% endif %}
+                {% else %}
+                    sin programar
+                {% endif %}
+                — <a href="/admin/clients/{{ client.id }}/agents/{{ agent.id }}/schedule">Configurar</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

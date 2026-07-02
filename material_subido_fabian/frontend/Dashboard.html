@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEA AGENTIQ - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #FFFFF0 0%, #f5f5f0 100%);
+            min-height: 100vh;
+            color: #1A365D;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: #1A365D;
+            padding: 24px;
+            overflow-y: auto;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #D4AF37;
+            margin-bottom: 32px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .agents-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .agent-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .agent-item:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #D4AF37;
+        }
+
+        .agent-item.active {
+            background: #D4AF37;
+            color: #1A365D;
+            font-weight: 600;
+        }
+
+        /* MAIN CONTENT */
+        .main {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 24px 32px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #1A365D;
+        }
+
+        .language-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .lang-btn {
+            padding: 8px 12px;
+            background: #FFFFF0;
+            border: 1px solid #D4AF37;
+            color: #1A365D;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .lang-btn.active {
+            background: #D4AF37;
+            color: white;
+        }
+
+        /* CONTENT AREA */
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            padding: 24px 32px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f0f0f0;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #1A365D;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* AGENT DETAILS */
+        .agent-details {
+            grid-column: 1;
+        }
+
+        .detail-field {
+            margin-bottom: 16px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #50C878;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: #50C878;
+            color: white;
+        }
+
+        .status-badge.inactive {
+            background: #ccc;
+        }
+
+        /* EXECUTION LOGS */
+        .execution-logs {
+            grid-column: 2;
+            grid-row: 1 / 3;
+        }
+
+        .logs-container {
+            background: #1A365D;
+            border-radius: 8px;
+            padding: 16px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+            color: #50C878;
+            line-height: 1.6;
+        }
+
+        .log-line {
+            padding: 4px 0;
+        }
+
+        .log-time {
+            color: #D4AF37;
+            margin-right: 8px;
+        }
+
+        /* ACTIONS */
+        .actions {
+            grid-column: 1;
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: #50C878;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3a9d5a;
+        }
+
+        .btn-secondary {
+            background: #D4AF37;
+            color: #1A365D;
+        }
+
+        .btn-secondary:hover {
+            background: #c4a02e;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ee5a52;
+        }
+
+        /* RESULTS */
+        .results {
+            grid-column: 1 / -1;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .results-table th {
+            background: #1A365D;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .results-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .results-table tr:hover {
+            background: #FFFFF0;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .execution-logs {
+                grid-column: 1;
+                grid-row: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="logo">🎯 AgentiQ</div>
+            <div class="agents-list" id="agentsList">
+                <!-- Dinámicamente llenado -->
+            </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main">
+            <!-- HEADER -->
+            <div class="header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="language-toggle">
+                    <button class="lang-btn active" id="langES">Español</button>
+                    <button class="lang-btn" id="langPT">Português</button>
+                </div>
+            </div>
+
+            <!-- CONTENT -->
+            <div class="content">
+                <!-- Agent Details -->
+                <div class="card agent-details">
+                    <h2>📊 Detalles del Agente</h2>
+                    <div id="agentDetails">
+                        <p>Selecciona un agente</p>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-primary" id="btnRun">▶ Ejecutar</button>
+                        <button class="btn btn-secondary" id="btnEdit">✏️ Editar</button>
+                        <button class="btn btn-danger" id="btnDelete">🗑️ Eliminar</button>
+                    </div>
+                </div>
+
+                <!-- Execution Logs -->
+                <div class="card execution-logs">
+                    <h2>📝 Logs en Tiempo Real</h2>
+                    <div class="logs-container" id="logsContainer">
+                        <div class="log-line"><span class="log-time">[00:00]</span> Sistema iniciado</div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="card results">
+                    <h2>📈 Últimas Ejecuciones</h2>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Agente</th>
+                                <th>Estado</th>
+                                <th>Inicio</th>
+                                <th>Duración</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #999;">Cargando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000/api";
+        let currentAgent = null;
+        let agents = [];
+
+        // Cargar agentes
+        async function loadAgents() {
+            try {
+                const res = await fetch(`${API_URL}/agents`);
+                agents = await res.json();
+                renderAgentsList();
+                if (agents.length > 0) {
+                    selectAgent(agents[0].id);
+                }
+            } catch (error) {
+                console.error("Error loading agents:", error);
+            }
+        }
+
+        // Renderizar lista de agentes
+        function renderAgentsList() {
+            const list = document.getElementById("agentsList");
+            list.innerHTML = agents.map(agent => `
+                <div class="agent-item" onclick="selectAgent('${agent.id}')">
+                    ${agent.name}
+                </div>
+            `).join("");
+        }
+
+        // Seleccionar agente
+        async function selectAgent(agentId) {
+            currentAgent = agents.find(a => a.id === agentId);
+            document.querySelectorAll(".agent-item").forEach(el => el.classList.remove("active"));
+            event.target.classList.add("active");
+            renderAgentDetails();
+        }
+
+        // Renderizar detalles
+        function renderAgentDetails() {
+            if (!currentAgent) return;
+            
+            const html = `
+                <div class="detail-field">
+                    <div class="detail-label">Nombre</div>
+                    <div class="detail-value">${currentAgent.name}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Rol</div>
+                    <div class="detail-value">${currentAgent.role}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Estado</div>
+                    <div class="detail-value">
+                        <span class="status-badge ${currentAgent.status !== 'active' ? 'inactive' : ''}">
+                            ${currentAgent.status}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Objetivo</div>
+                    <div class="detail-value">${currentAgent.goal || "No definido"}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Herramientas</div>
+                    <div class="detail-value">${currentAgent.tools.join(", ") || "Ninguna"}</div>
+                </div>
+            `;
+            
+            document.getElementById("agentDetails").innerHTML = html;
+        }
+
+        // Ejecutar agente
+        document.getElementById("btnRun").addEventListener("click", async () => {
+            if (!currentAgent) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/agents/${currentAgent.id}/run`, {
+                    method: "POST"
+                });
+                const execution = await res.json();
+                addLog(`Ejecución iniciada: ${execution.id}`);
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        });
+
+        // Agregar log
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            const logsContainer = document.getElementById("logsContainer");
+            const logLine = document.createElement("div");
+            logLine.className = "log-line";
+            logLine.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            logsContainer.appendChild(logLine);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        // Lenguaje
+        document.getElementById("langES").addEventListener("click", () => {
+            document.querySelectorAll(".lang-btn").forEach(btn => btn.classList.remove("active"));
+            event.target.classList.add("active");
+            addLog("Idioma cambiado a Español");
+        });
+
+        document.getElementById("langPT").addEventListener("click", () => {
+            document.querySelectorAll(".lang-btn").forEach(btn => btn.classList.remove("active"));
+            event.target.classList.add("active");
+            addLog("Idioma alterado para Português");
+        });
+
+        // Iniciar
+        loadAgents();
+    </script>
+</body>
+</html>
