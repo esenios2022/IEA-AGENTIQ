@@ -96,14 +96,16 @@ def _run_loop(
     final_text = ""
 
     for _ in range(MAX_TOOL_ITERATIONS):
-        response = client.messages.create(
+        create_kwargs = dict(
             model=model,
             max_tokens=max_tokens,
             temperature=temperature,
             system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
-            tools=anthropic_tools or None,
             messages=messages,
         )
+        if anthropic_tools:
+            create_kwargs["tools"] = anthropic_tools
+        response = client.messages.create(**create_kwargs)
         input_tokens += response.usage.input_tokens
         output_tokens += response.usage.output_tokens
 
