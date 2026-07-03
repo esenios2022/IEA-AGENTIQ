@@ -77,6 +77,8 @@ class UsageLog(Base):
     cached: Mapped[bool] = mapped_column(Boolean, default=False)
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    input_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

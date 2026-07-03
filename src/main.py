@@ -22,9 +22,10 @@ from src.composio_tools import start_connection
 from src.config import settings
 from src.database import Base, engine, get_db
 from src.embeddings import embed_text
-from src.models import Agent, Client, ClientAgent, KbArticle, Lead
+from src.models import Agent, Client, ClientAgent, KbArticle, Lead, UsageLog
 from src.scheduler import start_scheduler
 from src.schemas import (
+    AgentOut,
     ArchitectCreateAgentRequest,
     ArchitectCreateAgentResponse,
     AssignedAgentOut,
@@ -33,6 +34,7 @@ from src.schemas import (
     ConnectToolkitResponse,
     CrewRunRequest,
     CrewRunResponse,
+    ExecutionOut,
     LeadCreate,
     LeadOut,
     ProfitabilityByClientOut,
@@ -161,14 +163,13 @@ def architect_chat_page(request: Request):
 
 @app.get("/plataforma")
 def plataforma_page():
-    """Old static mockup, superseded by the real (Jinja, connected) admin/portal UI."""
-    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return _serve_static_html("plataforma.html")
 
 
 @app.get("/dashboard")
 def dashboard_page():
-    """Old static mockup, superseded by the real (Jinja, connected) admin/portal UI."""
-    return RedirectResponse(url="/admin/agents", status_code=status.HTTP_302_FOUND)
+    """Old, unwired duplicate of /plataforma — redirect there instead of maintaining two demo shells."""
+    return RedirectResponse(url="/plataforma", status_code=status.HTTP_302_FOUND)
 
 
 @app.get("/api/architect/status")
@@ -191,12 +192,55 @@ def architect_create_agent(payload: ArchitectCreateAgentRequest, db: Session = D
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@app.get("/api/agents/{agent_id}")
+@app.get("/api/agents", response_model=list[AgentOut])
+def list_agents_api(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agents = db.scalars(select(Agent).order_by(Agent.name)).all()
+    return [_agent_out(a) for a in agents]
+
+
+@app.get("/api/agents/{agent_id}", response_model=AgentOut)
 def get_agent(agent_id: str, db: Session = Depends(get_db)):
     agent = db.get(Agent, agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
+    return _agent_out(agent)
+
+
+@app.get("/api/clients", response_model=list[ClientOut])
+def list_clients_api(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    return [_client_out(c, db) for c in clients]
+
+
+def _executions_query(db: Session, client_id=None, limit: int = 50) -> list[ExecutionOut]:
+    query = select(UsageLog).order_by(UsageLog.created_at.desc()).limit(limit)
+    if client_id is not None:
+        query = query.where(UsageLog.client_id == client_id)
+    logs = db.scalars(query).all()
+
+    agent_names = {a.id: a.name for a in db.scalars(select(Agent)).all()}
+    client_names = {c.id: c.name for c in db.scalars(select(Client)).all()}
+    return [_execution_out(log, agent_names, client_names) for log in logs]
+
+
+@app.get("/api/executions", response_model=list[ExecutionOut])
+def list_executions_api(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    return _executions_query(db)
+
+
+@app.get("/api/me/executions", response_model=list[ExecutionOut])
+def list_my_executions_api(request: Request, db: Session = Depends(get_db)):
+    client = get_current_client(request, db)
+    return _executions_query(db, client_id=client.id)
 
 
 @app.get("/admin/agents")
@@ -351,6 +395,64 @@ def run_agent_with_crew(
     )
 
 
+def _tool_names(definition: dict) -> list[str]:
+    return [t.get("name", "") for t in (definition.get("tools") or []) if t.get("name")]
+
+
+def _assigned_agent_out(agent: Agent) -> AssignedAgentOut:
+    definition = agent.definition or {}
+    return AssignedAgentOut(
+        id=str(agent.id),
+        name=agent.name,
+        description=agent.description,
+        agent_code=agent.agent_code,
+        orixa=definition.get("orixa"),
+        group=definition.get("group"),
+        status=agent.status,
+        daily_budget_usd=agent.daily_budget_usd,
+        tools=_tool_names(definition),
+    )
+
+
+def _agent_out(agent: Agent) -> AgentOut:
+    definition = agent.definition or {}
+    instructions = definition.get("instructions") or {}
+    routing = definition.get("llm_routing") or {}
+    return AgentOut(
+        id=str(agent.id),
+        agent_code=agent.agent_code,
+        name=agent.name,
+        role=agent.role,
+        description=agent.description,
+        status=agent.status,
+        daily_budget_usd=agent.daily_budget_usd,
+        orixa=definition.get("orixa"),
+        group=definition.get("group"),
+        tools=_tool_names(definition),
+        system_prompt=instructions.get("system_prompt"),
+        default_tier=routing.get("default_tier"),
+        created_at=agent.created_at.isoformat(),
+    )
+
+
+def _execution_out(log: UsageLog, agent_names: dict, client_names: dict) -> ExecutionOut:
+    return ExecutionOut(
+        id=str(log.id),
+        agent_id=str(log.agent_id),
+        agent_name=agent_names.get(log.agent_id, "?"),
+        client_id=str(log.client_id) if log.client_id else None,
+        client_name=client_names.get(log.client_id) if log.client_id else None,
+        status="done" if log.success else "err",
+        tier=log.tier,
+        cost_usd=float(log.cost_usd),
+        cached=log.cached,
+        input_text=log.input_text,
+        result_text=log.result_text,
+        error_message=log.error_message,
+        created_at=log.created_at.isoformat(),
+    )
+
+
 def _client_out(client: Client, db: Session) -> ClientOut:
     rows = db.scalars(
         select(Agent).join(ClientAgent, ClientAgent.agent_id == Agent.id).where(ClientAgent.client_id == client.id)
@@ -359,7 +461,7 @@ def _client_out(client: Client, db: Session) -> ClientOut:
         id=str(client.id),
         name=client.name,
         email=client.email,
-        agents=[AssignedAgentOut(id=str(a.id), name=a.name, description=a.description) for a in rows],
+        agents=[_assigned_agent_out(a) for a in rows],
     )
 
 

@@ -4,6 +4,36 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IEA AGENTIQ · Plataforma de Agentes</title>
+<template id="__bundler_thumbnail" data-bg-color="#f5f3ec">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#f5f3ec"/>
+    <rect x="0" y="0" width="260" height="800" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="16" y="20" width="32" height="32" rx="8" fill="#0b4d3c"/>
+    <text x="32" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="800">A</text>
+    <text x="60" y="42" fill="#1c2b27" font-size="15" font-weight="700">AGENTIQ</text>
+    <rect x="16" y="80" width="228" height="36" rx="8" fill="rgba(11,77,60,.1)"/>
+    <rect x="16" y="124" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="16" y="162" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="16" y="200" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="16" y="238" width="228" height="32" rx="7" fill="#f5f3ec"/>
+    <rect x="280" y="0" width="920" height="56" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <text x="306" y="36" fill="#1c2b27" font-size="18" font-weight="700">IEA AGENTIQ</text>
+    <rect x="280" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="496" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="712" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="928" y="80" width="200" height="80" rx="11" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="280" y="180" width="616" height="380" rx="12" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="912" y="180" width="248" height="380" rx="12" fill="#fff" stroke="#e6e1d4" stroke-width="1"/>
+    <rect x="300" y="200" width="80" height="80" rx="8" fill="rgba(11,77,60,.08)"/>
+    <text x="340" y="248" text-anchor="middle" fill="#0b4d3c" font-size="28">🤖</text>
+    <text x="400" y="228" fill="#0b4d3c" font-size="16" font-weight="700">Juan</text>
+    <text x="400" y="248" fill="#b08d57" font-size="12">Exú · Adquisición</text>
+    <rect x="300" y="300" width="576" height="1" fill="#e6e1d4"/>
+    <rect x="920" y="200" width="220" height="340" rx="8" fill="#0d0d0d"/>
+    <text x="930" y="220" fill="#00ff00" font-size="11" font-family="monospace">[10:02] Sistema iniciado</text>
+    <text x="930" y="238" fill="#00ff00" font-size="11" font-family="monospace">[10:03] Agente listo...</text>
+  </svg>
+</template>
 <!--
   CÓMO MODIFICAR (fácil):
   • Datos editables → busca "=== DATOS EDITABLES ===" abajo.
@@ -137,11 +167,11 @@
   <div class="lcard">
     <div class="brand"><svg class="logo" viewBox="0 0 100 100" width="32" height="32" style="margin-right:8px"><circle cx="50" cy="50" r="48" fill="none" stroke="#0b4d3c" stroke-width="1.5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#0b4d3c" stroke-width="1"/><circle cx="50" cy="50" r="28" fill="none" stroke="#0b4d3c" stroke-width="1"/><circle cx="50" cy="50" r="18" fill="none" stroke="#0b4d3c" stroke-width="1.5"/><circle cx="50" cy="50" r="8" fill="#b08d57"/><line x1="50" y1="42" x2="50" y2="20" stroke="#0b4d3c" stroke-width="1.5"/><line x1="58" y1="44" x2="71" y2="29" stroke="#0b4d3c" stroke-width="1.5"/><line x1="58" y1="56" x2="71" y2="71" stroke="#0b4d3c" stroke-width="1.5"/><line x1="50" y1="58" x2="50" y2="80" stroke="#0b4d3c" stroke-width="1.5"/><line x1="42" y1="56" x2="29" y2="71" stroke="#0b4d3c" stroke-width="1.5"/><line x1="42" y1="44" x2="29" y2="29" stroke="#0b4d3c" stroke-width="1.5"/></svg><b>IEA AGENTIQ</b></div>
     <div class="sub">La plataforma donde tus agentes viven y trabajan</div>
-    <label>Email</label><input id="email" value="cliente@demo.com">
-    <label>Contraseña</label><input type="password" value="demodemo">
+    <label>Email</label><input id="email" value="">
+    <label>Contraseña</label><input id="password" type="password" value="">
     <div class="roles"><button id="rCli" class="on" onclick="setRole('cli')">Cliente</button><button id="rAdm" onclick="setRole('adm')">Administrador</button></div>
-    <button class="btn full" onclick="login()">Entrar</button>
-    <div class="mini" style="text-align:center;margin-top:12px">Demostración · datos de ejemplo</div>
+    <button class="btn full" id="loginBtn" onclick="login()">Entrar</button>
+    <div class="mini" id="loginError" style="text-align:center;margin-top:12px;color:var(--red)"></div>
   </div>
 </div>
 
@@ -159,32 +189,8 @@
 
 <script>
 /* ====================== DATOS EDITABLES ====================== */
-const AGENTS = {
-  SL:{n:"Sales Lead",orixá:"Oxum",grupo:"Adquisición",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Cierre de ventas y conversión de clientes terapeutas y líderes.",prompt:"Rol: especialista en cierre de ventas. SOP: 1) Recibir lead calificado 2) Presentar propuesta 3) Manejar objeciones 4) Cerrar contrato. Salida: estado de negociación en JSON.",tools:["WhatsApp (API oficial)","Email (Gmail)","CRM","Agenda","LinkedIn"]},
-  GS:{n:"Growth Scout",orixá:"Oxóssi",grupo:"Adquisición",modelo:"GPT-4o Nano",idioma:"PT/ES",estado:"activo",d:"Prospección activa de nuevos clientes y nichos de mercado.",prompt:"Rol: prospector B2B. SOP: 1) buscar perfiles 2) calificar 3) preparar lista. Salida JSON.",tools:["LinkedIn","Búsqueda web","CRM","Email (Gmail)"]},
-  SA:{n:"SEO Architect",orixá:"Orunmila",grupo:"Contenido",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Posicionamiento orgánico y claridad estratégica de marca en buscadores.",prompt:"Rol: especialista SEO. SOP: 1) Auditar 2) Planificar keywords 3) Optimizar contenido. Salida: reporte SEO.",tools:["Búsqueda web","Archivos","Generación de contenido"]},
-  RM:{n:"Resource Manager",orixá:"Ogum",grupo:"Operaciones",modelo:"GPT-4o Nano",idioma:"PT/ES",estado:"activo",d:"Gestión de presupuestos, finanzas y flujo de caja de la empresa.",prompt:"Rol: gestor financiero. SOP: 1) monitorear gastos 2) generar reportes 3) alertar presupuesto.",tools:["Archivos","Email (Gmail)","CRM"]},
-  CC:{n:"Client Care",orixá:"Iemanjá",grupo:"Atención",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Soporte al cliente y atención a la comunidad con alto estándar.",prompt:"Rol: atención 24/7. SOP: 1) responder → 2) calificar → 3) derivar o resolver.",tools:["WhatsApp (API oficial)","Email (Gmail)","CRM","Agenda"]},
-  CG:{n:"Compliance Guard",orixá:"Xangó",grupo:"Cumplimiento",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Legal, contratos y ética de la plataforma. Revisión normativa.",prompt:"Rol: asesor legal. SOP: 1) revisar documentos 2) verificar cumplimiento 3) alertar riesgos.",tools:["Archivos","Email (Gmail)","Búsqueda web"]},
-  BC:{n:"Brand Catalyst",orixá:"Iansã",grupo:"Contenido",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Publicidad, redes sociales y campañas virales de alto impacto.",prompt:"Rol: estratega de marca. SOP: 1) analizar audiencia 2) crear campaña 3) publicar y monitorear.",tools:["LinkedIn","Generación de contenido","Búsqueda web"]},
-  SH:{n:"Systems Healer",orixá:"Obaluaiê",grupo:"Operaciones",modelo:"GPT-4o Nano",idioma:"PT/ES",estado:"activo",d:"Soporte técnico, estabilidad y mantenimiento de la plataforma.",prompt:"Rol: soporte técnico. SOP: 1) diagnosticar 2) resolver 3) documentar solución.",tools:["Archivos","Email (Gmail)"]},
-  CF:{n:"Creative Flow",orixá:"Logun Edé",grupo:"Contenido",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Creación de contenido, copy persuasivo y material gráfico.",prompt:"Rol: creativo y copywriter. SOP: 1) recibir briefing 2) crear contenido 3) adaptar PT/ES.",tools:["Generación de contenido","Archivos","Búsqueda web"]},
-  OL:{n:"Operations Lead",orixá:"Ossaim",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Logística, automatización y procesos internos para máxima eficiencia.",prompt:"Rol: operaciones. SOP: 1) mapear proceso 2) automatizar 3) monitorear resultados.",tools:["CRM","Archivos","Email (Gmail)","Agenda"]},
-  PC:{n:"Project Core",orixá:"Oduduwa",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Gestión general y liderazgo de proyectos estratégicos.",prompt:"Rol: gerente de proyectos. SOP: 1) planificar hitos 2) coordinar equipo 3) reportar avance.",tools:["Agenda","CRM","Email (Gmail)","Archivos"]},
-  GK:{n:"Gatekeeper AI",orixá:"Exu",grupo:"Cumplimiento",modelo:"GPT-4o Nano",idioma:"PT/ES",estado:"activo",d:"Seguridad, APIs y control del tráfico de información.",prompt:"Rol: seguridad. SOP: 1) auditar logs 2) gestionar accesos 3) alertar anomalías.",tools:["Archivos"]},
-  IX:{n:"Innovation Nexus",orixá:"Oxumaré",grupo:"Análisis",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"I+D, nuevas tecnologías y escalabilidad de la plataforma.",prompt:"Rol: investigador. SOP: 1) investigar tendencias 2) evaluar integraciones 3) proponer mejoras.",tools:["Búsqueda web","Archivos","Generación de contenido"]},
-  KA:{n:"Knowledge Anchor",orixá:"Orunmilá",grupo:"Operaciones",modelo:"Claude Haiku",idioma:"PT/ES",estado:"activo",d:"Formación, capacitación y gestión de bases de conocimiento.",prompt:"Rol: formador. SOP: 1) estructurar contenido 2) crear material 3) evaluar aprendizaje.",tools:["Archivos","Generación de contenido","Email (Gmail)"]},
-  WA:{n:"Wisdom Auditor",orixá:"Nanã",grupo:"Calidad",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Control de calidad, auditoría y mejora continua de procesos.",prompt:"Rol: auditor. SOP: 1) evaluar procesos 2) detectar fallos 3) proponer mejoras.",tools:["Archivos","CRM","Email (Gmail)"]},
-  GH:{n:"Global Harmony",orixá:"Oxalá",grupo:"Estrategia",modelo:"Claude Sonnet",idioma:"PT/ES",estado:"activo",d:"Relaciones institucionales y expansión global de la marca.",prompt:"Rol: relaciones institucionales. SOP: 1) identificar aliados 2) establecer contacto 3) gestionar partnership.",tools:["LinkedIn","Email (Gmail)","CRM","Agenda"]},
-};
-let WORKFORCES=[
-  {n:"Máquina de Adquisición",d:"Captación, prospección y cierre de ventas.",members:["SL","GS"]},
-  {n:"Máquina de Contenido",d:"Contenido, SEO, marca y creatividad.",members:["SA","BC","CF"]},
-  {n:"Máquina de Operaciones",d:"Procesos, proyectos, formación y sistemas.",members:["RM","SH","OL","PC","KA"]},
-  {n:"Máquina de Atención",d:"Soporte y cuidado al cliente.",members:["CC"]},
-  {n:"Máquina de Cumplimiento",d:"Legal, seguridad y ética.",members:["CG","GK"]},
-  {n:"Máquina de Análisis",d:"Datos, innovación, calidad y expansión.",members:["IX","WA","GH"]},
-];
+let AGENTS = {};
+let WORKFORCES=[];
 const TOOLS=["Búsqueda Web (Serper)","Scrape de Website","Extraer texto de URL","Búsqueda YouTube","Búsqueda EXA","Leer Archivo","Escribir Archivo","Buscar en PDF","Buscar en CSV","Buscar en JSON","Buscar en DOCX","Leer Directorio","Intérprete de Código","NL a SQL","Búsqueda PostgreSQL","Email (Gmail)","WhatsApp (API oficial)","LinkedIn Sales Navigator","Slack","HubSpot","Notion","Airtable","Zapier (9000+ apps)","Apollo.io (Leads)","CRM Interno","Agenda / Calendario","Generación de Contenido IA","Enriquecedor de Leads"];
 const TOOLS_CAT={
   "🔍 Búsqueda & Web":["Búsqueda Web (Serper)","Scrape de Website","Extraer texto de URL","Búsqueda YouTube","Búsqueda EXA"],
@@ -196,11 +202,7 @@ const TOOLS_CAT={
 };
 const TOOLS_KEY={"Búsqueda Web (Serper)":"SERPER_API_KEY","Búsqueda EXA":"EXA_API_KEY","Búsqueda PostgreSQL":"DATABASE_URL","Email (Gmail)":"GMAIL_CLIENT_ID","WhatsApp (API oficial)":"WHATSAPP_TOKEN","LinkedIn Sales Navigator":"LINKEDIN_TOKEN","Slack":"SLACK_TOKEN","HubSpot":"HUBSPOT_API_KEY","Notion":"NOTION_TOKEN","Airtable":"AIRTABLE_API_KEY","Zapier (9000+ apps)":"ZAPIER_WEBHOOK_URL","Apollo.io (Leads)":"APOLLO_API_KEY","Enriquecedor de Leads":"APOLLO_API_KEY"};
 const ACTIVE_TOOLS=new Set(["CRM Interno","Agenda / Calendario","Generación de Contenido IA","Leer Archivo","Escribir Archivo","Intérprete de Código","NL a SQL","Scrape de Website","Extraer texto de URL"]);
-let CLIENTS=[
-  {n:"Centro Aurora",mail:"aurora@demo.com",ag:["SL","CF","CC"],plan:"Pro",pais:"Brasil",lang:"pt",features:{encuestas:true,flujos:false}},
-  {n:"Instituto Theta",mail:"theta@demo.com",ag:["GS","SA"],plan:"Inicial",pais:"Uruguay",lang:"es",features:{encuestas:false,flujos:false}},
-  {n:"Luz Interior",mail:"luz@demo.com",ag:["CF","BC"],plan:"Inicial",pais:"Brasil",lang:"pt",features:{encuestas:false,flujos:true}},
-];
+let CLIENTS=[];
 const FEATURES=[
 {k:"inbox",ic:"📥",n:"Bandeja unificada",d:"WhatsApp, Instagram y email en un lugar",estado:"ok"},
 {k:"agenda",ic:"📅",n:"Agenda automática",d:"El agente agenda tus citas",estado:"ok"},
@@ -219,28 +221,134 @@ const FEATURES=[
 {k:"monetizacion",ic:"🪙",n:"Monetización",d:"Cobrá a tus usuarios por el agente",estado:"future"},
 ];
 const STATUS={run:["b-run","En curso"],done:["b-done","Completada"],wait:["b-wait","Requiere aprobación"],err:["b-err","Error"],pend:["b-pend","Pendiente"]};
-let TASKS=[
-  {id:1,ag:"SL",cli:"Centro Aurora",t:"Cerrar propuesta con 3 terapeutas de São Paulo",st:"run",steps:[["done","Tarea recibida","10:02"],["done","Analizando perfil de leads","10:03"],["done","Propuestas redactadas","10:07"],["wait","Esperando respuesta del lead","ahora"],["pend","Seguimiento por WhatsApp",""]]},
-  {id:2,ag:"CF",cli:"Centro Aurora",t:"Crear 5 reels para campaña de enero",st:"wait",steps:[["done","Briefing recibido","09:12"],["done","6 conceptos generados","09:20"],["wait","Esperando tu aprobación","ahora"]]},
-  {id:3,ag:"CC",cli:"Centro Aurora",t:"Atender 12 consultas de WhatsApp",st:"done",steps:[["done","Consultas recibidas","Ayer"],["done","12 respondidas","Ayer"],["done","2 derivadas al equipo","Ayer"]]},
-  {id:4,ag:"GS",cli:"Instituto Theta",t:"Prospección de coaches en Buenos Aires",st:"run",steps:[["done","Tarea recibida","11:40"],["run","Buscando en LinkedIn","ahora"]]},
-];
-/* Consumo por agente del cliente (demo). dia = gasto diario; mes = acumulado del mes. Proyección = dia × 30. */
-const CONSUMO={SL:{dia:0.60,mes:9.40},CF:{dia:0.35,mes:6.10},CC:{dia:0.17,mes:3.20},GS:{dia:0.20,mes:3.00},BC:{dia:0.15,mes:2.40}};
-const CLIENT_SALDO=14.30, CLIENT_SUB=29;
-const PLAN_PRICE={Pro:49,Inicial:25};
+let TASKS=[];
+let CONSUMO={};
 /* ==================== FIN DATOS EDITABLES ==================== */
 
-let role="cli", me="Centro Aurora", current="inicio";
+let role="cli", me="", myClientId=null, current="inicio";
 let open={agentes:true,equipos:false,clientes:false};
 let agOpen={};
 let CHAT=[],chatAgent="";
 let helpOpen=false;
 let lang="es";
+let PROFIT={by_client:[],total_usd:0};
 
-function setRole(r){role=r;document.getElementById("rCli").classList.toggle("on",r==="cli");document.getElementById("rAdm").classList.toggle("on",r==="adm");document.getElementById("email").value=r==="cli"?"cliente@demo.com":"admin@ieaagentiq.com";}
-function login(){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");document.getElementById("roleTag").textContent=role==="cli"?"Cliente":"Admin";document.getElementById("whoName").textContent=role==="cli"?me:"Fabián";current=role==="cli"?"c_tareas":"inicio";lang=role==="cli"?((CLIENTS.find(c=>c.n===me)||{}).lang||"es"):"es";render();}
-function logout(){document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden");}
+const SHORT_CODE={"Juan":"SL","Lucas":"GS","Rafael":"SA","Camila":"RM","María":"CC","Elías":"CG","Clara":"BC","Santiago":"SH","Ariel":"CF","Gabriel":"OL","Bruno":"PC","Miguel":"GK","Valentina":"IX","Noa":"KA","Sofía":"WA","Theo":"GH"};
+function codeFor(name){return SHORT_CODE[name]||(name||"??").slice(0,2).toUpperCase();}
+
+async function api(path,opts){
+  const r=await fetch(path,Object.assign({headers:{"Content-Type":"application/json"}},opts||{}));
+  if(!r.ok){let msg="Error "+r.status;try{const d=await r.json();msg=d.detail||msg;}catch(e){}throw new Error(msg);}
+  if(r.status===204)return null;
+  return r.json();
+}
+
+function agentToRecord(a){
+  return {id:a.id,n:a.name,orixá:a.orixa||"",grupo:a.group||"General",modelo:a.default_tier||"economy",idioma:"PT/ES",estado:a.status==="active"?"activo":(a.status||"activo"),d:a.description||"",prompt:a.system_prompt||"",tools:a.tools||[],dailyBudget:a.daily_budget_usd};
+}
+
+function computeWorkforces(){
+  const byGroup={};
+  Object.keys(AGENTS).forEach(k=>{const g=AGENTS[k].grupo||"General";(byGroup[g]=byGroup[g]||[]).push(k);});
+  WORKFORCES=Object.keys(byGroup).map(g=>({n:g,d:"Equipo de agentes de "+g+".",members:byGroup[g]}));
+}
+
+function execToTask(e){
+  const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===e.agent_id)||e.agent_id;
+  const time=new Date(e.created_at).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  const steps=[["done","Tarea recibida",time]];
+  if(e.status==="done")steps.push(["done",e.cached?"Respondida desde caché (costo $0)":"Completada · $"+Number(e.cost_usd).toFixed(4),time]);
+  else steps.push(["err","Error: "+(e.error_message||"desconocido"),time]);
+  return {id:e.id,ag:code,cli:e.client_name||"—",t:e.input_text||("Ejecución de "+(AGENTS[code]?AGENTS[code].n:"agente")),st:e.status,steps,cost:e.cost_usd,tier:e.tier,result:e.result_text};
+}
+
+async function bootstrapAdmin(){
+  const agents=await api("/api/agents");
+  AGENTS={};agents.forEach(a=>{AGENTS[codeFor(a.name)]=agentToRecord(a);});
+  computeWorkforces();
+  const clients=await api("/api/clients");
+  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeFor(a.name)),plan:"—",pais:"",lang:"es",features:{}}));
+  const execs=await api("/api/executions");
+  TASKS=execs.map(execToTask);
+  const usage=await api("/api/usage?period=month");
+  CONSUMO={};
+  usage.by_agent.forEach(row=>{const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===row.agent_id);if(code)CONSUMO[code]={dia:row.spend_today_usd,mes:row.spend_period_usd};});
+  PROFIT=await api("/api/profitability?period=month");
+}
+
+async function bootstrapClient(meData){
+  AGENTS={};
+  (meData.agents||[]).forEach(a=>{AGENTS[codeFor(a.name)]=agentToRecord(a);});
+  computeWorkforces();
+  myClientId=meData.id;
+  CLIENTS=[{id:meData.id,n:meData.name,mail:meData.email,ag:Object.keys(AGENTS),plan:"—",pais:"",lang:"es",features:{}}];
+  me=meData.name;
+  const execs=await api("/api/me/executions");
+  TASKS=execs.map(execToTask);
+  const usage=await api("/api/me/usage?period=month");
+  CONSUMO={};
+  usage.by_agent.forEach(row=>{const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===row.agent_id);if(code)CONSUMO[code]={dia:row.spend_today_usd,mes:row.spend_period_usd};});
+}
+
+async function refreshExecutions(){
+  if(role==="cli"){
+    const execs=await api("/api/me/executions");TASKS=execs.map(execToTask);
+    const usage=await api("/api/me/usage?period=month");
+    usage.by_agent.forEach(row=>{const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===row.agent_id);if(code)CONSUMO[code]={dia:row.spend_today_usd,mes:row.spend_period_usd};});
+  }else{
+    const execs=await api("/api/executions");TASKS=execs.map(execToTask);
+    const usage=await api("/api/usage?period=month");
+    usage.by_agent.forEach(row=>{const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===row.agent_id);if(code)CONSUMO[code]={dia:row.spend_today_usd,mes:row.spend_period_usd};});
+  }
+}
+
+async function runAgentReal(code,inputText){
+  const rec=AGENTS[code];
+  if(!rec)throw new Error("Agente no encontrado");
+  const path=role==="cli"?("/api/me/agents/"+rec.id+"/run"):("/api/agents/"+rec.id+"/run");
+  const data=await api(path,{method:"POST",body:JSON.stringify({input:inputText||null})});
+  await refreshExecutions();
+  return data;
+}
+
+function setRole(r){role=r;document.getElementById("rCli").classList.toggle("on",r==="cli");document.getElementById("rAdm").classList.toggle("on",r==="adm");}
+
+async function login(){
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  const errBox=document.getElementById("loginError");
+  const btn=document.getElementById("loginBtn");
+  errBox.textContent="";btn.disabled=true;btn.textContent="Entrando...";
+  try{
+    if(role==="cli"){
+      const data=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email,password})});
+      await bootstrapClient(data);
+    }else{
+      const r=await fetch("/api/auth/admin-login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({username:email,password})});
+      if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||"Usuario o contraseña incorrectos");}
+      me=email||"Admin";
+      await bootstrapAdmin();
+    }
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("roleTag").textContent=role==="cli"?"Cliente":"Admin";
+    document.getElementById("whoName").textContent=me;
+    current=role==="cli"?"c_tareas":"inicio";
+    lang="es";
+    render();
+  }catch(err){
+    errBox.textContent=err.message||String(err);
+  }finally{
+    btn.disabled=false;btn.textContent="Entrar";
+  }
+}
+
+async function logout(){
+  try{await fetch("/api/auth/logout",{method:"POST"});}catch(e){}
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("loginError").textContent="";
+}
 function nav(v){current=v;render();}
 function toggle(g){open[g]=!open[g];render();}
 function toggAg(id){agOpen[id]=!agOpen[id];render();}
@@ -261,7 +369,6 @@ function renderTree(){
     var cf=(CLIENTS.find(c=>c.n===me)||{}).features||{};FEATURES.forEach(function(ff){if(ff.estado==="ok"&&cf[ff.k]){var tgt=ff.k==="encuestas"?"c_encuestas":(ff.k==="flujos"?"c_flujos":"c_feat_"+ff.k);h+=treeItem(tgt,ff.ic,ff.n);}});
   }else{
     h+=treeItem("inicio","🏠","Inicio");
-    h+=`<div class="item" onclick="window.open('/architect-chat','_blank')" style="background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(59,130,246,0.15));border-left:3px solid #8b5cf6;font-weight:700"><span class="ic">🧠</span> Obatalá · Crear agente</div>`;
     h+=treeItem("a_chat","💬","Chat con agentes");
     // Grupo Agentes desplegable
     h+=`<div class="item ${current.startsWith('agent:')?'':''}" onclick="toggle('agentes')"><span class="ic">🤖</span> Agentes <span class="car ${open.agentes?'open':''}">▶</span></div>`;
@@ -301,12 +408,12 @@ function render(){renderTree();const V=document.getElementById("view");
   if(current==="inicio"){const act=Object.values(AGENTS).filter(a=>a.estado==="activo").length;
     title="Inicio";help="Resumen de tu operación. Usá el menú de la izquierda para ver agentes, equipos y clientes.";
     body=`<div class="kpis"><div class="kpi"><div class="n">${Object.keys(AGENTS).length}</div><div class="l">Agentes (${act} activos)</div></div><div class="kpi"><div class="n">${WORKFORCES.length}</div><div class="l">Equipos</div></div><div class="kpi"><div class="n">${CLIENTS.length}</div><div class="l">Clientes</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${TASKS.filter(t=>t.st==='run').length}</div><div class="l">En curso</div></div></div>
-    <div class="two"><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,4).map(taskRow).join("")}</div><div class="panel pad"><h3 style="margin-top:0">Actividad en vivo</h3>${feedFor(TASKS.find(t=>t.st==='run'))}</div></div>`;}
+    <div class="two"><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,4).map(taskRow).join("")||'<p class="mini">Sin ejecuciones todavía.</p>'}</div><div class="panel pad"><h3 style="margin-top:0">Última actividad</h3>${feedFor(TASKS[0])}</div></div>`;}
 
   else if(current.startsWith("agent:")){const k=current.split(":")[1];body=agentDetail(k);title=AGENTS[k].n;crumb="Agentes ›";help="";btn=`<button class="btn alt" onclick="nav('newagent')">＋ Nuevo agente</button>`;}
   else if(current==="newagent"){title="Nuevo agente";crumb="Agentes ›";help="Completá los datos y tocá Crear. El agente va a aparecer en la lista de la izquierda.";body=newAgentForm();}
   else if(current==="ejec"){title="Ejecuciones";help="Todas las tareas de todos los clientes. Tocá una para ver el detalle.";
-    body=`<div class="panel"><table><thead><tr><th>Tarea</th><th>Cliente</th><th>Agente</th><th>Estado</th></tr></thead><tbody>${TASKS.map(t=>`<tr onclick="openTask(${t.id})"><td><b>${t.t}</b></td><td>${t.cli}</td><td class="mini">${AGENTS[t.ag].n}</td><td>${badge(t.st)}</td></tr>`).join("")}</tbody></table></div>`;}
+    body=`<div class="panel"><table><thead><tr><th>Tarea</th><th>Cliente</th><th>Agente</th><th>Estado</th></tr></thead><tbody>${TASKS.map(t=>`<tr onclick="openTask('${t.id}')"><td><b>${t.t}</b></td><td>${t.cli}</td><td class="mini">${AGENTS[t.ag]?AGENTS[t.ag].n:t.ag}</td><td>${badge(t.st)}</td></tr>`).join("")}</tbody></table></div>`;}
   else if(current==="tools"){title="Herramientas & Integraciones";help="Activá cada herramienta y configurá su API key. Igual que CrewAI — tus agentes usan las herramientas habilitadas acá.";
     let tbody="";
     Object.keys(TOOLS_CAT).forEach(cat=>{
@@ -348,11 +455,10 @@ function render(){renderTree();const V=document.getElementById("view");
     </div></div>
     <div class="panel pad"><h3 style="margin-top:0">Funciones habilitadas</h3><div class="mini" style="margin-bottom:8px">Prendé las funciones extra que querés que vea este cliente.</div>${fr}</div>`;}
 
-  else if(current==="a_rent"){title="Rentabilidad";help="Lo que te deja cada cliente: lo que te paga de suscripción menos tu costo operativo (lo que consumen sus agentes). Así ves tu ganancia real, aunque el cliente solo pague un plan fijo.";
-    let r="",ti=0,tc=0;
-    CLIENTS.forEach(c=>{const ing=PLAN_PRICE[c.plan]||0;let cost=0;c.ag.forEach(a=>{if(CONSUMO[a])cost+=CONSUMO[a].dia*30;});const gan=ing-cost;const mg=ing?Math.round(gan/ing*100):0;ti+=ing;tc+=cost;r+="<tr><td><b>"+c.n+"</b><div class='mini'>"+c.plan+"</div></td><td>$"+ing.toFixed(2)+"</td><td>$"+cost.toFixed(2)+"</td><td style='font-weight:800;color:"+(gan>=0?"var(--green)":"var(--red)")+"'>$"+gan.toFixed(2)+"</td><td>"+mg+"%</td></tr>";});
-    const tg=ti-tc;
-    body=`<div class="kpis"><div class="kpi"><div class="n">$${ti.toFixed(2)}</div><div class="l">Ingresos/mes</div></div><div class="kpi"><div class="n">$${tc.toFixed(2)}</div><div class="l">Costo operativo/mes</div></div><div class="kpi"><div class="n" style="color:var(--green)">$${tg.toFixed(2)}</div><div class="l">Ganancia/mes</div></div><div class="kpi"><div class="n">${ti?Math.round(tg/ti*100):0}%</div><div class="l">Margen</div></div></div><div class="panel"><table><thead><tr><th>Cliente</th><th>Te paga (susc.)</th><th>Tu costo</th><th>Ganancia</th><th>Margen</th></tr></thead><tbody>${r}</tbody></table></div><div class="help" style="margin-top:14px">Si la ganancia da negativa, ese cliente consume más de lo que paga: conviene subir el plan o ajustar su consumo.</div>`;}
+  else if(current==="a_rent"){title="Rentabilidad";help="Costo operativo real por cliente (lo que consumen sus agentes), últimos 30 días. Todavía no hay un precio de plan por cliente cargado en la plataforma, así que por ahora se muestra solo el costo, no el margen.";
+    const rows=(PROFIT.by_client||[]);
+    let r="";rows.forEach(c=>{r+="<tr><td><b>"+c.client_name+"</b></td><td>$"+Number(c.spend_period_usd).toFixed(4)+"</td><td>"+c.runs+"</td></tr>";});
+    body=`<div class="kpis"><div class="kpi"><div class="n">$${Number(PROFIT.total_usd||0).toFixed(4)}</div><div class="l">Costo operativo/mes (real)</div></div><div class="kpi"><div class="n">${rows.length}</div><div class="l">Clientes con consumo</div></div></div><div class="panel"><table><thead><tr><th>Cliente</th><th>Costo (30 días)</th><th>Ejecuciones</th></tr></thead><tbody>${r||'<tr><td colspan="3" class="mini" style="text-align:center;padding:20px">Sin consumo registrado todavía.</td></tr>'}</tbody></table></div><div class="help" style="margin-top:14px">Próximo paso: cargar el precio de plan por cliente para calcular ganancia y margen real, no solo costo.</div>`;}
 
   else if(current==="c_chat"||current==="a_chat"){title="Hablar con un agente";help="Acá le das la orden al agente en tus palabras, como un chat. Él entiende, ejecuta y te muestra el avance en «Mis tareas».";
     const opts=role==="cli"?CLIENTS.find(c=>c.n===me).ag:Object.keys(AGENTS);
@@ -364,16 +470,13 @@ function render(){renderTree();const V=document.getElementById("view");
     let oh="";opts.forEach(a=>{oh+="<option value='"+a+"'"+(a===chatAgent?" selected":"")+">"+AGENTS[a].n+"</option>";});
     body=`<div class="chatwrap"><div class="chatsel">💬 Hablando con <select onchange="chatAgent=this.value;render()" style="width:auto;display:inline-block;padding:6px 10px">${oh}</select></div><div class="chatlog">${log}</div><div class="chatbar"><input id="chatmsg" placeholder="Escribí qué querés que haga..." onkeydown="if(event.key==='Enter')sendChat()"><button class="primary" onclick="sendChat()">Enviar</button></div></div>`;}
 
-  else if(current==="c_analitica"||current==="a_analitica"){title="Analítica";help="Cómo trabaja tu equipo de agentes: quién consume más, cómo evoluciona el gasto mes a mes y la actividad. Sirve para vos y para el cliente.";
+  else if(current==="c_analitica"||current==="a_analitica"){title="Analítica";help="Cómo trabaja tu equipo de agentes: quién consume más y la actividad reciente, con datos reales de las ejecuciones.";
     const ags=role==="cli"?CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]):Object.keys(CONSUMO);
     const mx=Math.max.apply(null,ags.map(a=>CONSUMO[a].mes).concat([0.01]));
-    let barsA="";ags.forEach(a=>{const v=CONSUMO[a].mes;barsA+="<div style='margin-bottom:12px'><div style='display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px'><b>"+AGENTS[a].n+"</b><span>$"+v.toFixed(2)+"</span></div><div style='height:10px;background:var(--soft);border-radius:6px;overflow:hidden'><div style='height:100%;width:"+Math.round(v/mx*100)+"%;background:linear-gradient(90deg,var(--brand2),var(--brand))'></div></div></div>";});
-    const meses=[["Ene",12.0],["Feb",15.3],["Mar",14.1],["Abr",19.2],["May",17.4],["Jun",18.7]];
-    const mmx=Math.max.apply(null,meses.map(m=>m[1]));
-    let barsM="<div style='display:flex;align-items:flex-end;gap:14px;height:170px;padding-top:10px'>";meses.forEach(m=>{barsM+="<div style='flex:1;display:flex;flex-direction:column;align-items:center;gap:6px'><div style='font-size:11px;color:var(--muted)'>$"+m[1]+"</div><div style='width:100%;background:linear-gradient(180deg,var(--brand2),var(--brand));border-radius:6px 6px 0 0;height:"+Math.round(m[1]/mmx*120)+"px'></div><div style='font-size:11px;color:var(--muted)'>"+m[0]+"</div></div>";});barsM+="</div>";
+    let barsA="";ags.forEach(a=>{const v=CONSUMO[a].mes;barsA+="<div style='margin-bottom:12px'><div style='display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px'><b>"+(AGENTS[a]?AGENTS[a].n:a)+"</b><span>$"+v.toFixed(4)+"</span></div><div style='height:10px;background:var(--soft);border-radius:6px;overflow:hidden'><div style='height:100%;width:"+Math.round(v/mx*100)+"%;background:linear-gradient(90deg,var(--brand2),var(--brand))'></div></div></div>";});
     let top="";let topv=-1;ags.forEach(a=>{if(CONSUMO[a].mes>topv){topv=CONSUMO[a].mes;top=a;}});
     const tot=ags.reduce((x,a)=>x+CONSUMO[a].mes,0);
-    body=`<div class="kpis"><div class="kpi"><div class="n">${ags.length}</div><div class="l">Agentes activos</div></div><div class="kpi"><div class="n">$${tot.toFixed(2)}</div><div class="l">Gasto del mes</div></div><div class="kpi"><div class="n" style="font-size:15px">${top?AGENTS[top].n:"-"}</div><div class="l">El que más consume</div></div><div class="kpi"><div class="n">${TASKS.filter(t=>t.st==="done").length}</div><div class="l">Tareas completadas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Consumo por agente (este mes)</h3>${barsA}</div><div class="panel pad"><h3 style="margin-top:0">Gasto por mes</h3>${barsM}<div class="mini" style="margin-top:8px">Así el cliente prevé su gasto y ve la tendencia.</div></div></div>`;}
+    body=`<div class="kpis"><div class="kpi"><div class="n">${ags.length}</div><div class="l">Agentes activos</div></div><div class="kpi"><div class="n">$${tot.toFixed(4)}</div><div class="l">Gasto (30 días)</div></div><div class="kpi"><div class="n" style="font-size:15px">${top&&AGENTS[top]?AGENTS[top].n:"-"}</div><div class="l">El que más consume</div></div><div class="kpi"><div class="n">${TASKS.filter(t=>t.st==="done").length}</div><div class="l">Tareas completadas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Consumo por agente (30 días)</h3>${barsA||'<p class="mini">Sin consumo todavía.</p>'}</div><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,6).map(taskRow).join("")||'<p class="mini">Sin ejecuciones todavía.</p>'}</div></div>`;}
 
   else if(current==="c_catalogo"||current==="a_catalogo"){title="Catálogo de agentes";help="Todo el equipo de IEA AGENTIQ. Contratá los que necesites por 1 mes (x2 = USD 78), 6 meses (x1.5 = USD 58.50/mes) o 1 año (USD 39/mes). Mínimo 1 mes.";
     const mine=role==="cli"?CLIENTS.find(c=>c.n===me).ag:[];
@@ -441,24 +544,24 @@ function render(){renderTree();const V=document.getElementById("view");
     body=`<div class="kpis"><div class="kpi"><div class="n">${myTasks.length}</div><div class="l">Totales</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${k('run')}</div><div class="l">En curso</div></div><div class="kpi"><div class="n" style="color:var(--amber)">${k('wait')}</div><div class="l">Tu OK</div></div><div class="kpi"><div class="n" style="color:var(--green)">${k('done')}</div><div class="l">Listas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Tus tareas</h3>${myTasks.map(taskRow).join("")}</div><div class="panel pad"><h3 style="margin-top:0">¿Qué hace el agente?</h3>${feedFor(myTasks.find(t=>t.st==='run'||t.st==='wait')||myTasks[0])}</div></div>`;}
   else if(current==="c_agentes"){const mine=CLIENTS.find(c=>c.n===me).ag;title="Mis agentes";help="Los agentes que tenés contratados.";
     body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${mine.map(a=>`<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${AGENTS[a].n}</b><div class="mini" style="color:var(--amber);font-weight:600">${AGENTS[a].orixá}</div></div></div><div class="mini" style="margin-top:8px">${AGENTS[a].d}</div></div>`).join("")}</div>`;}
-  else if(current==="c_saldo"){title="Consumo y saldo";help="Mirá cuánto gasta cada agente y todo el grupo este mes. La proyección estima el total a fin de mes si se mantiene el ritmo, para que puedas prever y no haya sorpresas. El consumo se reinicia cada mes.";btn=`<button class="btn" onclick="alert('Recarga en 2 pasos (demo)')">➕ Cargar saldo</button>`;
+  else if(current==="c_saldo"){title="Consumo y saldo";help="Cuánto gastó cada agente hoy y en los últimos 30 días, con datos reales de las ejecuciones. La proyección estima el total a fin de mes si se mantiene el ritmo de hoy.";
     const ags=CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]);
     let sumDia=0,sumMes=0,rows="";
-    ags.forEach(a=>{sumDia+=CONSUMO[a].dia;sumMes+=CONSUMO[a].mes;rows+="<tr><td><div class='row'><div class='ag'>"+a.slice(0,2)+"</div><b>"+AGENTS[a].n+"</b></div></td><td>$"+CONSUMO[a].dia.toFixed(2)+"</td><td>$"+CONSUMO[a].mes.toFixed(2)+"</td><td><b>~$"+(CONSUMO[a].dia*30).toFixed(2)+"</b></td></tr>";});
+    ags.forEach(a=>{sumDia+=CONSUMO[a].dia;sumMes+=CONSUMO[a].mes;rows+="<tr><td><div class='row'><div class='ag'>"+a.slice(0,2)+"</div><b>"+(AGENTS[a]?AGENTS[a].n:a)+"</b></div></td><td>$"+CONSUMO[a].dia.toFixed(4)+"</td><td>$"+CONSUMO[a].mes.toFixed(4)+"</td><td><b>~$"+(CONSUMO[a].dia*30).toFixed(4)+"</b></td></tr>";});
     const proy=sumDia*30;
-    body=`<div class="kpis"><div class="kpi"><div class="n" style="color:var(--green)">$${CLIENT_SALDO.toFixed(2)}</div><div class="l">Saldo disponible</div></div><div class="kpi"><div class="n">$${sumDia.toFixed(2)}</div><div class="l">Gasto hoy</div></div><div class="kpi"><div class="n">$${sumMes.toFixed(2)}</div><div class="l">Gasto este mes</div></div><div class="kpi"><div class="n" style="color:var(--amber)">~$${proy.toFixed(2)}</div><div class="l">Proyección fin de mes</div></div></div><div class="panel"><table><thead><tr><th>Agente</th><th>Hoy</th><th>Este mes</th><th>Proyección mensual</th></tr></thead><tbody>${rows}<tr style="background:var(--soft)"><td><b>Total del grupo</b></td><td><b>$${sumDia.toFixed(2)}</b></td><td><b>$${sumMes.toFixed(2)}</b></td><td><b>~$${proy.toFixed(2)}</b></td></tr></tbody></table></div><div class="panel pad" style="margin-top:16px"><div class="row" style="justify-content:space-between"><div><b>Suscripción mensual</b><div class="mini">Lo que pagás por usar la plataforma, aparte del consumo.</div></div><div style="font-size:20px;font-weight:800">$${CLIENT_SUB}</div></div></div>`;}
+    body=`<div class="kpis"><div class="kpi"><div class="n">$${sumDia.toFixed(4)}</div><div class="l">Gasto hoy</div></div><div class="kpi"><div class="n">$${sumMes.toFixed(4)}</div><div class="l">Gasto (30 días)</div></div><div class="kpi"><div class="n" style="color:var(--amber)">~$${proy.toFixed(4)}</div><div class="l">Proyección fin de mes</div></div></div><div class="panel"><table><thead><tr><th>Agente</th><th>Hoy</th><th>Últimos 30 días</th><th>Proyección mensual</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mini" style="text-align:center;padding:20px">Todavía no hay consumo registrado.</td></tr>'}<tr style="background:var(--soft)"><td><b>Total del grupo</b></td><td><b>$${sumDia.toFixed(4)}</b></td><td><b>$${sumMes.toFixed(4)}</b></td><td><b>~$${proy.toFixed(4)}</b></td></tr></tbody></table></div>`;}
 
   V.innerHTML=tr(`<div class="bar"><div><div class="crumb">${crumb||'&nbsp;'}</div><h1>${title}</h1></div><div style="display:flex;gap:8px;align-items:center"><button class="btn alt" onclick="setLang('es')" style="${lang==='es'?'border-color:var(--brand);color:var(--brand)':''}">ES</button><button class="btn alt" onclick="setLang('pt')" style="${lang==='pt'?'border-color:var(--brand);color:var(--brand)':''}">PT</button><button class="btn alt" onclick="toggleHelp()">✨ Ayuda</button>${btn}</div></div><div class="content">${help?`<div class="help">${help}</div>`:''}${body}</div>`);renderHelp();
 }
 
-function taskRow(t){return `<div class="row" style="padding:10px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px;cursor:pointer" onclick="openTask(${t.id})"><div class="ag">${t.ag.slice(0,2)}</div><div style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.t}</b><span class="mini">${AGENTS[t.ag].n}${role==='adm'?' · '+t.cli:''}</span></div>${badge(t.st)}</div>`;}
+function taskRow(t){return `<div class="row" style="padding:10px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px;cursor:pointer" onclick="openTask('${t.id}')"><div class="ag">${t.ag.slice(0,2)}</div><div style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.t}</b><span class="mini">${AGENTS[t.ag]?AGENTS[t.ag].n:t.ag}${role==='adm'?' · '+t.cli:''}</span></div>${badge(t.st)}</div>`;}
 function feedFor(t){if(!t)return '<p class="mini">Sin actividad.</p>';return `<div class="mini" style="margin-bottom:10px">${t.t}</div><div class="feed">${t.steps.map(s=>`<div class="step ${s[0]}"><div class="rail"><div class="pin"></div><div class="ln"></div></div><div><b>${s[1]}</b><span>${s[2]||''}</span></div></div>`).join("")}</div>`;}
 
 function agentDetail(k){const g=AGENTS[k];
   const ts=TASKS.filter(t=>t.ag===k);
   let act="";
   if(!ts.length)act="<p class='mini'>Este agente todavía no tiene tareas asignadas.</p>";
-  ts.forEach(t=>{act+="<div class='task' style='flex-wrap:wrap' onclick='toggAg("+t.id+")'><div class='ag'>"+k.slice(0,2)+"</div><div class='info'><b>"+t.t+"</b><span>"+t.cli+"</span></div>"+badge(t.st)+"<span style='margin-left:8px;color:var(--muted)'>"+(agOpen[t.id]?"▾":"▶")+"</span>";if(agOpen[t.id])act+="<div style='width:100%;margin-top:10px;padding-left:42px'>"+feedFor(t)+"</div>";act+="</div>";});
+  ts.forEach(t=>{act+="<div class='task' style='flex-wrap:wrap' onclick='toggAg(&quot;"+t.id+"&quot;)'><div class='ag'>"+k.slice(0,2)+"</div><div class='info'><b>"+t.t+"</b><span>"+t.cli+"</span></div>"+badge(t.st)+"<span style='margin-left:8px;color:var(--muted)'>"+(agOpen[t.id]?"▾":"▶")+"</span>";if(agOpen[t.id])act+="<div style='width:100%;margin-top:10px;padding-left:42px'>"+feedFor(t)+"</div>";act+="</div>";});
   return `<div class="panel pad">
   <div class="row" style="margin-bottom:14px"><div class="ag" style="width:40px;height:40px">${k.slice(0,2)}</div><div><h2 style="margin:0;font-size:18px">${g.n}</h2><div style="color:var(--amber);font-size:12px;font-weight:700;margin:2px 0">${g.orixá}</div><div class="mini">${g.grupo} · <span class="${g.estado==='activo'?'dotg':'dota'}"></span>${g.estado}</div></div></div>
   <div class="formgrid"><div><label>Modelo de IA</label><select id="ag_model_${k}" onchange="saveAgentModel('${k}',this.value)">
@@ -548,7 +651,23 @@ function createAgent(){
 }
 
 /* MODALES */
-function sendChat(){const el=document.getElementById("chatmsg");if(!el||!el.value.trim())return;const t=el.value.trim();CHAT.push({ag:chatAgent,who:"u",t:t});CHAT.push({ag:chatAgent,who:"a",t:"Entendido 👍 Empiezo con eso ahora y te voy mostrando cada paso en «Mis tareas». Te aviso cuando termine o si necesito tu aprobación."});render();const l=document.getElementById("chatlog");if(l)l.scrollTop=l.scrollHeight;}
+async function sendChat(){
+  const el=document.getElementById("chatmsg");if(!el||!el.value.trim())return;
+  const t=el.value.trim();el.value="";
+  CHAT.push({ag:chatAgent,who:"u",t:t});
+  CHAT.push({ag:chatAgent,who:"a",t:"⏳ Ejecutando..."});
+  render();
+  const l=document.getElementById("chatlog");if(l)l.scrollTop=l.scrollHeight;
+  try{
+    const data=await runAgentReal(chatAgent,t);
+    const meta=`[tier: ${data.tier_used}${data.cached?" · desde caché":""} · costo: $${Number(data.cost_usd).toFixed(4)}]\n\n`;
+    CHAT[CHAT.length-1].t=meta+data.result;
+  }catch(err){
+    CHAT[CHAT.length-1].t="⚠️ "+(err.message||err);
+  }
+  render();
+  const l2=document.getElementById("chatlog");if(l2)l2.scrollTop=l2.scrollHeight;
+}
 const HELP={
  inicio:"Es tu vista general: cuántos agentes y clientes tenés y qué se está ejecutando ahora. Usá el menú de la izquierda para entrar a cada sección.",
  a_agentes:"Acá están todos tus agentes. Tocá uno para configurar su prompt, su modelo de IA y sus herramientas, y para ver qué está haciendo.",
@@ -774,8 +893,22 @@ function setLang(l){lang=l;render();}
 function toggleFeat(i,k){CLIENTS[i].features[k]=!CLIENTS[i].features[k];render();}
 function modal(html){document.getElementById("modalHost").innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()" style="position:fixed;inset:0;background:rgba(20,24,33,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50"><div class="lcard" style="width:520px;max-height:88vh;overflow:auto;position:relative"><button onclick="closeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;color:var(--muted)">✕</button>${html}</div></div>`;}
 function closeModal(){document.getElementById("modalHost").innerHTML="";}
-function openTask(id){const t=TASKS.find(x=>x.id===id);const ctl=role==='adm'?`<label>Editar instrucción</label><textarea rows="2">${t.t}</textarea><div class="actions"><button class="btn alt" onclick="closeModal()">Pausar</button><button class="btn" onclick="closeModal()">Guardar</button></div>`:(t.st==='wait'?`<div class="actions"><button class="btn alt" onclick="closeModal()">Rechazar</button><button class="btn" onclick="closeModal()">Aprobar</button></div>`:'');modal(`<h2 style="margin:0 0 4px">${t.t}</h2><div class="sub">${AGENTS[t.ag].n} · ${t.cli} · ${STATUS[t.st][1]}</div>${feedFor(t)}${ctl}`);}
-function openNew(){const opts=CLIENTS.find(c=>c.n===me).ag;modal(`<h2 style="margin:0 0 4px">Nueva tarea</h2><div class="sub">Decile a tu agente qué querés</div><label>Agente</label><select>${opts.map(a=>`<option>${AGENTS[a].n}</option>`).join("")}</select><label>¿Qué querés que haga?</label><textarea rows="3" placeholder="Ej: Buscar 30 clientes en Río y preparar invitaciones"></textarea><button class="btn full" onclick="closeModal()">Enviar al agente</button>`);}
+function openTask(id){const t=TASKS.find(x=>x.id===id);if(!t)return;const resultBlock=t.result?`<div class="panel pad" style="margin-top:10px"><b class="mini">Resultado</b><div style="white-space:pre-wrap;font-size:13px;margin-top:6px">${t.result}</div></div>`:'';modal(`<h2 style="margin:0 0 4px">${t.t}</h2><div class="sub">${AGENTS[t.ag]?AGENTS[t.ag].n:t.ag} · ${t.cli} · ${STATUS[t.st]?STATUS[t.st][1]:t.st}${t.tier?' · tier '+t.tier:''}${t.cost!=null?' · $'+Number(t.cost).toFixed(4):''}</div>${feedFor(t)}${resultBlock}`);}
+function openNew(){const opts=CLIENTS.find(c=>c.n===me).ag;modal(`<h2 style="margin:0 0 4px">Nueva tarea</h2><div class="sub">Decile a tu agente qué querés</div><label>Agente</label><select id="newtask_ag">${opts.map(a=>`<option value="${a}">${AGENTS[a]?AGENTS[a].n:a}</option>`).join("")}</select><label>¿Qué querés que haga?</label><textarea id="newtask_txt" rows="3" placeholder="Ej: Buscar 30 clientes en Río y preparar invitaciones"></textarea><div class="mini" id="newtask_status"></div><button class="btn full" id="newtask_btn" onclick="submitNewTask()">Enviar al agente</button>`);}
+async function submitNewTask(){
+  const ag=document.getElementById("newtask_ag").value;
+  const txt=document.getElementById("newtask_txt").value.trim();
+  const status=document.getElementById("newtask_status");
+  const btn=document.getElementById("newtask_btn");
+  if(!txt){status.textContent="Escribí qué querés que haga el agente.";return;}
+  btn.disabled=true;btn.textContent="Ejecutando... puede tardar unos segundos";status.textContent="";
+  try{
+    await runAgentReal(ag,txt);
+    closeModal();current=role==="cli"?"c_tareas":"ejec";render();
+  }catch(err){
+    status.textContent="⚠️ "+(err.message||err);btn.disabled=false;btn.textContent="Enviar al agente";
+  }
+}
 </script>
 </body>
 </html>

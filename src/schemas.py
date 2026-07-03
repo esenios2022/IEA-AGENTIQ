@@ -49,6 +49,12 @@ class AssignedAgentOut(BaseModel):
     id: str
     name: str
     description: str | None = None
+    agent_code: str | None = None
+    orixa: str | None = None
+    group: str | None = None
+    status: str = "active"
+    daily_budget_usd: float | None = None
+    tools: list[str] = []
 
 
 class ClientOut(BaseModel):
@@ -56,6 +62,38 @@ class ClientOut(BaseModel):
     name: str
     email: str
     agents: list[AssignedAgentOut] = []
+
+
+class AgentOut(BaseModel):
+    id: str
+    agent_code: str | None = None
+    name: str
+    role: str
+    description: str | None = None
+    status: str
+    daily_budget_usd: float | None = None
+    orixa: str | None = None
+    group: str | None = None
+    tools: list[str] = []
+    system_prompt: str | None = None
+    default_tier: str | None = None
+    created_at: str
+
+
+class ExecutionOut(BaseModel):
+    id: str
+    agent_id: str
+    agent_name: str
+    client_id: str | None = None
+    client_name: str | None = None
+    status: str
+    tier: str
+    cost_usd: float
+    cached: bool
+    input_text: str | None = None
+    result_text: str | None = None
+    error_message: str | None = None
+    created_at: str
 
 
 class ConnectToolkitResponse(BaseModel):

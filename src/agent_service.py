@@ -99,6 +99,8 @@ def run(
             output_tokens=0,
             cached=True,
             success=True,
+            input_text=extra_input,
+            result_text=cached_row.response,
         )
         return RunOutcome(result=cached_row.response, cost_usd=0.0, tier_used=tier, cached=True)
 
@@ -120,6 +122,7 @@ def run(
             output_tokens=0,
             success=False,
             error_message=str(exc),
+            input_text=extra_input,
         )
         raise
 
@@ -134,6 +137,8 @@ def run(
         output_tokens=exec_result.output_tokens,
         tool_calls=exec_result.tool_calls,
         success=True,
+        input_text=extra_input,
+        result_text=exec_result.text,
     )
     _cache_write(db, agent.id, tier, extra_input, exec_result.text)
 
