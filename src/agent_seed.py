@@ -87,6 +87,7 @@ def _to_definition(cfg: dict) -> dict:
         "orixa_dominio": cfg.get("orixa_dominio"),
         "group": cfg.get("group"),
         "knowledge_base_shortcut": cfg["id"] in _KB_SHORTCUT_AGENT_CODES,
+        "case_memory": bool(cfg.get("case_memory", False)),
     }
 
 

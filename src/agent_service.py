@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.agent_executor import run_agent as run_lean_agent
+from src.case_memory import append_message, get_case_history
 from src.cost import BudgetDecision, check_budget, record_usage
 from src.crew_runtime import run_crew
 from src.llm_pricing import TIER_MODELS
@@ -72,6 +73,7 @@ def run(
     extra_input: str | None = None,
     user_id: str | None = None,
     client_id: uuid.UUID | None = None,
+    case_id: uuid.UUID | None = None,
 ) -> RunOutcome:
     definition = agent.definition or {}
 
@@ -86,27 +88,34 @@ def run(
     if decision == BudgetDecision.FORCE_ECONOMY:
         tier = "economy"
 
-    cached_row = _cache_lookup(db, agent.id, tier, extra_input)
-    if cached_row is not None:
-        record_usage(
-            db,
-            agent_id=agent.id,
-            client_id=client_id,
-            execution_id=None,
-            model=TIER_MODELS[tier],
-            tier=tier,
-            input_tokens=0,
-            output_tokens=0,
-            cached=True,
-            success=True,
-            input_text=extra_input,
-            result_text=cached_row.response,
-        )
-        return RunOutcome(result=cached_row.response, cost_usd=0.0, tier_used=tier, cached=True)
+    # Case-based runs carry their own conversation memory, so identical text at two
+    # different points in a patient's history must NOT be deduped by the response cache.
+    if case_id is None:
+        cached_row = _cache_lookup(db, agent.id, tier, extra_input)
+        if cached_row is not None:
+            record_usage(
+                db,
+                agent_id=agent.id,
+                client_id=client_id,
+                execution_id=None,
+                model=TIER_MODELS[tier],
+                tier=tier,
+                input_tokens=0,
+                output_tokens=0,
+                cached=True,
+                success=True,
+                input_text=extra_input,
+                result_text=cached_row.response,
+            )
+            return RunOutcome(result=cached_row.response, cost_usd=0.0, tier_used=tier, cached=True)
+
+    history = get_case_history(db, case_id) if case_id is not None else None
 
     execution_id = uuid.uuid4()
     try:
-        if _is_multi_step(definition):
+        if case_id is not None:
+            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=history)
+        elif _is_multi_step(definition):
             exec_result = run_crew(agent, extra_input, user_id=user_id, tier=tier)
         else:
             exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id)
@@ -140,6 +149,11 @@ def run(
         input_text=extra_input,
         result_text=exec_result.text,
     )
-    _cache_write(db, agent.id, tier, extra_input, exec_result.text)
+
+    if case_id is not None:
+        append_message(db, case_id, "user", extra_input or "", cost_usd=None)
+        append_message(db, case_id, "assistant", exec_result.text, cost_usd=float(log.cost_usd))
+    else:
+        _cache_write(db, agent.id, tier, extra_input, exec_result.text)
 
     return RunOutcome(result=exec_result.text, cost_usd=float(log.cost_usd), tier_used=tier, cached=False)

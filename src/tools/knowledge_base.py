@@ -1,20 +1,23 @@
 """RAG knowledge-base search: brute-force cosine similarity, no pgvector dependency.
 
-Maps to the `supabase_knowledge_base` tool id in agents_config.json. Articles
-are shared across the platform for v1 (agent_id/client_id scoping columns
-exist on `KbArticle` for a future per-tenant KB, unused for now).
+Maps to the `supabase_knowledge_base` tool id in agents_config.json.
+`KbArticle.agent_id` scopes articles: NULL is a global article visible to
+every agent's search (María/Elías's short support FAQs); a set agent_id
+scopes it to just that agent (e.g. Moisés's TQA manuals, Jeremías's
+ThetaHealing books) so unrelated agents never surface each other's reference
+material.
 
-At the scale this platform targets (FAQ-style articles, top_k=3), doing the
-similarity math in Python over a capped SELECT is fast enough and avoids
-depending on the hosting Postgres instance supporting `CREATE EXTENSION
-vector`. See `src.agent_executor` for the zero-LLM-cost shortcut this module
-also powers (María/Elías: answer straight from a high-confidence KB hit).
+At the scale this platform targets, doing the similarity math in Python over
+a capped SELECT is fast enough and avoids depending on the hosting Postgres
+instance supporting `CREATE EXTENSION vector`. See `src.agent_executor` for
+the zero-LLM-cost shortcut this module also powers (María/Elías: answer
+straight from a high-confidence KB hit).
 """
 
 import math
 
 from crewai.tools import BaseTool
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from src.database import SessionLocal
 from src.embeddings import embed_text
@@ -34,14 +37,17 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-def search_kb(query: str, top_k: int = TOP_K) -> list[tuple[KbArticle, float]]:
+def search_kb(query: str, agent_id=None, top_k: int = TOP_K) -> list[tuple[KbArticle, float]]:
     query_embedding = embed_text(query)
 
     db = SessionLocal()
     try:
-        candidates = db.scalars(
-            select(KbArticle).where(KbArticle.embedding.isnot(None)).limit(CANDIDATE_LIMIT)
-        ).all()
+        conditions = [KbArticle.embedding.isnot(None)]
+        scope = KbArticle.agent_id.is_(None)
+        if agent_id is not None:
+            scope = or_(scope, KbArticle.agent_id == agent_id)
+        conditions.append(scope)
+        candidates = db.scalars(select(KbArticle).where(*conditions).limit(CANDIDATE_LIMIT)).all()
     finally:
         db.close()
 
@@ -50,9 +56,9 @@ def search_kb(query: str, top_k: int = TOP_K) -> list[tuple[KbArticle, float]]:
     return scored[:top_k]
 
 
-def best_match(query: str) -> tuple[KbArticle, float] | None:
+def best_match(query: str, agent_id=None) -> tuple[KbArticle, float] | None:
     try:
-        results = search_kb(query, top_k=1)
+        results = search_kb(query, agent_id=agent_id, top_k=1)
     except Exception:
         return None
     return results[0] if results else None
@@ -61,14 +67,15 @@ def best_match(query: str) -> tuple[KbArticle, float] | None:
 class KnowledgeBaseTool(BaseTool):
     name: str = "knowledge_base"
     description: str = (
-        "Busca en la base de conocimiento de la plataforma (artículos ya resueltos: tema, "
-        "pregunta, respuesta). Consultala ANTES de razonar desde cero — si hay un artículo "
-        "relevante, se puede responder tal cual."
+        "Busca en la base de conocimiento (artículos y fragmentos de documentos cargados). "
+        "Consultala ANTES de razonar desde cero — si hay un fragmento relevante, usalo como base "
+        "de tu respuesta."
     )
+    agent_id: str | None = None
 
     def _run(self, query: str) -> str:
         try:
-            results = search_kb(query)
+            results = search_kb(query, agent_id=self.agent_id)
         except RuntimeError as exc:
             return f"Base de conocimiento no disponible: {exc}"
         except Exception as exc:

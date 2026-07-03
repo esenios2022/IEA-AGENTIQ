@@ -95,7 +95,12 @@ class ResponseCache(Base):
 
 
 class KbArticle(Base):
-    """Knowledge-base article for the RAG tool (brute-force cosine similarity, no pgvector dependency)."""
+    """Knowledge-base article for the RAG tool (brute-force cosine similarity, no pgvector dependency).
+
+    `agent_id` NULL means a global article visible to every agent's KB search;
+    a set `agent_id` scopes it to that agent only (e.g. a therapy technique's
+    reference books, not mixed into the general support KB).
+    """
 
     __tablename__ = "kb_articles"
 
@@ -106,4 +111,35 @@ class KbArticle(Base):
     pregunta: Mapped[str] = mapped_column(Text)
     respuesta: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float] | None] = mapped_column(ARRAY(Float), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PatientCase(Base):
+    """A named, persistent thread of work on one patient (for agents with `case_memory: true`).
+
+    Every message sent while a case is open is saved to `CaseMessage` and
+    replayed back to the model on the next message, so the agent keeps
+    context across sessions days or weeks apart — unlike the default
+    single-shot `run()` path used by every other agent.
+    """
+
+    __tablename__ = "patient_cases"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agents.id"))
+    client_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clients.id"), nullable=True)
+    patient_label: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(20), default="abierto")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CaseMessage(Base):
+    __tablename__ = "case_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patient_cases.id"))
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    cost_usd: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

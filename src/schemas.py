@@ -55,6 +55,7 @@ class AssignedAgentOut(BaseModel):
     status: str = "active"
     daily_budget_usd: float | None = None
     tools: list[str] = []
+    case_memory: bool = False
 
 
 class ClientOut(BaseModel):
@@ -77,6 +78,41 @@ class AgentOut(BaseModel):
     tools: list[str] = []
     system_prompt: str | None = None
     default_tier: str | None = None
+    case_memory: bool = False
+    created_at: str
+
+
+class CreateCaseRequest(BaseModel):
+    patient_label: str
+
+
+class CaseOut(BaseModel):
+    id: str
+    agent_id: str
+    client_id: str | None = None
+    patient_label: str
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class CaseMessageOut(BaseModel):
+    role: str
+    content: str
+    cost_usd: float | None = None
+    created_at: str
+
+
+class CaseRunRequest(BaseModel):
+    message: str
+
+
+class KbArticleOut(BaseModel):
+    id: str
+    tema: str
+    pregunta: str
+    respuesta: str
+    indexed: bool
     created_at: str
 
 

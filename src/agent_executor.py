@@ -60,7 +60,9 @@ def _initial_task_text(agent: Agent, extra_input: str | None) -> str:
     return base
 
 
-def _run_loop(agent: Agent, tier: str, extra_input: str | None, user_id: str) -> ExecResult:
+def _run_loop(
+    agent: Agent, tier: str, extra_input: str | None, user_id: str, history: list[dict] | None = None
+) -> ExecResult:
     model = TIER_MODELS.get(tier, TIER_MODELS["standard"])
     max_tokens = TIER_MAX_TOKENS.get(tier, 2048)
     temperature = TIER_TEMPERATURE.get(tier, 0.5)
@@ -68,20 +70,25 @@ def _run_loop(agent: Agent, tier: str, extra_input: str | None, user_id: str) ->
     definition = agent.definition or {}
 
     if definition.get("knowledge_base_shortcut") and extra_input:
-        match = best_match(extra_input)
+        match = best_match(extra_input, agent_id=agent.id)
         if match is not None:
             article, score = match
             if score >= SHORTCUT_SIMILARITY_THRESHOLD:
                 return ExecResult(text=article.respuesta, model=model, input_tokens=0, output_tokens=0, tool_calls=1)
 
-    tools = assemble_tools(definition, user_id)
+    tools = assemble_tools(definition, user_id, agent_id=agent.id)
     tools_by_name = {t.name: t for t in tools}
     anthropic_tools = [_tool_to_anthropic_schema(t) for t in tools]
 
     system_prompt = system_prompt_for(agent)
     client = Anthropic(api_key=settings.anthropic_api_key)
 
-    messages: list[dict] = [{"role": "user", "content": _initial_task_text(agent, extra_input)}]
+    if history:
+        # Continuing an open case: prior turns carry the framing already, so the new
+        # message goes in as-is rather than re-wrapped in the task/objective template.
+        messages: list[dict] = list(history) + [{"role": "user", "content": extra_input or "Continuá."}]
+    else:
+        messages = [{"role": "user", "content": _initial_task_text(agent, extra_input)}]
 
     input_tokens = 0
     output_tokens = 0
@@ -127,11 +134,17 @@ def _run_loop(agent: Agent, tier: str, extra_input: str | None, user_id: str) ->
     )
 
 
-def run_agent(agent: Agent, tier: str, extra_input: str | None = None, user_id: str | None = None) -> ExecResult:
+def run_agent(
+    agent: Agent,
+    tier: str,
+    extra_input: str | None = None,
+    user_id: str | None = None,
+    history: list[dict] | None = None,
+) -> ExecResult:
     resolved_user_id = user_id or str(agent.id)
     print(f"[agent_executor] running agent {agent.id} (tier={tier})", flush=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_run_loop, agent, tier, extra_input, resolved_user_id)
+        future = executor.submit(_run_loop, agent, tier, extra_input, resolved_user_id, history)
         try:
             return future.result(timeout=EXEC_TIMEOUT_SECONDS)
         except concurrent.futures.TimeoutError as exc:

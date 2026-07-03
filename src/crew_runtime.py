@@ -33,7 +33,7 @@ def build_crew(
 ) -> Crew:
     definition = agent.definition or {}
     composio_user_id = user_id or str(agent.id)
-    shared_tools = assemble_tools(definition, composio_user_id)
+    shared_tools = assemble_tools(definition, composio_user_id, agent_id=agent.id)
     crew_llm = _llm_for_tier(tier)
     context_block = (
         f"\n\nDATOS REALES DE ESTE CASO (usalos tal cual, no inventes otros nombres ni datos):\n{extra_input}"

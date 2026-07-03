@@ -231,6 +231,7 @@ let agOpen={};
 let CHAT=[],chatAgent="";
 let helpOpen=false;
 let lang="es";
+let CASES=[],CASE_MESSAGES=[],currentCaseId=null;
 let PROFIT={by_client:[],total_usd:0};
 
 const SHORT_CODE={"Juan":"SL","Lucas":"GS","Rafael":"SA","Camila":"RM","María":"CC","Elías":"CG","Clara":"BC","Santiago":"SH","Ariel":"CF","Gabriel":"OL","Bruno":"PC","Miguel":"GK","Valentina":"IX","Noa":"KA","Sofía":"WA","Theo":"GH"};
@@ -254,7 +255,7 @@ async function api(path,opts){
 }
 
 function agentToRecord(a){
-  return {id:a.id,n:a.name,orixá:a.orixa||"",grupo:a.group||"General",modelo:a.default_tier||"economy",idioma:"PT/ES",estado:a.status==="active"?"activo":(a.status||"activo"),d:a.description||"",prompt:a.system_prompt||"",tools:a.tools||[],dailyBudget:a.daily_budget_usd};
+  return {id:a.id,n:a.name,orixá:a.orixa||"",grupo:a.group||"General",modelo:a.default_tier||"economy",idioma:"PT/ES",estado:a.status==="active"?"activo":(a.status||"activo"),d:a.description||"",prompt:a.system_prompt||"",tools:a.tools||[],dailyBudget:a.daily_budget_usd,caseMemory:!!a.case_memory};
 }
 
 function computeWorkforces(){
@@ -321,6 +322,54 @@ async function runAgentReal(code,inputText){
   const data=await api(path,{method:"POST",body:JSON.stringify({input:inputText||null})});
   await refreshExecutions();
   return data;
+}
+
+/* ---------- CASOS (memoria persistente por paciente) ---------- */
+async function loadCasesFor(code){
+  const rec=AGENTS[code];
+  if(!rec)return;
+  const path=role==="cli"?("/api/me/agents/"+rec.id+"/cases"):("/api/agents/"+rec.id+"/cases");
+  CASES=await api(path);
+}
+
+async function navCases(code){
+  await loadCasesFor(code);
+  current="cases:"+code;
+  render();
+}
+
+async function createCaseFor(code){
+  const rec=AGENTS[code];
+  const label=document.getElementById("new_case_label").value.trim();
+  if(!label)return;
+  const path=role==="cli"?("/api/me/agents/"+rec.id+"/cases"):("/api/agents/"+rec.id+"/cases");
+  const created=await api(path,{method:"POST",body:JSON.stringify({patient_label:label})});
+  await loadCasesFor(code);
+  await openCase(created.id);
+}
+
+async function openCase(caseId){
+  currentCaseId=caseId;
+  CASE_MESSAGES=await api("/api/cases/"+caseId+"/messages");
+  nav("case:"+caseId);
+}
+
+async function sendCaseMessage(){
+  const el=document.getElementById("casemsg");
+  if(!el||!el.value.trim())return;
+  const text=el.value.trim();el.value="";
+  CASE_MESSAGES.push({role:"user",content:text,created_at:new Date().toISOString()});
+  CASE_MESSAGES.push({role:"assistant",content:"⏳ Pensando...",created_at:new Date().toISOString()});
+  render();
+  try{
+    const data=await api("/api/cases/"+currentCaseId+"/message",{method:"POST",body:JSON.stringify({message:text})});
+    CASE_MESSAGES[CASE_MESSAGES.length-1].content=data.result;
+    CASE_MESSAGES[CASE_MESSAGES.length-1].cost_usd=data.cost_usd;
+  }catch(err){
+    CASE_MESSAGES[CASE_MESSAGES.length-1].content="⚠️ "+(err.message||err);
+  }
+  render();
+  const log=document.getElementById("caselog");if(log)log.scrollTop=log.scrollHeight;
 }
 
 function setRole(r){role=r;document.getElementById("rCli").classList.toggle("on",r==="cli");document.getElementById("rAdm").classList.toggle("on",r==="adm");}
@@ -482,6 +531,26 @@ function render(){renderTree();const V=document.getElementById("view");
     let oh="";opts.forEach(a=>{oh+="<option value='"+a+"'"+(a===chatAgent?" selected":"")+">"+AGENTS[a].n+"</option>";});
     body=`<div class="chatwrap"><div class="chatsel">💬 Hablando con <select onchange="chatAgent=this.value;render()" style="width:auto;display:inline-block;padding:6px 10px">${oh}</select></div><div class="chatlog">${log}</div><div class="chatbar"><input id="chatmsg" placeholder="Escribí qué querés que haga..." onkeydown="if(event.key==='Enter')sendChat()"><button class="primary" onclick="sendChat()">Enviar</button></div></div>`;}
 
+  else if(current.startsWith("cases:")){
+    const code=current.split(":")[1];const rec=AGENTS[code];
+    title="Casos de "+(rec?rec.n:code);crumb="Agentes ›";
+    help="Cada caso guarda su propia memoria: podés retomarlo cualquier día y "+(rec?rec.n:"el agente")+" se acuerda de todo lo hablado antes.";
+    body=`<div class="panel pad" style="margin-bottom:16px"><label>Nuevo caso (nombre del paciente)</label><div style="display:flex;gap:8px"><input id="new_case_label" placeholder="Ej: Ana Pérez" style="flex:1"><button class="btn" onclick="createCaseFor('${code}')">Crear caso</button></div></div>
+    <div class="panel"><table><thead><tr><th>Paciente</th><th>Estado</th><th>Última actividad</th></tr></thead><tbody>${CASES.map(c=>`<tr onclick="openCase('${c.id}')"><td><b>${c.patient_label}</b></td><td>${c.status}</td><td class="mini">${new Date(c.updated_at).toLocaleString()}</td></tr>`).join("")||'<tr><td colspan="3" class="mini" style="text-align:center;padding:20px">Todavía no hay casos. Creá el primero arriba.</td></tr>'}</tbody></table></div>`;
+  }
+  else if(current.startsWith("case:")){
+    const caseId=current.split(":")[1];
+    const c=CASES.find(x=>x.id===caseId);
+    const agentCode=c?Object.keys(AGENTS).find(k=>AGENTS[k].id===c.agent_id):null;
+    const agentName=agentCode&&AGENTS[agentCode]?AGENTS[agentCode].n:"Agente";
+    title=c?c.patient_label:"Caso";crumb="Casos ›";
+    help="Todo lo que hables acá queda guardado como memoria de este caso — podés cerrar la página y retomarlo otro día.";
+    let clog="";
+    if(!CASE_MESSAGES.length)clog="<div class='mini' style='margin:auto;text-align:center;max-width:380px'>Contale la situación del paciente para empezar.</div>";
+    CASE_MESSAGES.forEach(m=>{clog+="<div class='bub "+(m.role==="user"?"u":"a")+"'><div class='nm'>"+(m.role==="user"?"Vos":agentName)+"</div>"+m.content+"</div>";});
+    body=`<div class="chatwrap"><div class="chatsel">📁 Caso: <b>${c?c.patient_label:''}</b> — ${agentName}</div><div class="chatlog" id="caselog">${clog}</div><div class="chatbar"><input id="casemsg" placeholder="Contale la situación..." onkeydown="if(event.key==='Enter')sendCaseMessage()"><button class="primary" onclick="sendCaseMessage()">Enviar</button></div></div>`;
+  }
+
   else if(current==="c_analitica"||current==="a_analitica"){title="Analítica";help="Cómo trabaja tu equipo de agentes: quién consume más y la actividad reciente, con datos reales de las ejecuciones.";
     const ags=role==="cli"?CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]):Object.keys(CONSUMO);
     const mx=Math.max.apply(null,ags.map(a=>CONSUMO[a].mes).concat([0.01]));
@@ -555,7 +624,7 @@ function render(){renderTree();const V=document.getElementById("view");
   else if(current==="c_tareas"){const k=s=>myTasks.filter(t=>t.st===s).length;title="Mis tareas";help="Todo lo que le pediste a tus agentes y cómo va, paso a paso.";btn=`<button class="btn alt" onclick="nav('c_chat')" style="margin-right:8px">💬 Hablar con el agente</button><button class="btn" onclick="openNew()">➕ Nueva tarea</button>`;
     body=`<div class="kpis"><div class="kpi"><div class="n">${myTasks.length}</div><div class="l">Totales</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${k('run')}</div><div class="l">En curso</div></div><div class="kpi"><div class="n" style="color:var(--amber)">${k('wait')}</div><div class="l">Tu OK</div></div><div class="kpi"><div class="n" style="color:var(--green)">${k('done')}</div><div class="l">Listas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Tus tareas</h3>${myTasks.map(taskRow).join("")}</div><div class="panel pad"><h3 style="margin-top:0">¿Qué hace el agente?</h3>${feedFor(myTasks.find(t=>t.st==='run'||t.st==='wait')||myTasks[0])}</div></div>`;}
   else if(current==="c_agentes"){const mine=CLIENTS.find(c=>c.n===me).ag;title="Mis agentes";help="Los agentes que tenés contratados.";
-    body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${mine.map(a=>`<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${AGENTS[a].n}</b><div class="mini" style="color:var(--amber);font-weight:600">${AGENTS[a].orixá}</div></div></div><div class="mini" style="margin-top:8px">${AGENTS[a].d}</div></div>`).join("")}</div>`;}
+    body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${mine.map(a=>`<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${AGENTS[a].n}</b><div class="mini" style="color:var(--amber);font-weight:600">${AGENTS[a].orixá}</div></div></div><div class="mini" style="margin-top:8px">${AGENTS[a].d}</div>${AGENTS[a].caseMemory?`<button class="btn alt" style="margin-top:8px;padding:7px 12px;font-size:12px" onclick="navCases('${a}')">📁 Ver casos</button>`:''}</div>`).join("")}</div>`;}
   else if(current==="c_saldo"){title="Consumo y saldo";help="Cuánto gastó cada agente hoy y en los últimos 30 días, con datos reales de las ejecuciones. La proyección estima el total a fin de mes si se mantiene el ritmo de hoy.";
     const ags=CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]);
     let sumDia=0,sumMes=0,rows="";
@@ -575,7 +644,7 @@ function agentDetail(k){const g=AGENTS[k];
   if(!ts.length)act="<p class='mini'>Este agente todavía no tiene tareas asignadas.</p>";
   ts.forEach(t=>{act+="<div class='task' style='flex-wrap:wrap' onclick='toggAg(&quot;"+t.id+"&quot;)'><div class='ag'>"+k.slice(0,2)+"</div><div class='info'><b>"+t.t+"</b><span>"+t.cli+"</span></div>"+badge(t.st)+"<span style='margin-left:8px;color:var(--muted)'>"+(agOpen[t.id]?"▾":"▶")+"</span>";if(agOpen[t.id])act+="<div style='width:100%;margin-top:10px;padding-left:42px'>"+feedFor(t)+"</div>";act+="</div>";});
   return `<div class="panel pad">
-  <div class="row" style="margin-bottom:14px"><div class="ag" style="width:40px;height:40px">${k.slice(0,2)}</div><div><h2 style="margin:0;font-size:18px">${g.n}</h2><div style="color:var(--amber);font-size:12px;font-weight:700;margin:2px 0">${g.orixá}</div><div class="mini">${g.grupo} · <span class="${g.estado==='activo'?'dotg':'dota'}"></span>${g.estado}</div></div></div>
+  <div class="row" style="margin-bottom:14px"><div class="ag" style="width:40px;height:40px">${k.slice(0,2)}</div><div><h2 style="margin:0;font-size:18px">${g.n}</h2><div style="color:var(--amber);font-size:12px;font-weight:700;margin:2px 0">${g.orixá}</div><div class="mini">${g.grupo} · <span class="${g.estado==='activo'?'dotg':'dota'}"></span>${g.estado}</div></div>${g.caseMemory?`<button class="btn alt" style="margin-left:auto" onclick="navCases('${k}')">📁 Ver casos</button>`:''}</div>
   <div class="formgrid"><div><label>Modelo de IA</label><select id="ag_model_${k}" onchange="saveAgentModel('${k}',this.value)">
     <optgroup label="💻 Local / Gratis (Ollama)">
       <option${g.modelo==='ollama/llama3.2'?' selected':''}>ollama/llama3.2</option>

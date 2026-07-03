@@ -97,6 +97,55 @@
         </div>
 
         <div class="crew-box">
+            <h2>Base de conocimiento del agente</h2>
+            <p>Subí libros/manuales/protocolos (PDF, Word o texto) para que este agente los consulte. No se mezclan con la base de otros agentes.</p>
+            {% if request.query_params.get("uploaded") is not none %}
+            <p class="mini" style="color: var(--emerald)">Documento cargado: {{ request.query_params.get("uploaded") }} fragmentos indexados.</p>
+            {% endif %}
+            <form method="post" action="/admin/agents/{{ agent.id }}/knowledge/upload" enctype="multipart/form-data" style="margin-bottom: 14px;">
+                <input type="text" name="title" placeholder="Título del documento (ej: Manual TQA)" required
+                       style="padding:10px 12px; border-radius:8px; border:1px solid rgba(205,163,73,0.3); margin-right:8px; width: 260px;">
+                <input type="file" name="file" accept=".pdf,.docx,.txt,.md" required style="margin-right:8px;">
+                <button type="submit">Subir y trocear</button>
+            </form>
+            {% if kb_articles %}
+            <table style="width:100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                    <tr style="text-align:left; border-bottom: 1px solid rgba(205,163,73,0.3);">
+                        <th style="padding:6px 4px;">Documento</th>
+                        <th style="padding:6px 4px;">Fragmento</th>
+                        <th style="padding:6px 4px;">Indexado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for article in kb_articles %}
+                    <tr style="border-bottom: 1px solid rgba(205,163,73,0.15);">
+                        <td style="padding:6px 4px;">{{ article.tema }}</td>
+                        <td style="padding:6px 4px;">{{ article.pregunta }}</td>
+                        <td style="padding:6px 4px;">{{ "sí" if article.embedding else "no (falta OPENAI_API_KEY)" }}</td>
+                        <td style="padding:6px 4px;">
+                            <form method="post" action="/admin/agents/{{ agent.id }}/knowledge/{{ article.id }}/delete" style="display:inline;">
+                                <button type="submit" style="margin:0; padding:4px 10px; font-size:0.75rem; background:none; color:#7a1f1f; border:1px solid #7a1f1f;">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="mini">Todavía no hay documentos cargados para este agente.</p>
+            {% endif %}
+        </div>
+
+        {% if case_memory %}
+        <div class="crew-box">
+            <h2>Casos (memoria por paciente)</h2>
+            <p>Este agente tiene memoria persistente por caso. Gestioná los casos desde <a href="/plataforma">la plataforma</a>, sección "Casos" en su vista de agente.</p>
+        </div>
+        {% endif %}
+
+        <div class="crew-box">
             <h2>Ejecutar con CrewAI</h2>
             <p>Corre este agente de verdad, usando la definición guardada arriba.</p>
             <textarea id="crew-input" placeholder="(Opcional) Contexto extra para esta corrida..."></textarea>
