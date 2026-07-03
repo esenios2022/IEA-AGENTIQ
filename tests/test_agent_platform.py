@@ -73,16 +73,20 @@ def test_select_tier_default_and_escalation(test_agent):
 
 
 def test_sync_master_agents_is_idempotent(db):
+    from src.agent_seed import load_master_config
+
+    expected_total = len(load_master_config()["agents"])
+
     result1 = sync_master_agents(db)
-    assert result1.total == 16
-    assert result1.created + result1.updated == 16
+    assert result1.total == expected_total
+    assert result1.created + result1.updated == expected_total
 
     result2 = sync_master_agents(db)
     assert result2.created == 0
-    assert result2.updated == 16
+    assert result2.updated == expected_total
 
     count = db.query(Agent).filter(Agent.agent_code.isnot(None)).count()
-    assert count == 16
+    assert count == expected_total
 
 
 def test_agent_service_cache_and_budget(db, test_agent):

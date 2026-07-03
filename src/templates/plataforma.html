@@ -234,7 +234,17 @@ let lang="es";
 let PROFIT={by_client:[],total_usd:0};
 
 const SHORT_CODE={"Juan":"SL","Lucas":"GS","Rafael":"SA","Camila":"RM","María":"CC","Elías":"CG","Clara":"BC","Santiago":"SH","Ariel":"CF","Gabriel":"OL","Bruno":"PC","Miguel":"GK","Valentina":"IX","Noa":"KA","Sofía":"WA","Theo":"GH"};
-function codeFor(name){return SHORT_CODE[name]||(name||"??").slice(0,2).toUpperCase();}
+let AGENT_CODE_BY_ID={}, USED_CODES=new Set();
+function resetAgentCodes(){AGENT_CODE_BY_ID={};USED_CODES=new Set();}
+function codeForAgent(a){
+  if(AGENT_CODE_BY_ID[a.id])return AGENT_CODE_BY_ID[a.id];
+  const base=SHORT_CODE[a.name]||(a.name||"??").slice(0,2).toUpperCase();
+  let code=base,n=1;
+  while(USED_CODES.has(code)){n++;code=base.slice(0,1)+n;}
+  USED_CODES.add(code);
+  AGENT_CODE_BY_ID[a.id]=code;
+  return code;
+}
 
 async function api(path,opts){
   const r=await fetch(path,Object.assign({headers:{"Content-Type":"application/json"}},opts||{}));
@@ -263,11 +273,12 @@ function execToTask(e){
 }
 
 async function bootstrapAdmin(){
+  resetAgentCodes();
   const agents=await api("/api/agents");
-  AGENTS={};agents.forEach(a=>{AGENTS[codeFor(a.name)]=agentToRecord(a);});
+  AGENTS={};agents.forEach(a=>{AGENTS[codeForAgent(a)]=agentToRecord(a);});
   computeWorkforces();
   const clients=await api("/api/clients");
-  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeFor(a.name)),plan:"—",pais:"",lang:"es",features:{}}));
+  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeForAgent(a)),plan:"—",pais:"",lang:"es",features:{}}));
   const execs=await api("/api/executions");
   TASKS=execs.map(execToTask);
   const usage=await api("/api/usage?period=month");
@@ -277,8 +288,9 @@ async function bootstrapAdmin(){
 }
 
 async function bootstrapClient(meData){
+  resetAgentCodes();
   AGENTS={};
-  (meData.agents||[]).forEach(a=>{AGENTS[codeFor(a.name)]=agentToRecord(a);});
+  (meData.agents||[]).forEach(a=>{AGENTS[codeForAgent(a)]=agentToRecord(a);});
   computeWorkforces();
   myClientId=meData.id;
   CLIENTS=[{id:meData.id,n:meData.name,mail:meData.email,ag:Object.keys(AGENTS),plan:"—",pais:"",lang:"es",features:{}}];
