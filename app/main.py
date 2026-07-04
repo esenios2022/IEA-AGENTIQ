@@ -59,10 +59,29 @@ def ensure_schema():
     for tname in DESIRED:
         T[tname] = Table(tname, meta, autoload_with=engine)
 
+_schema_ready = False
+
+def ensure_ready():
+    global _schema_ready
+    if not _schema_ready:
+        ensure_schema()
+        _schema_ready = True
+
+@app.middleware("http")
+async def _init_mw(request, call_next):
+    try:
+        ensure_ready()
+    except Exception as e:
+        print("schema init deferred:", e)
+    return await call_next(request)
+
 @app.on_event("startup")
 def _startup():
-    ensure_schema()
-    print("Schema OK")
+    try:
+        ensure_ready()
+        print("Schema OK")
+    except Exception as e:
+        print("Startup schema deferred (se reintenta en la 1a request):", e)
 
 def now(): return datetime.now(timezone.utc)
 def nid(): return str(uuid.uuid4())
@@ -560,4 +579,4 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "1.0.0", "backend": "app.main"}
