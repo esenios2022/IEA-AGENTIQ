@@ -635,6 +635,7 @@ def client_detail_page(
 def update_client(
     client_id: str,
     name: str = Form(...),
+    password: str | None = Form(None),
     agent_ids: list[str] = Form([]),
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
@@ -644,6 +645,8 @@ def update_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     client.name = name
+    if password:
+        client.password_hash = hash_password(password)
     db.query(ClientAgent).filter(ClientAgent.client_id == client.id).delete()
     for agent_id in agent_ids:
         db.add(ClientAgent(client_id=client.id, agent_id=agent_id))
