@@ -554,6 +554,18 @@ def logout(request: Request):
     return {"success": True}
 
 
+@app.get("/api/auth/me")
+def auth_me(request: Request, db: Session = Depends(get_db)):
+    if request.session.get("is_admin"):
+        return {"role": "admin", "username": settings.admin_user}
+    client_id = request.session.get("client_id")
+    if client_id:
+        client = db.get(Client, client_id)
+        if client:
+            return {"role": "client", **_client_out(client, db).model_dump()}
+    raise HTTPException(status_code=401, detail="No autenticado")
+
+
 @app.get("/api/me", response_model=ClientOut)
 def me(request: Request, db: Session = Depends(get_db)):
     client = get_current_client(request, db)

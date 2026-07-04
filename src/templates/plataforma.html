@@ -776,7 +776,8 @@ function toggleTool(t,el){el.classList.toggle('off');if(!el.classList.contains('
 function contratar(a,p){alert("Solicitaste "+AGENTS[a].n+" ("+p+"). Recibimos tu pedido, programamos el agente y lo activamos en tu cuenta. Te avisamos por email. (demo)");}
 function descargar(){alert("Generando reporte del mes... (demo)");}
 function saveAgentModel(k,v){if(AGENTS[k]){AGENTS[k].modelo=v;var t=document.querySelector('#ag_model_'+k);if(t){var m=t.closest('.panel');if(m){var lbl=m.querySelector('.mini');if(lbl&&lbl.textContent.indexOf('Guardado')<0){var sp=document.createElement('span');sp.style.cssText='color:var(--green);font-size:11px;margin-left:8px';sp.textContent='\u2705 Guardado';lbl.appendChild(sp);setTimeout(function(){sp.remove();},2000);}}}}}
-async function nuevoCliente(){var n=prompt("Nombre del cliente o empresa:");if(!n)return;var m=prompt("Email del cliente (con esto entra a la plataforma):");if(!m)return;var pw=prompt("Clave de acceso para el cliente:");if(!pw)return;try{var b=new URLSearchParams();b.append('name',n);b.append('email',m);b.append('password',pw);var r=await fetch('/admin/clients',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});if(!r.ok){var d=await r.json().catch(function(){return {};});throw new Error(d.detail||('Error '+r.status));}await bootstrapAdmin();open.clientes=true;render();alert('✅ Cliente creado y guardado en la base. Ya puede entrar con su email y clave.');}catch(e){alert('No se pudo crear: '+e.message);}}
+async function nuevoCliente(){modal('<h2 style="margin:0 0 16px">Nuevo cliente</h2><label>Nombre o empresa</label><input id="nc_n" placeholder="Ej: Empresa SA" style="width:100%;margin-bottom:10px"><label style="margin-top:4px">Email (con esto entra)</label><input id="nc_m" type="email" placeholder="cliente@empresa.com" style="width:100%;margin-bottom:10px"><label style="margin-top:4px">Clave de acceso</label><input id="nc_pw" type="password" placeholder="Mínimo 6 caracteres" style="width:100%;margin-bottom:16px"><div class="mini" id="nc_err" style="color:#c0392b;min-height:18px;margin-bottom:6px"></div><button class="btn full" id="nc_btn" onclick="submitNuevoCliente()">Crear cliente</button>');}
+async function submitNuevoCliente(){var n=document.getElementById('nc_n').value.trim();var m=document.getElementById('nc_m').value.trim();var pw=document.getElementById('nc_pw').value;var err=document.getElementById('nc_err');var btn=document.getElementById('nc_btn');if(!n||!m||!pw){err.textContent='Completá todos los campos.';return;}btn.disabled=true;btn.textContent='Creando...';err.textContent='';try{var b=new URLSearchParams();b.append('name',n);b.append('email',m);b.append('password',pw);var r=await fetch('/admin/clients',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});if(!r.ok){var d=await r.json().catch(function(){return{};});throw new Error(d.detail||('Error '+r.status));}closeModal();await bootstrapAdmin();open.clientes=true;render();}catch(e){err.textContent='No se pudo crear: '+e.message;btn.disabled=false;btn.textContent='Crear cliente';}}
 async function saveClient(i){var c=CLIENTS[i];var n=document.getElementById('cn_n').value;var m=document.getElementById('cn_m').value;var p=document.getElementById('cn_p').value;var cc=document.getElementById('cn_c').value;var l=document.getElementById('cn_l').value;try{var b=new URLSearchParams();b.append('name',n);c.ag.forEach(function(code){if(AGENTS[code])b.append('agent_ids',AGENTS[code].id);});var r=await fetch('/admin/clients/'+c.id,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});if(!r.ok){var d=await r.json().catch(function(){return {};});throw new Error(d.detail||('Error '+r.status));}if(me===c.n)me=n;c.n=n;c.mail=m;c.plan=p;c.pais=cc;c.lang=l;alert('✅ Cliente guardado en la base.');render();}catch(e){alert('Error al guardar: '+e.message);}}
 function deleteClient(i){if(!confirm('¿Eliminar cliente '+CLIENTS[i].n+'? Esta acción no se puede deshacer.'))return;CLIENTS.splice(i,1);current='inicio';render();}
 function removeAgent(ci,ak){CLIENTS[ci].ag=CLIENTS[ci].ag.filter(function(a){return a!==ak;});render();}
@@ -991,6 +992,31 @@ async function submitNewTask(){
     status.textContent="⚠️ "+(err.message||err);btn.disabled=false;btn.textContent="Enviar al agente";
   }
 }
+
+document.addEventListener('DOMContentLoaded',async function(){
+  try{
+    var r=await fetch('/api/auth/me');
+    if(!r.ok)return;
+    var d=await r.json();
+    if(d.role==='admin'){
+      role='adm';me=d.username||'Admin';
+      await bootstrapAdmin();
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('roleTag').textContent='Admin';
+      document.getElementById('whoName').textContent=me;
+      current='inicio';lang='es';render();
+    }else if(d.role==='client'){
+      role='cli';
+      await bootstrapClient(d);
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('roleTag').textContent='Cliente';
+      document.getElementById('whoName').textContent=me;
+      current='c_tareas';lang='es';render();
+    }
+  }catch(e){}
+});
 </script>
 </body>
 </html>
