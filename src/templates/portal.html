@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Portal | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .portal-page { max-width: 900px; margin: 50px auto; padding: 0 24px; }
+        .portal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .portal-header button {
+            border: none;
+            background: none;
+            text-decoration: underline;
+            cursor: pointer;
+            color: inherit;
+        }
+        .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+        .agent-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+        }
+        .agent-card h3 { margin: 0 0 8px; }
+        .agent-card p { margin: 0 0 14px; font-size: 0.9rem; color: var(--text-muted); }
+        .agent-card a {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--emerald);
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
+        .connect-box {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+        .connect-box input {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            margin-right: 8px;
+        }
+        .connect-box button, .agent-card button {
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .agent-card .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+        .agent-card textarea {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            padding: 8px;
+            font-size: 0.85rem;
+        }
+        .agent-card .result { white-space: pre-wrap; font-size: 0.8rem; margin-top: 8px; }
+        .usage-box {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+        .usage-box h2 { margin-top: 0; font-size: 1.05rem; }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="portal-page">
+        <div class="portal-header">
+            <h1 id="client-name">Cargando...</h1>
+            <button onclick="logout()">Salir</button>
+        </div>
+
+        <div class="connect-box">
+            <strong>Conectar una cuenta real</strong> (Instagram, LinkedIn, Gmail, etc.)
+            <div style="margin-top:10px;">
+                <input type="text" id="toolkit-input" placeholder="ej: instagram, linkedin, gmail">
+                <button onclick="connectToolkit()">Conectar</button>
+            </div>
+        </div>
+
+        <div class="usage-box">
+            <h2>Mi consumo (últimos 30 días)</h2>
+            <div id="usage-summary">Cargando...</div>
+        </div>
+
+        <div id="agents-container"></div>
+    </main>
+    <script>
+        async function loadMe() {
+            const resp = await fetch("/api/me");
+            if (!resp.ok) {
+                window.location.href = "/login";
+                return;
+            }
+            const data = await resp.json();
+            document.getElementById("client-name").textContent = "Hola, " + data.name;
+            const container = document.getElementById("agents-container");
+            if (!data.agents.length) {
+                container.innerHTML = '<p class="empty">Todavía no tenés agentes asignados.</p>';
+                return;
+            }
+            container.innerHTML = '<div class="agents-grid">' + data.agents.map(a => `
+                <div class="agent-card">
+                    <h3>${a.name}</h3>
+                    <p>${a.description || ""}</p>
+                    <div class="actions">
+                        <a href="/agentes/${a.id}" target="_blank">Hablar con el agente</a>
+                        <button onclick="runAgent('${a.id}')">Ejecutar ahora</button>
+                    </div>
+                    <textarea id="input-${a.id}" rows="2" placeholder="(Opcional) Contexto para esta corrida..."></textarea>
+                    <div class="result" id="result-${a.id}"></div>
+                </div>
+            `).join("") + '</div>';
+        }
+
+        async function loadUsage() {
+            const resp = await fetch("/api/me/usage?period=month");
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const box = document.getElementById("usage-summary");
+            if (!data.by_agent.length) {
+                box.innerHTML = "Todavía no tenés ejecuciones registradas.";
+                return;
+            }
+            box.innerHTML = `<div>Gasto total: <strong>$${data.total_usd.toFixed(4)}</strong></div>` +
+                data.by_agent.map(a => `<div>${a.agent_name}: $${a.spend_period_usd.toFixed(4)} (${a.runs} corridas)</div>`).join("");
+        }
+
+        async function connectToolkit() {
+            const toolkit = document.getElementById("toolkit-input").value.trim();
+            if (!toolkit) return;
+            const resp = await fetch("/api/me/connect?toolkit=" + encodeURIComponent(toolkit));
+            const data = await resp.json();
+            if (resp.ok && data.redirect_url) {
+                window.open(data.redirect_url, "_blank");
+            } else {
+                alert(data.detail || "No se pudo conectar.");
+            }
+        }
+
+        async function runAgent(agentId) {
+            const resultBox = document.getElementById("result-" + agentId);
+            const input = document.getElementById("input-" + agentId).value.trim();
+            resultBox.textContent = "Ejecutando... esto puede tardar unos segundos.";
+            try {
+                const resp = await fetch("/api/me/agents/" + agentId + "/run", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ input: input || null }),
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    const meta = `[tier: ${data.tier_used}${data.cached ? " · desde caché" : ""} · costo: $${data.cost_usd.toFixed(4)}]`;
+                    resultBox.textContent = meta + "\n\n" + data.result;
+                } else {
+                    resultBox.textContent = "⚠️ " + (data.detail || "Error desconocido");
+                }
+            } catch (err) {
+                resultBox.textContent = "⚠️ Error: " + err;
+            }
+        }
+
+        async function logout() {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+        }
+
+        loadMe();
+        loadUsage();
+    </script>
+</body>
+</html>

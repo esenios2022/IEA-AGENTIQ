@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ agent.name }} | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        .chat-page {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 30px 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        .chat-page .header-block { text-align: center; margin-bottom: 24px; }
+        .chat-page .header-block p { color: var(--text-muted); margin-top: 4px; }
+        .chat-window {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            height: 440px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 85%;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.92rem;
+        }
+        .message.user { background: var(--emerald); color: var(--white); align-self: flex-end; }
+        .message.agent { background: rgba(205, 163, 73, 0.12); border-left: 3px solid var(--gold); align-self: flex-start; }
+        .message.status { color: var(--text-muted); font-size: 0.8rem; align-self: center; }
+        .input-group { display: flex; gap: 10px; }
+        textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+            border-radius: 8px;
+            resize: none;
+            height: 70px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 0 24px;
+            background: var(--emerald);
+            color: var(--gold);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            height: 70px;
+        }
+        button:hover { background: var(--emerald-light); }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="chat-page">
+        <div class="header-block">
+            <h1>{{ agent.name }}</h1>
+            <p>{{ agent.description or "" }}</p>
+        </div>
+        <div class="chat-window" id="chat"></div>
+        <div class="input-group">
+            <textarea id="input" placeholder="Escribí tu mensaje..."></textarea>
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+    </main>
+    <script>
+        const agentId = "{{ agent.id }}";
+        const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${proto}//${window.location.host}/api/agents/${agentId}/chat`);
+
+        ws.onopen = () => addMessage("Hola, soy {{ agent.name }}. ¿En qué te puedo ayudar?", "agent");
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "message") addMessage(data.content, "agent");
+            else if (data.type === "error") addMessage("⚠️ " + data.message, "status");
+        };
+        ws.onerror = () => addMessage("⚠️ Error de conexión con el agente.", "status");
+        ws.onclose = () => addMessage("⚠️ Conexión cerrada. Recargá la página para reintentar.", "status");
+
+        function sendMessage() {
+            const input = document.getElementById("input");
+            const message = input.value.trim();
+            if (!message) return;
+            addMessage(message, "user");
+            ws.send(JSON.stringify({ message }));
+            input.value = "";
+        }
+
+        function addMessage(msg, type) {
+            const chat = document.getElementById("chat");
+            const div = document.createElement("div");
+            div.className = `message ${type}`;
+            div.textContent = msg;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>

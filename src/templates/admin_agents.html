@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentes | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page {
+            max-width: 1100px;
+            margin: 60px auto;
+            padding: 0 24px;
+        }
+        .group-block { margin-bottom: 40px; }
+        .group-title {
+            font-size: 1.1rem;
+            color: var(--emerald);
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(205, 163, 73, 0.3);
+        }
+        .group-title .count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+        .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .agent-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+        }
+        .agent-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+        .agent-card .role-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gold);
+            background: var(--emerald);
+            padding: 2px 9px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .agent-card .status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        .agent-card .links { display: flex; gap: 10px; font-size: 0.85rem; }
+        .agent-card a { color: inherit; text-decoration: underline; }
+        .admin-empty {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px 0;
+        }
+        .import-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0 24px;
+        }
+        .import-box button {
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .import-msg { font-size: 0.85rem; color: var(--text-muted); }
+        .agent-card .budget { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+        .agent-card .paused-banner {
+            font-size: 0.75rem;
+            color: #7a1f1f;
+            background: #fbe4e4;
+            border-radius: 6px;
+            padding: 4px 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <h1>Agentes</h1>
+        <p>
+            <a href="/admin/clients">Ver clientes &rarr;</a>
+            &middot; <a href="/architect-chat">Crear agente con Obatalá &rarr;</a>
+            &middot; <a href="/admin/usage">Ver consumo y costos &rarr;</a>
+            &middot; <a href="/admin/knowledge">Base de conocimiento &rarr;</a>
+        </p>
+        <form class="import-box" method="post" action="/admin/agents/import">
+            <button type="submit">Importar / actualizar los 16 agentes maestros</button>
+            {% if request.query_params.get("imported") is not none %}
+            <span class="import-msg">
+                Creados: {{ request.query_params.get("imported") }} &middot;
+                Actualizados: {{ request.query_params.get("updated") }}
+            </span>
+            {% endif %}
+        </form>
+        {% if agents %}
+            {% for group_name, group_agents in groups.items() %}
+            <div class="group-block">
+                <div class="group-title">{{ group_name }}<span class="count">({{ group_agents|length }})</span></div>
+                <div class="agent-grid">
+                    {% for agent in group_agents %}
+                    <div class="agent-card">
+                        <span class="role-tag">{{ agent.role }}</span>
+                        <h3>{{ agent.name }}{% if agent.definition and agent.definition.orixa %} <small>({{ agent.definition.orixa }})</small>{% endif %}</h3>
+                        {% if agent.status == "paused" %}
+                        <div class="paused-banner">Pausado por presupuesto diario &mdash; se reactiva mañana</div>
+                        {% endif %}
+                        <div class="status">{{ agent.status }} &middot; {{ agent.created_at.strftime("%Y-%m-%d") }}</div>
+                        {% if agent.daily_budget_usd %}
+                        <div class="budget">Presupuesto: ${{ "%.2f"|format(agent.daily_budget_usd) }}/día</div>
+                        {% endif %}
+                        <div class="links">
+                            <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>
+                            <a href="/agentes/{{ agent.id }}" target="_blank">Probar chat</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p class="admin-empty">Todavía no hay agentes creados.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

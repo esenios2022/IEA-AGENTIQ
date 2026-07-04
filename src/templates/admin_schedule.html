@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programar {{ agent.name }} | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-page { max-width: 640px; margin: 60px auto; padding: 0 24px; }
+        .admin-back { display: inline-block; margin-bottom: 20px; color: inherit; }
+        form {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+        }
+        label { display: block; font-size: 0.85rem; margin: 14px 0 6px; }
+        select, textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(205, 163, 73, 0.3);
+        }
+        textarea { min-height: 100px; }
+        button {
+            margin-top: 18px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .last-result {
+            margin-top: 20px;
+            padding: 14px 16px;
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            white-space: pre-wrap;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="admin-page">
+        <a class="admin-back" href="/admin/clients/{{ client.id }}">&larr; Volver a {{ client.name }}</a>
+        <h1>Programar: {{ agent.name }}</h1>
+        <form method="post" action="/admin/clients/{{ client.id }}/agents/{{ agent.id }}/schedule">
+            <label for="frequency">Frecuencia</label>
+            <select id="frequency" name="frequency">
+                <option value="none" {% if not link.schedule_frequency %}selected{% endif %}>Sin programar</option>
+                <option value="daily" {% if link.schedule_frequency == "daily" %}selected{% endif %}>Todos los días</option>
+                <option value="weekly" {% if link.schedule_frequency == "weekly" %}selected{% endif %}>Todas las semanas</option>
+            </select>
+            <label for="instruction">Orden fija para cada corrida</label>
+            <textarea id="instruction" name="instruction" placeholder="Ej: Publicá un post nuevo sobre nuestros cursos de meditación.">{{ link.schedule_input or "" }}</textarea>
+            <button type="submit">Guardar</button>
+        </form>
+
+        {% if link.last_result %}
+        <div class="last-result">
+            <strong>Último resultado ({{ link.last_run_at.strftime("%Y-%m-%d %H:%M") if link.last_run_at else "?" }}):</strong>
+            {{ link.last_result }}
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

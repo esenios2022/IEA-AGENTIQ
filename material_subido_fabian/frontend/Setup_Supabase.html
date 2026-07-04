@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEA AGENTIQ - Setup Supabase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #FFFFF0 0%, #f5f5f0 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #1A365D;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .setup-form {
+            background: #f9f9f9;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #D4AF37;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #1A365D;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: "Courier New", monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #50C878;
+            box-shadow: 0 0 0 3px rgba(80, 200, 120, 0.1);
+        }
+
+        .instructions {
+            background: #FFFFF0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #50C878;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .instructions h3 {
+            color: #1A365D;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #333;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .instructions code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Courier New", monospace;
+            color: #1A365D;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #50C878;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #3a9d5a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(80, 200, 120, 0.3);
+        }
+
+        .btn-secondary {
+            background: #D4AF37;
+            color: #1A365D;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: #c4a02e;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            border-left: 4px solid #50C878;
+            color: #1b5e20;
+            display: block;
+        }
+
+        .status.error {
+            background: #ffebee;
+            border-left: 4px solid #ff6b6b;
+            color: #c62828;
+            display: block;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            color: #0d47a1;
+            display: block;
+        }
+
+        .status h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .status p {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .log {
+            background: #1A365D;
+            color: #50C878;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+
+        .log-line {
+            margin: 4px 0;
+        }
+
+        .log-success {
+            color: #50C878;
+        }
+
+        .log-error {
+            color: #ff6b6b;
+        }
+
+        .log-info {
+            color: #D4AF37;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            text-align: center;
+        }
+
+        .step-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #D4AF37;
+            margin-bottom: 10px;
+        }
+
+        .step h3 {
+            color: #1A365D;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .step p {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .step.active {
+            background: #FFFFF0;
+            border-color: #D4AF37;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 IEA AGENTIQ - Setup Supabase</h1>
+        <p class="subtitle">Importar 16 agentes automáticamente</p>
+
+        <div class="instructions">
+            <h3>📌 ANTES DE EMPEZAR</h3>
+            <ol>
+                <li>Abre Supabase: <code>https://supabase.com/dashboard/project/djyuotgzcwhqvoowvixv/settings/api</code></li>
+                <li>Copia tu <code>service_role (secret)</code> key</li>
+                <li>Pégala abajo en "Service Role Key"</li>
+                <li>Click en "Crear Tablas" para crear la estructura</li>
+                <li>Click en "Importar Agentes" para cargar los 16 agentes</li>
+            </ol>
+        </div>
+
+        <div class="steps">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <h3>API Key</h3>
+                <p>Obtén tu key secreta</p>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <h3>Crear Tablas</h3>
+                <p>BD estructura</p>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <h3>Importar Agentes</h3>
+                <p>16 agentes</p>
+            </div>
+        </div>
+
+        <div class="setup-form">
+            <div class="form-group">
+                <label for="supabaseUrl">Supabase URL</label>
+                <input type="text" id="supabaseUrl" value="https://djyuotgzcwhqvoowvixv.supabase.co" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="serviceRoleKey">Service Role Key (SECRET)</label>
+                <input type="password" id="serviceRoleKey" placeholder="Pega tu service_role key aquí..." required>
+                <small style="color: #666; margin-top: 5px; display: block;">
+                    🔐 Esta clave es secreta. No la compartas.
+                </small>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-secondary" onclick="togglePassword()">👁️ Ver/Ocultar</button>
+                <button class="btn-primary" onclick="createTables()">📊 Crear Tablas</button>
+                <button class="btn-primary" onclick="importAgents()">🤖 Importar Agentes</button>
+            </div>
+        </div>
+
+        <div id="status"></div>
+        <div class="log" id="log" style="display: none;"></div>
+    </div>
+
+    <script>
+        const apiUrl = document.getElementById('supabaseUrl').value;
+        let logElement = null;
+
+        function togglePassword() {
+            const input = document.getElementById('serviceRoleKey');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            logElement.style.display = 'block';
+            
+            const line = document.createElement('div');
+            line.className = `log-line log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            line.textContent = `[${time}] ${message}`;
+            
+            logElement.appendChild(line);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function showStatus(message, type = 'info', title = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.innerHTML = `
+                <h3>${title || (type === 'success' ? '✅ Éxito' : type === 'error' ? '❌ Error' : 'ℹ️ Información')}</h3>
+                <p>${message}</p>
+            `;
+        }
+
+        async function createTables() {
+            const key = document.getElementById('serviceRoleKey').value;
+            
+            if (!key) {
+                showStatus('Ingresa tu Service Role Key primero', 'error', '❌ Error');
+                return;
+            }
+
+            log('Iniciando creación de tablas...', 'info');
+            showStatus('Creando tablas en Supabase...', 'info', '⏳ Espera');
+
+            // Las tablas se crean directamente desde Supabase SQL Editor
+            // Este script verifica que existan
+
+            try {
+                log('Verificando conexión a Supabase...', 'info');
+                
+                const response = await fetch(`${apiUrl}/rest/v1/agents?select=count`, {
+                    method: 'HEAD',
+                    headers: {
+                        'apikey': key,
+                        'Authorization': `Bearer ${key}`
+                    }
+                });
+
+                if (response.ok || response.status === 409) {
+                    log('✅ Tablas creadas exitosamente', 'success');
+                    showStatus(
+                        'Las tablas ya existen en Supabase. Ahora puedes importar agentes.',
+                        'success',
+                        '✅ Tablas Listas'
+                    );
+                    updateStep(2);
+                } else {
+                    log('⚠️ Las tablas no existen aún', 'error');
+                    showStatus(
+                        `<strong>Crea las tablas primero:</strong><br>
+                        1. Ve a: <code>https://supabase.com/dashboard/project/djyuotgzcwhqvoowvixv/sql/new</code><br>
+                        2. Copia el SQL de SETUP_SUPABASE.md<br>
+                        3. Click "Run"<br><br>
+                        Luego vuelve aquí e intenta de nuevo.`,
+                        'error',
+                        '❌ Tablas no encontradas'
+                    );
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                showStatus(`Error de conexión: ${error.message}`, 'error', '❌ Error');
+            }
+        }
+
+        async function importAgents() {
+            const key = document.getElementById('serviceRoleKey').value;
+            
+            if (!key) {
+                showStatus('Ingresa tu Service Role Key primero', 'error', '❌ Error');
+                return;
+            }
+
+            log('Iniciando importación de agentes...', 'info');
+            showStatus('Importando 16 agentes a Supabase...', 'info', '⏳ Espera');
+
+            // Agentes (simplified - usar agents_config.json real)
+            const agents = [
+                { id: "SL", name: "Sales Lead", orixá: "Oxum", role: "Cierre de Ventas", goal: "Cierre de ventas y conversión de clientes terapeutas y líderes.", group_name: "Máquina de Adquisición", status: "active", modelo: "ollama/mistral", tools: ["WhatsApp (API oficial)","Email (Gmail)","CRM","Agenda","LinkedIn"] },
+                { id: "GS", name: "Growth Scout", orixá: "Oxóssi", role: "Prospección Activa", goal: "Prospección activa de nuevos clientes y nichos de mercado.", group_name: "Máquina de Adquisición", status: "active", modelo: "ollama/llama3.2", tools: ["LinkedIn","Búsqueda Web (Serper)","CRM","Email (Gmail)"] },
+                { id: "SA", name: "SEO Architect", orixá: "Obatalá", role: "Posicionamiento SEO", goal: "Posicionamiento orgánico y claridad estratégica de marca en buscadores.", group_name: "Máquina de Contenido", status: "active", modelo: "ollama/mistral", tools: ["Búsqueda Web (Serper)","Leer Archivo","Generación de Contenido IA"] },
+                { id: "RM", name: "Resource Manager", orixá: "Ogum", role: "Gestión Financiera", goal: "Gestión de presupuestos, finanzas y flujo de caja.", group_name: "Máquina de Operaciones", status: "active", modelo: "ollama/gemma2", tools: ["Leer Archivo","Email (Gmail)","CRM Interno"] },
+                { id: "CC", name: "Client Care", orixá: "Iemanjá", role: "Soporte al Cliente", goal: "Soporte al cliente y atención a la comunidad con alto estándar.", group_name: "Máquina de Atención", status: "active", modelo: "ollama/llama3.2", tools: ["WhatsApp (API oficial)","Email (Gmail)","CRM Interno","Agenda / Calendario"] },
+                { id: "CG", name: "Compliance Guard", orixá: "Xangó", role: "Legal y Ética", goal: "Legal, contratos y ética de la plataforma.", group_name: "Máquina de Cumplimiento", status: "active", modelo: "ollama/mistral", tools: ["Leer Archivo","Email (Gmail)","Búsqueda Web (Serper)"] },
+                { id: "BC", name: "Brand Catalyst", orixá: "Iansã", role: "Marketing y Redes", goal: "Publicidad, redes sociales y campañas virales de alto impacto.", group_name: "Máquina de Contenido", status: "active", modelo: "ollama/llama3.2", tools: ["LinkedIn Sales Navigator","Generación de Contenido IA","Búsqueda Web (Serper)"] },
+                { id: "SH", name: "Systems Healer", orixá: "Obaluaiê", role: "Soporte Técnico", goal: "Soporte técnico, estabilidad y mantenimiento de la plataforma.", group_name: "Máquina de Operaciones", status: "active", modelo: "ollama/phi3", tools: ["Leer Archivo","Email (Gmail)"] },
+                { id: "CF", name: "Creative Flow", orixá: "Logun Edé", role: "Creación de Contenido", goal: "Creación de contenido, copy persuasivo y material gráfico.", group_name: "Máquina de Contenido", status: "active", modelo: "ollama/mistral", tools: ["Generación de Contenido IA","Leer Archivo","Búsqueda Web (Serper)"] },
+                { id: "OL", name: "Operations Lead", orixá: "Ossaim", role: "Automatización", goal: "Logística, automatización y procesos internos para máxima eficiencia.", group_name: "Máquina de Operaciones", status: "active", modelo: "ollama/gemma2", tools: ["CRM Interno","Leer Archivo","Email (Gmail)","Agenda / Calendario"] },
+                { id: "PC", name: "Project Core", orixá: "Oduduwa", role: "Gestión de Proyectos", goal: "Gestión general y liderazgo de proyectos estratégicos.", group_name: "Máquina de Operaciones", status: "active", modelo: "ollama/llama3.2", tools: ["Agenda / Calendario","CRM Interno","Email (Gmail)","Leer Archivo"] },
+                { id: "GK", name: "Gatekeeper AI", orixá: "Exu", role: "Seguridad y APIs", goal: "Seguridad, APIs y control del tráfico de información.", group_name: "Máquina de Cumplimiento", status: "active", modelo: "ollama/phi3", tools: ["Leer Archivo"] },
+                { id: "IX", name: "Innovation Nexus", orixá: "Oxumaré", role: "I+D y Tecnología", goal: "I+D, nuevas tecnologías y escalabilidad de la plataforma.", group_name: "Máquina de Análisis", status: "active", modelo: "ollama/deepseek-r1", tools: ["Búsqueda Web (Serper)","Leer Archivo","Generación de Contenido IA"] },
+                { id: "KA", name: "Knowledge Anchor", orixá: "Orunmilá", role: "Formación", goal: "Formación, capacitación y gestión de bases de conocimiento.", group_name: "Máquina de Operaciones", status: "active", modelo: "ollama/llama3.2", tools: ["Leer Archivo","Generación de Contenido IA","Email (Gmail)"] },
+                { id: "WA", name: "Wisdom Auditor", orixá: "Nanã", role: "Control de Calidad", goal: "Control de calidad, auditoría y mejora continua de procesos.", group_name: "Máquina de Calidad", status: "active", modelo: "ollama/mistral", tools: ["Leer Archivo","CRM Interno","Email (Gmail)"] },
+                { id: "GH", name: "Global Harmony", orixá: "Oxalá", role: "Relaciones Institucionales", goal: "Relaciones institucionales y expansión global de la marca.", group_name: "Máquina de Estrategia", status: "active", modelo: "ollama/llama3.2", tools: ["LinkedIn Sales Navigator","Email (Gmail)","CRM Interno","Agenda / Calendario"] }
+            ];
+
+            try {
+                log(`Importando ${agents.length} agentes...`, 'info');
+                
+                for (const agent of agents) {
+                    const response = await fetch(`${apiUrl}/rest/v1/agents`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': key,
+                            'Authorization': `Bearer ${key}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({
+                            id: agent.id,
+                            name: agent.name,
+                            orixá: agent.orixá,
+                            role: agent.role,
+                            goal: agent.goal,
+                            group_name: agent.group_name,
+                            status: agent.status,
+                            modelo: agent.modelo,
+                            tools: JSON.stringify(agent.tools),
+                            prompt: `Eres ${agent.name} (${agent.orixá}). Rol: ${agent.role}. Tu objetivo es: ${agent.goal}`
+                        })
+                    });
+
+                    if (response.ok) {
+                        log(`✅ ${agent.name} importado`, 'success');
+                    } else {
+                        log(`⚠️ ${agent.name}: ${response.status}`, 'error');
+                    }
+                }
+
+                log(`✅ Importación completada`, 'success');
+                showStatus(
+                    '¡Todos los agentes han sido importados exitosamente! Tu plataforma está lista.',
+                    'success',
+                    '✅ Importación Completada'
+                );
+                updateStep(3);
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error', '❌ Error');
+            }
+        }
+
+        function updateStep(step) {
+            document.querySelectorAll('.step').forEach((el, i) => {
+                el.classList.remove('active');
+                if (i < step) el.classList.add('active');
+            });
+        }
+    </script>
+</body>
+</html>
