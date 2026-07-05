@@ -860,6 +860,25 @@
       "daily_budget_usd": 1.5,
       "language": "es/pt",
       "status": "active"
+    },
+    {
+      "id": "agent_031",
+      "name": "Lisa Mawu",
+      "orixa": null,
+      "orixa_dominio": null,
+      "role": "Por definir",
+      "goal": "Por definir",
+      "prompt": "IDENTIDAD: Sos Lisa Mawu. Rol y funciones por definir.",
+      "group": "General",
+      "tools": [],
+      "llm_routing": {
+        "default_tier": "economy",
+        "escalate_to": "standard",
+        "escalate_keywords": []
+      },
+      "daily_budget_usd": 1.0,
+      "language": "es/pt",
+      "status": "draft"
     }
   ],
   "teams": [
