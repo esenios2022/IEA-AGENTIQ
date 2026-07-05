@@ -227,6 +227,23 @@ def get_agent(agent_id: str, db: Session = Depends(get_db)):
     return _agent_out(agent)
 
 
+@app.post("/api/agents/{agent_id}/group")
+def update_agent_group(
+    agent_id: str,
+    group: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    definition = dict(agent.definition or {})
+    definition["group"] = group
+    agent.definition = definition
+    db.commit()
+    return {"success": True}
+
+
 @app.get("/api/clients", response_model=list[ClientOut])
 def list_clients_api(
     db: Session = Depends(get_db),

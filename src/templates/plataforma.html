@@ -453,7 +453,7 @@ function renderTree(){
     h+=`<div class="item" onclick="toggle('equipos')"><span class="ic">👥</span> Equipos <span class="car ${open.equipos?'open':''}">▶</span></div>`;
     if(open.equipos){h+=`<div class="children">`;
       WORKFORCES.forEach((w,i)=>{h+=`<div class="child ${current==='wf:'+i?'on':''}" onclick="nav('wf:${i}')"><div class="ag" style="background:linear-gradient(135deg,#d97706,#f59e0b)">${w.n.slice(0,1)}</div>${w.n}</div>`;});
-      h+=`<div class="addrow" onclick="alert('Crear equipo (demo)')">＋ Nuevo equipo</div></div>`;}
+      h+=`<div class="addrow" onclick="nuevoEquipo()">＋ Nuevo equipo</div></div>`;}
     // Grupo Clientes
     h+=`<div class="item" onclick="toggle('clientes')"><span class="ic">🏢</span> Clientes <span class="car ${open.clientes?'open':''}">▶</span></div>`;
     if(open.clientes){h+=`<div class="children">`;
@@ -1010,6 +1010,29 @@ async function submitNewTask(){
   }catch(err){
     status.textContent="⚠️ "+(err.message||err);btn.disabled=false;btn.textContent="Enviar al agente";
   }
+}
+
+async function nuevoEquipo(){
+  var agOpts=Object.keys(AGENTS).map(k=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer"><input type="checkbox" value="${k}"><div class="ag" style="width:28px;height:28px;font-size:11px">${k.slice(0,2)}</div><div style="flex:1"><b>${AGENTS[k].n}</b><div class="mini" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${AGENTS[k].d}</div></div></label>`).join('');
+  modal(`<h2 style="margin:0 0 16px">Nuevo equipo</h2><label>Nombre del equipo</label><input id="ne_n" placeholder="Ej: Studio de Ventas" style="width:100%;margin-bottom:14px"><label>Agentes del equipo</label><div id="ne_agents" style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px">${agOpts}</div><div class="mini" id="ne_err" style="color:#c0392b;min-height:18px;margin-bottom:6px"></div><button class="btn full" id="ne_btn" onclick="submitNuevoEquipo()">Crear equipo</button>`);
+}
+async function submitNuevoEquipo(){
+  var n=document.getElementById('ne_n').value.trim();
+  var err=document.getElementById('ne_err');
+  var btn=document.getElementById('ne_btn');
+  if(!n){err.textContent='Escribí el nombre del equipo.';return;}
+  var checks=[...document.querySelectorAll('#ne_agents input[type=checkbox]:checked')];
+  if(!checks.length){err.textContent='Seleccioná al menos un agente.';return;}
+  btn.disabled=true;btn.textContent='Creando...';err.textContent='';
+  try{
+    for(var ch of checks){
+      var code=ch.value;var agId=AGENTS[code]&&AGENTS[code].id;if(!agId)continue;
+      var b=new URLSearchParams();b.append('group',n);
+      var r=await fetch('/api/agents/'+agId+'/group',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+      if(!r.ok){var d=await r.json().catch(function(){return{};});throw new Error(d.detail||'Error '+r.status);}
+    }
+    closeModal();await bootstrapAdmin();open.equipos=true;render();
+  }catch(e){err.textContent='Error: '+e.message;btn.disabled=false;btn.textContent='Crear equipo';}
 }
 
 document.addEventListener('DOMContentLoaded',async function(){
