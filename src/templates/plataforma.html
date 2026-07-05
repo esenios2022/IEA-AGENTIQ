@@ -293,7 +293,7 @@ async function bootstrapAdmin(){
   AGENTS={};agents.forEach(a=>{AGENTS[codeForAgent(a)]=agentToRecord(a);});
   computeWorkforces();
   const clients=await api("/api/clients");
-  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeForAgent(a)),plan:"—",pais:"",lang:"es",features:{}}));
+  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeForAgent(a)),plan:"—",pais:"",lang:"es",features:{},config:c.config||{}}));
   const execs=await api("/api/executions");
   TASKS=execs.map(execToTask);
   const usage=await api("/api/usage?period=month");
@@ -507,11 +507,27 @@ function render(){renderTree();const V=document.getElementById("view");
   else if(current.startsWith("wf:")){const w=WORKFORCES[current.split(":")[1]];title=w.n;crumb="Equipos ›";help=w.d;
     body=`<div class="panel pad" style="margin-bottom:16px"><p style="margin:0;font-size:15px;line-height:1.6">${w.d}</p></div><div class="wf"><div class="members" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${w.members.map(m=>`<div class="member" style="flex-direction:column;align-items:flex-start;padding:14px;gap:6px"><div style="display:flex;align-items:center;gap:8px"><div class="ag">${m.slice(0,2)}</div><b>${AGENTS[m].n}</b></div><div class="mini" style="color:var(--amber)">${AGENTS[m].orixá||''}</div><div class="mini" style="font-size:11px">${AGENTS[m].d||''}</div></div>`).join("")}</div></div>`;}
   else if(current.startsWith("cli:")){const ci=parseInt(current.split(":")[1]);const c=CLIENTS[ci];title=c.n;crumb="Clientes ›";help="Plan "+c.plan+" · "+c.mail;
-    btn=`<button class="btn alt" style="color:var(--red);border-color:var(--red)" onclick="deleteClient(${ci})">🗑 Eliminar</button>`;
+    btn=`<button class="btn" onclick="programarConAxel(${ci})" style="margin-right:8px">⚙️ Programar con Axel</button><button class="btn alt" style="color:var(--red);border-color:var(--red)" onclick="deleteClient(${ci})">🗑 Eliminar</button>`;
     const cf=c.features||{};
+    const cfg=c.config||{};
     const available=Object.keys(AGENTS).filter(a=>c.ag.indexOf(a)<0);
     let fr=FEATURES.map(ff=>ff.estado==="ok"?`<div class="toolrow"><div>${ff.ic} ${ff.n}</div><div class="sw ${cf[ff.k]?"":"off"}" onclick="toggleFeat(${ci},'${ff.k}')"></div></div>`:`<div class="toolrow" style="opacity:.55"><div>${ff.ic} ${ff.n} <span class="tag2" style="background:rgba(176,141,87,.18);color:#8a6d2f">Próximamente</span></div></div>`).join("");
-    body=`<div class="two" style="margin-bottom:16px">
+    body=`<div class="panel pad" style="margin-bottom:16px;border:2px solid var(--brand)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div><b style="font-size:15px">⚙️ Perfil del cliente — lo que necesita Axel para programar el equipo</b><div class="mini" style="margin-top:3px">Axel usa estos datos para configurar cada agente con el contexto del negocio del cliente.</div></div>
+      <button class="btn" onclick="saveClientConfig(${ci})" id="cfg_btn_${ci}">Guardar perfil</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div><label>Industria</label><select id="cfg_ind_${ci}" style="width:100%"><option value="">— elegir —</option>${['Salud y bienestar','Terapia y coaching','Educación','Comercio / Retail','Servicios profesionales','Tecnología','Gastronomía','Inmobiliaria','Otro'].map(o=>`<option${cfg.industry===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div><label>Tono</label><select id="cfg_tone_${ci}" style="width:100%"><option value="">— elegir —</option>${['Cercano y cálido','Profesional y formal','Técnico y preciso','Inspiracional'].map(o=>`<option${cfg.tone===o?' selected':''}>${o}</option>`).join('')}</select></div>
+      <div><label>WhatsApp</label><input id="cfg_wa_${ci}" value="${cfg.whatsapp||''}" placeholder="+54911..." style="width:100%"></div>
+      <div><label>Instagram</label><input id="cfg_ig_${ci}" value="${cfg.instagram||''}" placeholder="@handle" style="width:100%"></div>
+      <div><label>Sitio web</label><input id="cfg_web_${ci}" value="${cfg.website||''}" placeholder="https://..." style="width:100%"></div>
+      <div><label>Servicios principales</label><input id="cfg_srv_${ci}" value="${cfg.services||''}" placeholder="Ej: Psicoterapia individual" style="width:100%"></div>
+    </div>
+    <label style="margin-top:8px;display:block">Notas para Axel</label><textarea id="cfg_notes_${ci}" rows="2" style="width:100%;margin-bottom:0">${cfg.notes||''}</textarea>
+    </div>
+    <div class="two" style="margin-bottom:16px">
     <div class="panel pad"><h3 style="margin-top:0">Datos del cliente</h3>
     <label>Nombre</label><input id="cn_n" value="${c.n}">
     <label>Email</label><input id="cn_m" value="${c.mail}">
@@ -793,6 +809,59 @@ async function saveAgent(k){
     if(btn){btn.disabled=false;btn.textContent="Guardar cambios";}
   }
 }
+async function saveClientConfig(i){
+  var c=CLIENTS[i];
+  var btn=document.getElementById('cfg_btn_'+i);
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+  try{
+    var b=new URLSearchParams();
+    var ind=(document.getElementById('cfg_ind_'+i)||{}).value||'';
+    var tone=(document.getElementById('cfg_tone_'+i)||{}).value||'';
+    var wa=(document.getElementById('cfg_wa_'+i)||{}).value||'';
+    var ig=(document.getElementById('cfg_ig_'+i)||{}).value||'';
+    var web=(document.getElementById('cfg_web_'+i)||{}).value||'';
+    var srv=(document.getElementById('cfg_srv_'+i)||{}).value||'';
+    var notes=(document.getElementById('cfg_notes_'+i)||{}).value||'';
+    if(ind)b.append('industry',ind);
+    if(tone)b.append('tone',tone);
+    if(wa)b.append('whatsapp',wa);
+    if(ig)b.append('instagram',ig);
+    if(web)b.append('website',web);
+    if(srv)b.append('services',srv);
+    if(notes)b.append('notes',notes);
+    var r=await fetch('/api/clients/'+c.id+'/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    if(!r.ok){var d=await r.json().catch(()=>({}));throw new Error(d.detail||'Error '+r.status);}
+    var res=await r.json();
+    c.config=res.config||{};
+    if(btn){btn.disabled=false;btn.textContent='Guardado ✓';}
+    setTimeout(()=>{if(btn)btn.textContent='Guardar perfil';},2000);
+  }catch(e){
+    alert('Error al guardar: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='Guardar perfil';}
+  }
+}
+function programarConAxel(i){
+  var c=CLIENTS[i];
+  var cfg=c.config||{};
+  var axelKey=Object.keys(AGENTS).find(k=>AGENTS[k].n==='Axel');
+  if(!axelKey){alert('Axel todavía no está importado. Andá a /admin/agents y hacé clic en Importar.');return;}
+  var agentList=c.ag.map(function(k){return AGENTS[k]?'• '+AGENTS[k].n+' ('+AGENTS[k].d.slice(0,60)+'...)':'';}).filter(Boolean).join('\n');
+  var msg='NUEVO CLIENTE — por favor programá el equipo completo.\n\n'
+    +'DATOS DEL CLIENTE:\n'
+    +'Nombre: '+c.n+'\n'
+    +(cfg.industry?'Industria: '+cfg.industry+'\n':'')
+    +(cfg.services?'Servicios: '+cfg.services+'\n':'')
+    +(cfg.tone?'Tono de comunicación: '+cfg.tone+'\n':'')
+    +(cfg.whatsapp?'WhatsApp: '+cfg.whatsapp+'\n':'')
+    +(cfg.instagram?'Instagram: '+cfg.instagram+'\n':'')
+    +(cfg.website?'Web: '+cfg.website+'\n':'')
+    +(cfg.notes?'Notas: '+cfg.notes+'\n':'')
+    +'\nAGENTES ASIGNADOS A ESTE CLIENTE ('+c.ag.length+'):\n'+agentList
+    +'\n\nTAREA: Configurá cada agente de la lista para este cliente. Para cada uno decime:\n1) Qué prompt de contexto debo agregarle\n2) Qué automatización n8n necesita para funcionar\n3) Qué credenciales/canales hay que conectar\n\nDespués armá el workflow n8n de onboarding completo.';
+  chatAgent=axelKey;
+  CHAT.push({ag:axelKey,who:'u',t:msg});
+  nav('a_chat');
+}
 function chatWithLisa(){
   const k=Object.keys(AGENTS).find(k=>AGENTS[k].n==="Lisa Mawu");
   if(!k){alert("Lisa Mawu todavía no está importada. Andá a /admin/agents y hacé clic en Importar.");return;}
@@ -864,8 +933,59 @@ function toggleTool(t,el){el.classList.toggle('off');if(!el.classList.contains('
 function contratar(a,p){alert("Solicitaste "+AGENTS[a].n+" ("+p+"). Recibimos tu pedido, programamos el agente y lo activamos en tu cuenta. Te avisamos por email. (demo)");}
 function descargar(){alert("Generando reporte del mes... (demo)");}
 function saveAgentModel(k,v){if(AGENTS[k]){AGENTS[k].modelo=v;var t=document.querySelector('#ag_model_'+k);if(t){var m=t.closest('.panel');if(m){var lbl=m.querySelector('.mini');if(lbl&&lbl.textContent.indexOf('Guardado')<0){var sp=document.createElement('span');sp.style.cssText='color:var(--green);font-size:11px;margin-left:8px';sp.textContent='\u2705 Guardado';lbl.appendChild(sp);setTimeout(function(){sp.remove();},2000);}}}}}
-async function nuevoCliente(){modal('<h2 style="margin:0 0 16px">Nuevo cliente</h2><label>Nombre o empresa</label><input id="nc_n" placeholder="Ej: Empresa SA" style="width:100%;margin-bottom:10px"><label style="margin-top:4px">Email (con esto entra)</label><input id="nc_m" type="email" placeholder="cliente@empresa.com" style="width:100%;margin-bottom:10px"><label style="margin-top:4px">Clave de acceso</label><input id="nc_pw" type="password" placeholder="Mínimo 6 caracteres" style="width:100%;margin-bottom:16px"><div class="mini" id="nc_err" style="color:#c0392b;min-height:18px;margin-bottom:6px"></div><button class="btn full" id="nc_btn" onclick="submitNuevoCliente()">Crear cliente</button>');}
-async function submitNuevoCliente(){var n=document.getElementById('nc_n').value.trim();var m=document.getElementById('nc_m').value.trim();var pw=document.getElementById('nc_pw').value;var err=document.getElementById('nc_err');var btn=document.getElementById('nc_btn');if(!n||!m||!pw){err.textContent='Completá todos los campos.';return;}btn.disabled=true;btn.textContent='Creando...';err.textContent='';try{var b=new URLSearchParams();b.append('name',n);b.append('email',m);b.append('password',pw);var r=await fetch('/admin/clients',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});if(!r.ok){var d=await r.json().catch(function(){return{};});throw new Error(d.detail||('Error '+r.status));}closeModal();await bootstrapAdmin();open.clientes=true;render();}catch(e){err.textContent='No se pudo crear: '+e.message;btn.disabled=false;btn.textContent='Crear cliente';}}
+async function nuevoCliente(){modal(`<h2 style="margin:0 0 16px">Nuevo cliente</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+  <div><label>Nombre o empresa</label><input id="nc_n" placeholder="Ej: Consultorio Dra. Pérez" style="width:100%"></div>
+  <div><label>Email (acceso al portal)</label><input id="nc_m" type="email" placeholder="cliente@empresa.com" style="width:100%"></div>
+  <div><label>Clave de acceso</label><input id="nc_pw" type="password" placeholder="Mínimo 6 caracteres" style="width:100%"></div>
+  <div><label>Industria</label><select id="nc_ind" style="width:100%"><option value="">— elegir —</option><option>Salud y bienestar</option><option>Terapia y coaching</option><option>Educación</option><option>Comercio / Retail</option><option>Servicios profesionales</option><option>Tecnología</option><option>Gastronomía</option><option>Inmobiliaria</option><option>Otro</option></select></div>
+</div>
+<label>Servicios principales</label><input id="nc_srv" placeholder="Ej: Psicoterapia individual, terapia de pareja" style="width:100%;margin-bottom:10px">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+  <div><label>Tono de comunicación</label><select id="nc_tone" style="width:100%"><option value="">— elegir —</option><option>Cercano y cálido</option><option>Profesional y formal</option><option>Técnico y preciso</option><option>Inspiracional</option></select></div>
+  <div><label>WhatsApp (con código país)</label><input id="nc_wa" placeholder="+54911..." style="width:100%"></div>
+  <div><label>Instagram</label><input id="nc_ig" placeholder="@handle" style="width:100%"></div>
+</div>
+<label>Sitio web</label><input id="nc_web" placeholder="https://..." style="width:100%;margin-bottom:10px">
+<label>Notas para Axel</label><textarea id="nc_notes" rows="2" placeholder="Contexto extra: horarios, zona geográfica, público objetivo..." style="width:100%;margin-bottom:14px"></textarea>
+<div class="mini" id="nc_err" style="color:#c0392b;min-height:18px;margin-bottom:6px"></div>
+<button class="btn full" id="nc_btn" onclick="submitNuevoCliente()">Crear cliente</button>`);}
+async function submitNuevoCliente(){
+  var n=document.getElementById('nc_n').value.trim();
+  var m=document.getElementById('nc_m').value.trim();
+  var pw=document.getElementById('nc_pw').value;
+  var err=document.getElementById('nc_err');
+  var btn=document.getElementById('nc_btn');
+  if(!n||!m||!pw){err.textContent='Nombre, email y clave son obligatorios.';return;}
+  btn.disabled=true;btn.textContent='Creando...';err.textContent='';
+  try{
+    var b=new URLSearchParams();
+    b.append('name',n);b.append('email',m);b.append('password',pw);
+    var ind=(document.getElementById('nc_ind')||{}).value||'';
+    var srv=(document.getElementById('nc_srv')||{}).value||'';
+    var tone=(document.getElementById('nc_tone')||{}).value||'';
+    var wa=(document.getElementById('nc_wa')||{}).value||'';
+    var ig=(document.getElementById('nc_ig')||{}).value||'';
+    var web=(document.getElementById('nc_web')||{}).value||'';
+    var notes=(document.getElementById('nc_notes')||{}).value||'';
+    if(ind)b.append('industry',ind);
+    if(srv)b.append('services',srv);
+    if(tone)b.append('tone',tone);
+    if(wa)b.append('whatsapp',wa);
+    if(ig)b.append('instagram',ig);
+    if(web)b.append('website',web);
+    if(notes)b.append('notes',notes);
+    var r=await fetch('/api/clients',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    if(!r.ok){var d=await r.json().catch(function(){return{};});throw new Error(d.detail||('Error '+r.status));}
+    var newClient=await r.json();
+    closeModal();
+    await bootstrapAdmin();
+    open.clientes=true;
+    var ci=CLIENTS.findIndex(function(c){return c.id===newClient.id;});
+    if(ci>=0){current='cli:'+ci;}
+    render();
+  }catch(e){err.textContent='No se pudo crear: '+e.message;btn.disabled=false;btn.textContent='Crear cliente';}
+}
 async function saveClient(i){var c=CLIENTS[i];var n=document.getElementById('cn_n').value;var m=document.getElementById('cn_m').value;var p=document.getElementById('cn_p').value;var cc=document.getElementById('cn_c').value;var l=document.getElementById('cn_l').value;var mos=parseInt((document.getElementById('cn_mos')||{}).value)||c.months||3;try{var b=new URLSearchParams();b.append('name',n);c.ag.forEach(function(code){if(AGENTS[code])b.append('agent_ids',AGENTS[code].id);});var r=await fetch('/admin/clients/'+c.id,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});if(!r.ok){var d=await r.json().catch(function(){return {};});throw new Error(d.detail||('Error '+r.status));}if(me===c.n)me=n;c.n=n;c.mail=m;c.plan=p;c.pais=cc;c.lang=l;c.months=mos;alert('✅ Cliente guardado en la base.');render();}catch(e){alert('Error al guardar: '+e.message);}}
 function deleteClient(i){if(!confirm('¿Eliminar cliente '+CLIENTS[i].n+'? Esta acción no se puede deshacer.'))return;CLIENTS.splice(i,1);current='inicio';render();}
 function removeAgent(ci,ak){CLIENTS[ci].ag=CLIENTS[ci].ag.filter(function(a){return a!==ak;});render();}

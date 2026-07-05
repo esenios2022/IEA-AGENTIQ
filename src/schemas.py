@@ -62,6 +62,7 @@ class ClientOut(BaseModel):
     id: str
     name: str
     email: str
+    config: dict | None = None
     agents: list[AssignedAgentOut] = []
 
 

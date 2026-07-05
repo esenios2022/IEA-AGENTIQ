@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -66,6 +66,12 @@ from src.usage_reports import agent_usage_summary, profitability_by_client, usag
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    # Safe column migrations — ADD COLUMN IF NOT EXISTS never fails on re-deploy
+    with engine.connect() as conn:
+        conn.execute(
+            text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS config JSONB")
+        )
+        conn.commit()
     scheduler = start_scheduler()
     yield
     scheduler.shutdown(wait=False)
@@ -608,8 +614,45 @@ def _client_out(client: Client, db: Session) -> ClientOut:
         id=str(client.id),
         name=client.name,
         email=client.email,
+        config=client.config,
         agents=[_assigned_agent_out(a) for a in rows],
     )
+
+
+@app.post("/api/clients/{client_id}/config")
+def update_client_config(
+    client_id: str,
+    industry: str = Form(None),
+    services: str = Form(None),
+    tone: str = Form(None),
+    whatsapp: str = Form(None),
+    instagram: str = Form(None),
+    website: str = Form(None),
+    notes: str = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    cfg = dict(client.config or {})
+    if industry is not None:
+        cfg["industry"] = industry
+    if services is not None:
+        cfg["services"] = services
+    if tone is not None:
+        cfg["tone"] = tone
+    if whatsapp is not None:
+        cfg["whatsapp"] = whatsapp
+    if instagram is not None:
+        cfg["instagram"] = instagram
+    if website is not None:
+        cfg["website"] = website
+    if notes is not None:
+        cfg["notes"] = notes
+    client.config = cfg
+    db.commit()
+    return {"success": True, "config": cfg}
 
 
 @app.post("/api/auth/login", response_model=ClientOut)
@@ -680,6 +723,45 @@ def list_clients_page(
         "admin_clients.html",
         {"clients_with_agents": clients_with_agents, "agents": agents},
     )
+
+
+@app.post("/api/clients", response_model=ClientOut)
+def create_client_api(
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    industry: str = Form(None),
+    services: str = Form(None),
+    tone: str = Form(None),
+    whatsapp: str = Form(None),
+    instagram: str = Form(None),
+    website: str = Form(None),
+    notes: str = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    if db.scalar(select(Client).where(Client.email == email)):
+        raise HTTPException(status_code=409, detail="Ya existe un cliente con ese email")
+    cfg: dict = {}
+    if industry:
+        cfg["industry"] = industry
+    if services:
+        cfg["services"] = services
+    if tone:
+        cfg["tone"] = tone
+    if whatsapp:
+        cfg["whatsapp"] = whatsapp
+    if instagram:
+        cfg["instagram"] = instagram
+    if website:
+        cfg["website"] = website
+    if notes:
+        cfg["notes"] = notes
+    client = Client(name=name, email=email, password_hash=hash_password(password), config=cfg or None)
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+    return _client_out(client, db)
 
 
 @app.post("/admin/clients")
