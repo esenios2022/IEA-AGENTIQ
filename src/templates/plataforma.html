@@ -167,11 +167,16 @@
   <div class="lcard">
     <div class="brand"><svg class="logo" viewBox="0 0 100 100" width="32" height="32" style="margin-right:8px"><circle cx="50" cy="50" r="48" fill="none" stroke="#0b4d3c" stroke-width="1.5"/><circle cx="50" cy="50" r="38" fill="none" stroke="#0b4d3c" stroke-width="1"/><circle cx="50" cy="50" r="28" fill="none" stroke="#0b4d3c" stroke-width="1"/><circle cx="50" cy="50" r="18" fill="none" stroke="#0b4d3c" stroke-width="1.5"/><circle cx="50" cy="50" r="8" fill="#b08d57"/><line x1="50" y1="42" x2="50" y2="20" stroke="#0b4d3c" stroke-width="1.5"/><line x1="58" y1="44" x2="71" y2="29" stroke="#0b4d3c" stroke-width="1.5"/><line x1="58" y1="56" x2="71" y2="71" stroke="#0b4d3c" stroke-width="1.5"/><line x1="50" y1="58" x2="50" y2="80" stroke="#0b4d3c" stroke-width="1.5"/><line x1="42" y1="56" x2="29" y2="71" stroke="#0b4d3c" stroke-width="1.5"/><line x1="42" y1="44" x2="29" y2="29" stroke="#0b4d3c" stroke-width="1.5"/></svg><b>IEA AGENTIQ</b></div>
     <div class="sub">La plataforma donde tus agentes viven y trabajan</div>
-    <label>Email</label><input id="email" value="">
-    <label>Contraseña</label><input id="password" type="password" value="">
-    <div class="roles"><button id="rCli" class="on" onclick="setRole('cli')">Cliente</button><button id="rAdm" onclick="setRole('adm')">Administrador</button></div>
-    <button class="btn full" id="loginBtn" onclick="login()">Entrar</button>
-    <div class="mini" id="loginError" style="text-align:center;margin-top:12px;color:var(--red)"></div>
+    <label>Email</label><input id="email" value="" onkeydown="if(event.key==='Enter')document.getElementById('password').focus()">
+    <label>Contraseña</label><input id="password" type="password" value="" onkeydown="if(event.key==='Enter')login()">
+    <button class="btn full" id="loginBtn" onclick="login()" style="margin-top:18px">Entrar</button>
+    <div style="text-align:center;margin-top:12px">
+      <span style="font-size:12px;color:var(--muted)">¿Sos administrador? </span>
+      <button id="rAdm" onclick="setRole('adm')" style="background:none;border:none;font-size:12px;color:var(--brand);font-weight:600;padding:0;text-decoration:underline;cursor:pointer">Entrar como admin</button>
+      <button id="rCli" onclick="setRole('cli')" class="hidden" style="background:none;border:none;font-size:12px;color:var(--muted);font-weight:600;padding:0;text-decoration:underline;cursor:pointer">Entrar como cliente</button>
+    </div>
+    <div class="mini" id="loginError" style="text-align:center;margin-top:8px;color:var(--red)"></div>
+    <div class="mini" id="loginMode" style="text-align:center;margin-top:4px;color:var(--brand);font-weight:600"></div>
   </div>
 </div>
 
@@ -258,19 +263,18 @@ function agentToRecord(a){
   return {id:a.id,n:a.name,orixá:a.orixa||"",grupo:a.group||"General",modelo:a.default_tier||"economy",idioma:"PT/ES",estado:a.status==="active"?"activo":(a.status||"activo"),d:a.description||"",prompt:a.system_prompt||"",tools:a.tools||[],dailyBudget:a.daily_budget_usd,caseMemory:!!a.case_memory};
 }
 
-const WF_RENAME={"Máquina de Adquisición":"Studio de Adquisición","Máquina de Contenido":"Studio de Contenido","Máquina de Atención":"Studio de Atención","Máquina de Operaciones":"Studio de Operaciones","Máquina de Cumplimiento":"Studio de Cumplimiento","Máquina de Análisis":"Studio de Análisis","Máquina de Calidad":"Studio de Calidad","Máquina para Terapeutas":"Studio para Terapeutas"};
+const WF_RENAME={};
 const WF_DESC={
-  "Studio de Adquisición":"Trae clientes nuevos: investiga el mercado, prospecta en LinkedIn y cierra ventas por WhatsApp. Ideal para empresas B2B o de servicios que quieren llenar su pipeline.",
-  "Studio de Contenido":"Publica en redes en lotes semanales, gestiona campañas pagas (Meta/Google), posiciona en Google y mantiene la identidad visual. Para empresas que necesitan visibilidad online constante.",
-  "Studio de Atención":"Resuelve el 90% de consultas en el primer contacto por WhatsApp y email, sin intervención humana. Para empresas con muchos clientes o consultas frecuentes.",
-  "Studio de Operaciones":"El backoffice completo: lleva las cuentas, automatiza flujos, gestiona proyectos, el CRM y la agenda. Para PyMEs que quieren operar sin caos administrativo.",
-  "Studio de Cumplimiento":"Revisa contratos, cuida la protección de datos (LGPD/GDPR) y alerta riesgos legales antes de que ocurran. Para empresas que firman contratos o manejan datos de clientes.",
-  "Studio de Análisis":"Convierte los datos del negocio en decisiones: reportes, dashboards y números reales en lugar de suposiciones. Para empresas que quieren medir lo que importa.",
-  "Studio de Calidad":"Audita seguridad, accesos y consumo — para que nada salga roto ni se gaste de más. Para empresas con sistemas digitales o plataformas propias.",
-  "Studio para Terapeutas":"Gestiona la agenda, el cobro, la bienvenida al paciente y el seguimiento entre sesiones. Diseñada exclusivamente para consultorios de terapia, psicología y coaching.",
-  "Studio para Profesionales":"Lara, Leo y Nina: redes sociales, nuevos clientes y agenda automática para profesionales de salud y bienestar. Para terapeutas, odontólogos, psicólogos y coaches que quieren crecer sin contratar personal.",
-  "Dirección":"Lisa Mawu: gerente de operaciones que coordina todos los studios. Es el punto de contacto para pedidos complejos que involucran múltiples equipos.",
-  "General":"Agentes de uso general sin equipo asignado."
+  "Departamento Comercial":"Trae clientes nuevos: investiga el mercado, califica leads, prospecta en LinkedIn y redes locales, mantiene el CRM limpio y cierra ventas por WhatsApp. Para eAlumina: consigue terapeutas, pacientes y empresas.",
+  "Departamento de Marketing IA":"Produce contenido en lotes semanales, escribe email marketing, genera videos con IA (Reels, TikTok, HeyGen), posiciona en Google con SEO y ejecuta campañas pagas. Funciona 24 horas sin necesitar un equipo de marketing.",
+  "Departamento de Pacientes":"Atiende a quien busca un terapeuta: responde consultas en menos de 5 minutos, agenda citas, hace seguimiento entre sesiones y previene el abandono terapéutico con acompañamiento postventa.",
+  "Departamento de Terapeutas":"Gestiona el consultorio completo del terapeuta: agenda, cobros, perfil digital, marketing personal y protocolos especializados (TQA, ThetaHealing). Todo automatizado para que el terapeuta solo terapee.",
+  "Departamento de Empresas":"Programa de bienestar corporativo B2B: diagnóstico de clima laboral, diseño de programas de salud mental, coordinación de talleres y reportes de impacto mensuales para que RRHH tenga resultados medibles.",
+  "Departamento Administrativo":"El backoffice completo: lleva las cuentas, automatiza flujos internos, gestiona proyectos y documentos, mantiene el CRM y la agenda, y genera estadísticas del negocio.",
+  "Departamento Legal":"Revisa contratos, cuida el cumplimiento de LGPD/GDPR y alerta sobre riesgos legales antes de que ocurran. Para empresas que firman contratos o manejan datos sensibles de clientes.",
+  "Departamento IA":"Supervisa que todos los agentes funcionen correctamente: audita logs, detecta errores de consumo, construye automatizaciones en n8n/Zapier y optimiza el sistema de forma continua.",
+  "Dirección":"Lisa Mawu coordina todos los departamentos. Es el punto de contacto para pedidos que involucran múltiples equipos y el primer agente que cualquier cliente debería consultar.",
+  "General":"Agentes sin departamento asignado."
 };
 function computeWorkforces(){
   const byGroup={};
@@ -386,7 +390,21 @@ async function sendCaseMessage(){
   const log=document.getElementById("caselog");if(log)log.scrollTop=log.scrollHeight;
 }
 
-function setRole(r){role=r;document.getElementById("rCli").classList.toggle("on",r==="cli");document.getElementById("rAdm").classList.toggle("on",r==="adm");}
+function setRole(r){
+  role=r;
+  var modeEl=document.getElementById("loginMode");
+  var rAdm=document.getElementById("rAdm");
+  var rCli=document.getElementById("rCli");
+  if(r==="adm"){
+    modeEl.textContent="Modo administrador";
+    rAdm.classList.add("hidden");
+    rCli.classList.remove("hidden");
+  }else{
+    modeEl.textContent="";
+    rCli.classList.add("hidden");
+    rAdm.classList.remove("hidden");
+  }
+}
 
 async function login(){
   const email=document.getElementById("email").value.trim();
@@ -451,10 +469,10 @@ function renderTree(){
       Object.keys(AGENTS).forEach(k=>{h+=`<div class="child ${current==='agent:'+k?'on':''}" onclick="nav('agent:${k}')"><div class="ag">${k.slice(0,2)}</div>${AGENTS[k].n}</div>`;});
       h+=`<div class="addrow" onclick="nav('newagent')">＋ Nuevo agente</div></div>`;}
     // Grupo Equipos
-    h+=`<div class="item" onclick="toggle('equipos')"><span class="ic">👥</span> Equipos <span class="car ${open.equipos?'open':''}">▶</span></div>`;
+    h+=`<div class="item" onclick="toggle('equipos')"><span class="ic">🏛️</span> Departamentos <span class="car ${open.equipos?'open':''}">▶</span></div>`;
     if(open.equipos){h+=`<div class="children">`;
       WORKFORCES.forEach((w,i)=>{h+=`<div class="child ${current==='wf:'+i?'on':''}" onclick="nav('wf:${i}')"><div class="ag" style="background:linear-gradient(135deg,#d97706,#f59e0b)">${w.n.slice(0,1)}</div>${w.n}</div>`;});
-      h+=`<div class="addrow" onclick="nuevoEquipo()">＋ Nuevo equipo</div></div>`;}
+      h+=`<div class="addrow" onclick="nuevoEquipo()">＋ Nuevo departamento</div></div>`;}
     // Grupo Clientes
     h+=`<div class="item" onclick="toggle('clientes')"><span class="ic">🏢</span> Clientes <span class="car ${open.clientes?'open':''}">▶</span></div>`;
     if(open.clientes){h+=`<div class="children">`;
@@ -469,6 +487,7 @@ function renderTree(){
     h+=treeItem("a_api","🔌","Conexión & API");
     h+=treeItem("a_conocimiento","📚","Conocimiento");
     h+=treeItem("a_funciones","📦","Funciones");
+    h+=`<a href="/admin/agents" target="_blank" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;color:var(--txt);cursor:pointer;font-weight:500;text-decoration:none;"><span class="ic">⚙️</span> Panel de agentes</a>`;
   }
   h+='<div class="item" onclick="toggleHelp()" style="margin-top:6px"><span class="ic">❓</span> Ayuda</div>';
   document.getElementById("tree").innerHTML=tr(h);
@@ -1211,7 +1230,7 @@ async function submitNewTask(){
 
 async function nuevoEquipo(){
   var agOpts=Object.keys(AGENTS).map(k=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer"><input type="checkbox" value="${k}"><div class="ag" style="width:28px;height:28px;font-size:11px">${k.slice(0,2)}</div><div style="flex:1"><b>${AGENTS[k].n}</b><div class="mini" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${AGENTS[k].d}</div></div></label>`).join('');
-  modal(`<h2 style="margin:0 0 16px">Nuevo equipo</h2><label>Nombre del equipo</label><input id="ne_n" placeholder="Ej: Studio de Ventas" style="width:100%;margin-bottom:14px"><label>Agentes del equipo</label><div id="ne_agents" style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px">${agOpts}</div><div class="mini" id="ne_err" style="color:#c0392b;min-height:18px;margin-bottom:6px"></div><button class="btn full" id="ne_btn" onclick="submitNuevoEquipo()">Crear equipo</button>`);
+  modal(`<h2 style="margin:0 0 16px">Nuevo equipo</h2><label>Nombre del equipo</label><input id="ne_n" placeholder="Ej: Departamento de Ventas" style="width:100%;margin-bottom:14px"><label>Agentes del equipo</label><div id="ne_agents" style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px">${agOpts}</div><div class="mini" id="ne_err" style="color:#c0392b;min-height:18px;margin-bottom:6px"></div><button class="btn full" id="ne_btn" onclick="submitNuevoEquipo()">Crear equipo</button>`);
 }
 async function submitNuevoEquipo(){
   var n=document.getElementById('ne_n').value.trim();
