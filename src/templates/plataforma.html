@@ -269,6 +269,7 @@ const WF_DESC={
   "Studio de Calidad":"Audita seguridad, accesos y consumo — para que nada salga roto ni se gaste de más. Para empresas con sistemas digitales o plataformas propias.",
   "Studio para Terapeutas":"Gestiona la agenda, el cobro, la bienvenida al paciente y el seguimiento entre sesiones. Diseñada exclusivamente para consultorios de terapia, psicología y coaching.",
   "Studio para Profesionales":"Lara, Leo y Nina: redes sociales, nuevos clientes y agenda automática para profesionales de salud y bienestar. Para terapeutas, odontólogos, psicólogos y coaches que quieren crecer sin contratar personal.",
+  "Dirección":"Lisa Mawu: gerente de operaciones que coordina todos los studios. Es el punto de contacto para pedidos complejos que involucran múltiples equipos.",
   "General":"Agentes de uso general sin equipo asignado."
 };
 function computeWorkforces(){
@@ -481,7 +482,9 @@ function render(){renderTree();const V=document.getElementById("view");
 
   if(current==="inicio"){const act=Object.values(AGENTS).filter(a=>a.estado==="activo").length;
     title="Inicio";help="Resumen de tu operación. Usá el menú de la izquierda para ver agentes, equipos y clientes.";
-    body=`<div class="kpis"><div class="kpi"><div class="n">${Object.keys(AGENTS).length}</div><div class="l">Agentes (${act} activos)</div></div><div class="kpi"><div class="n">${WORKFORCES.length}</div><div class="l">Equipos</div></div><div class="kpi"><div class="n">${CLIENTS.length}</div><div class="l">Clientes</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${TASKS.filter(t=>t.st==='run').length}</div><div class="l">En curso</div></div></div>
+    const lisaKey=Object.keys(AGENTS).find(k=>AGENTS[k].n==="Lisa Mawu");
+    const lisaCard=lisaKey?`<div class="panel pad" style="margin-bottom:18px;border:2px solid var(--brand);background:linear-gradient(135deg,rgba(205,163,73,.07),rgba(22,52,41,.07))"><div style="display:flex;align-items:center;gap:14px"><div class="ag" style="width:46px;height:46px;font-size:18px;background:linear-gradient(135deg,var(--brand),var(--emerald))">LM</div><div style="flex:1"><b style="font-size:15px">Lisa Mawu — Gerente de Operaciones</b><div class="mini" style="margin-top:3px">Pedile cualquier trabajo: ella sabe a qué equipo derivarlo y cómo coordinarlo.</div></div><button class="btn" onclick="chatWithLisa()" style="white-space:nowrap">Hablar con Lisa →</button></div></div>`:"";
+    body=lisaCard+`<div class="kpis"><div class="kpi"><div class="n">${Object.keys(AGENTS).length}</div><div class="l">Agentes (${act} activos)</div></div><div class="kpi"><div class="n">${WORKFORCES.length}</div><div class="l">Equipos</div></div><div class="kpi"><div class="n">${CLIENTS.length}</div><div class="l">Clientes</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${TASKS.filter(t=>t.st==='run').length}</div><div class="l">En curso</div></div></div>
     <div class="two"><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,4).map(taskRow).join("")||'<p class="mini">Sin ejecuciones todavía.</p>'}</div><div class="panel pad"><h3 style="margin-top:0">Última actividad</h3>${feedFor(TASKS[0])}</div></div>`;}
 
   else if(current.startsWith("agent:")){const k=current.split(":")[1];body=agentDetail(k);title=AGENTS[k].n;crumb="Agentes ›";help="";btn=`<button class="btn alt" onclick="nav('newagent')">＋ Nuevo agente</button>`;}
@@ -789,6 +792,12 @@ async function saveAgent(k){
     alert("Error al guardar: "+e.message);
     if(btn){btn.disabled=false;btn.textContent="Guardar cambios";}
   }
+}
+function chatWithLisa(){
+  const k=Object.keys(AGENTS).find(k=>AGENTS[k].n==="Lisa Mawu");
+  if(!k){alert("Lisa Mawu todavía no está importada. Andá a /admin/agents y hacé clic en Importar.");return;}
+  chatAgent=k;
+  nav("a_chat");
 }
 async function pauseAgent(k){
   const g=AGENTS[k];
