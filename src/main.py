@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.agent_runtime import AgentRuntime
-from src.agent_seed import sync_master_agents
+from src.agent_seed import load_master_config, sync_master_agents
 from src.agent_service import AgentPausedError
 from src.agent_service import run as run_agent_service
 from src.architect_agent import get_obatala
@@ -373,6 +373,35 @@ def import_master_agents(
     result = sync_master_agents(db)
     return RedirectResponse(
         url=f"/admin/agents?imported={result.created}&updated={result.updated}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@app.post("/admin/agents/cleanup")
+def cleanup_non_master_agents(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """Delete all agents whose agent_code is NOT in the master JSON config."""
+    config = load_master_config()
+    valid_codes = {cfg["id"] for cfg in config["agents"]}
+    all_agents = db.scalars(select(Agent)).all()
+    deleted = 0
+    kept = 0
+    for agent in all_agents:
+        if agent.agent_code in valid_codes:
+            kept += 1
+        else:
+            # Check this agent is not assigned to any client before deleting
+            assigned = db.scalar(select(ClientAgent).where(ClientAgent.agent_id == agent.id))
+            if assigned:
+                kept += 1  # skip agents assigned to clients
+            else:
+                db.delete(agent)
+                deleted += 1
+    db.commit()
+    return RedirectResponse(
+        url=f"/admin/agents?deleted={deleted}&kept={kept}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

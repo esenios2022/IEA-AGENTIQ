@@ -95,11 +95,21 @@
             &middot; <a href="/admin/knowledge">Base de conocimiento &rarr;</a>
         </p>
         <form class="import-box" method="post" action="/admin/agents/import">
-            <button type="submit">Importar / actualizar los 16 agentes maestros</button>
+            <button type="submit">Importar / actualizar agentes maestros (32)</button>
             {% if request.query_params.get("imported") is not none %}
             <span class="import-msg">
                 Creados: {{ request.query_params.get("imported") }} &middot;
                 Actualizados: {{ request.query_params.get("updated") }}
+            </span>
+            {% endif %}
+        </form>
+        <form class="import-box" method="post" action="/admin/agents/cleanup"
+              onsubmit="return confirm('¿Borrar todos los agentes que NO son parte del JSON maestro? Esta acción no se puede deshacer.')">
+            <button type="submit" style="background:#7a1f1f;color:#fbe4e4">🗑 Limpiar agentes extra (no maestros)</button>
+            {% if request.query_params.get("deleted") is not none %}
+            <span class="import-msg">
+                Eliminados: {{ request.query_params.get("deleted") }} &middot;
+                Conservados: {{ request.query_params.get("kept") }}
             </span>
             {% endif %}
         </form>
