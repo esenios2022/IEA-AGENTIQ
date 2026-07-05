@@ -418,13 +418,8 @@ def cleanup_non_master_agents(
         if agent.agent_code in valid_codes:
             kept += 1
         else:
-            # Check this agent is not assigned to any client before deleting
-            assigned = db.scalar(select(ClientAgent).where(ClientAgent.agent_id == agent.id))
-            if assigned:
-                kept += 1  # skip agents assigned to clients
-            else:
-                _delete_agent_cascade(db, agent)
-                deleted += 1
+            _delete_agent_cascade(db, agent)
+            deleted += 1
     db.commit()
     return RedirectResponse(
         url=f"/admin/agents?deleted={deleted}&kept={kept}",
