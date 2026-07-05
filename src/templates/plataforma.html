@@ -293,7 +293,7 @@ async function bootstrapAdmin(){
   AGENTS={};agents.forEach(a=>{AGENTS[codeForAgent(a)]=agentToRecord(a);});
   computeWorkforces();
   const clients=await api("/api/clients");
-  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeForAgent(a)),plan:"—",pais:"",lang:"es",features:{},config:c.config||{}}));
+  CLIENTS=clients.map(c=>({id:c.id,n:c.name,mail:c.email,ag:c.agents.map(a=>codeForAgent(a)),plan:"—",pais:"",lang:"es",features:(c.config||{}).features||{},config:c.config||{}}));
   const execs=await api("/api/executions");
   TASKS=execs.map(execToTask);
   const usage=await api("/api/usage?period=month");
@@ -1182,7 +1182,14 @@ const DICT=[
 ];
 function tr(h){if(lang!=="pt")return h;for(var i=0;i<DICT.length;i++){h=h.split(DICT[i][0]).join(DICT[i][1]);}return h;}
 function setLang(l){lang=l;render();}
-function toggleFeat(i,k){CLIENTS[i].features[k]=!CLIENTS[i].features[k];render();}
+async function toggleFeat(i,k){
+  CLIENTS[i].features[k]=!CLIENTS[i].features[k];
+  render();
+  var c=CLIENTS[i];
+  var b=new URLSearchParams();
+  b.append('features',JSON.stringify(c.features));
+  await fetch('/api/clients/'+c.id+'/config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+}
 function modal(html){document.getElementById("modalHost").innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()" style="position:fixed;inset:0;background:rgba(20,24,33,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50"><div class="lcard" style="width:520px;max-height:88vh;overflow:auto;position:relative"><button onclick="closeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;color:var(--muted)">✕</button>${html}</div></div>`;}
 function closeModal(){document.getElementById("modalHost").innerHTML="";}
 function openTask(id){const t=TASKS.find(x=>x.id===id);if(!t)return;const resultBlock=t.result?`<div class="panel pad" style="margin-top:10px"><b class="mini">Resultado</b><div style="white-space:pre-wrap;font-size:13px;margin-top:6px">${t.result}</div></div>`:'';modal(`<h2 style="margin:0 0 4px">${t.t}</h2><div class="sub">${AGENTS[t.ag]?AGENTS[t.ag].n:t.ag} · ${t.cli} · ${STATUS[t.st]?STATUS[t.st][1]:t.st}${t.tier?' · tier '+t.tier:''}${t.cost!=null?' · $'+Number(t.cost).toFixed(4):''}</div>${feedFor(t)}${resultBlock}`);}

@@ -658,6 +658,7 @@ def update_client_config(
     instagram: str = Form(None),
     website: str = Form(None),
     notes: str = Form(None),
+    features: str = Form(None),
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
@@ -679,6 +680,11 @@ def update_client_config(
         cfg["website"] = website
     if notes is not None:
         cfg["notes"] = notes
+    if features is not None:
+        try:
+            cfg["features"] = json.loads(features)
+        except Exception:
+            pass
     client.config = cfg
     db.commit()
     return {"success": True, "config": cfg}
