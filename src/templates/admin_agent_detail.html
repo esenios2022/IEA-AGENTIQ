@@ -62,7 +62,13 @@
     {% include "_header.html" %}
     <main class="admin-page">
         <a class="admin-back" href="/admin/agents">&larr; Volver a Agentes</a>
-        <h1>{{ agent.name }}</h1>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <h1 style="margin:0;">{{ agent.name }}</h1>
+            <form method="post" action="/admin/agents/{{ agent.id }}/delete"
+                  onsubmit="return confirm('¿Eliminar a {{ agent.name }} permanentemente? Esta acción no se puede deshacer.')">
+                <button type="submit" style="background:#7a1f1f;color:#fbe4e4;margin-top:0;">Eliminar agente</button>
+            </form>
+        </div>
         <div class="admin-meta">
             <div><strong>ID:</strong> {{ agent.id }}</div>
             <div><strong>Rol:</strong> {{ agent.role }}</div>

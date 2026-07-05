@@ -377,6 +377,23 @@ def import_master_agents(
     )
 
 
+@app.post("/admin/agents/{agent_id}/delete")
+def delete_agent(
+    agent_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    assigned = db.scalar(select(ClientAgent).where(ClientAgent.agent_id == agent.id))
+    if assigned:
+        raise HTTPException(status_code=400, detail="El agente está asignado a un cliente. Desasignalo primero.")
+    db.delete(agent)
+    db.commit()
+    return RedirectResponse(url="/admin/agents?deleted=1&kept=0", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.post("/admin/agents/cleanup")
 def cleanup_non_master_agents(
     db: Session = Depends(get_db),

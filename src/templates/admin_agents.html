@@ -50,8 +50,9 @@
             color: var(--text-muted);
             margin-bottom: 10px;
         }
-        .agent-card .links { display: flex; gap: 10px; font-size: 0.85rem; }
+        .agent-card .links { display: flex; gap: 10px; font-size: 0.85rem; align-items: center; flex-wrap: wrap; }
         .agent-card a { color: inherit; text-decoration: underline; }
+        .btn-delete { background: none; border: 1px solid #c0392b; color: #c0392b; border-radius: 6px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer; margin: 0; margin-top: 0; }
         .admin-empty {
             text-align: center;
             color: var(--text-muted);
@@ -132,6 +133,10 @@
                         <div class="links">
                             <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>
                             <a href="/agentes/{{ agent.id }}" target="_blank">Probar chat</a>
+                            <form method="post" action="/admin/agents/{{ agent.id }}/delete" style="display:inline;"
+                                  onsubmit="return confirm('¿Eliminar a {{ agent.name }}? Esta acción no se puede deshacer.')">
+                                <button type="submit" class="btn-delete">Eliminar</button>
+                            </form>
                         </div>
                     </div>
                     {% endfor %}
