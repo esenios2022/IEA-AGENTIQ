@@ -258,21 +258,23 @@ function agentToRecord(a){
   return {id:a.id,n:a.name,orixá:a.orixa||"",grupo:a.group||"General",modelo:a.default_tier||"economy",idioma:"PT/ES",estado:a.status==="active"?"activo":(a.status||"activo"),d:a.description||"",prompt:a.system_prompt||"",tools:a.tools||[],dailyBudget:a.daily_budget_usd,caseMemory:!!a.case_memory};
 }
 
+const WF_RENAME={"Máquina de Adquisición":"Studio de Adquisición","Máquina de Contenido":"Studio de Contenido","Máquina de Atención":"Studio de Atención","Máquina de Operaciones":"Studio de Operaciones","Máquina de Cumplimiento":"Studio de Cumplimiento","Máquina de Análisis":"Studio de Análisis","Máquina de Calidad":"Studio de Calidad","Máquina para Terapeutas":"Studio para Terapeutas"};
 const WF_DESC={
-  "Máquina de Adquisición":"Trae clientes nuevos: investiga el mercado, prospecta en LinkedIn y cierra ventas por WhatsApp. Ideal para empresas B2B o de servicios que quieren llenar su pipeline.",
-  "Máquina de Contenido":"Publica en redes en lotes semanales, gestiona campañas pagas (Meta/Google), posiciona en Google y mantiene la identidad visual. Para empresas que necesitan visibilidad online constante.",
-  "Máquina de Atención":"Resuelve el 90% de consultas en el primer contacto por WhatsApp y email, sin intervención humana. Para empresas con muchos clientes o consultas frecuentes.",
-  "Máquina de Operaciones":"El backoffice completo: lleva las cuentas, automatiza flujos, gestiona proyectos, el CRM y la agenda. Para PyMEs que quieren operar sin caos administrativo.",
-  "Máquina de Cumplimiento":"Revisa contratos, cuida la protección de datos (LGPD/GDPR) y alerta riesgos legales antes de que ocurran. Para empresas que firman contratos o manejan datos de clientes.",
-  "Máquina de Análisis":"Convierte los datos del negocio en decisiones: reportes, dashboards y números reales en lugar de suposiciones. Para empresas que quieren medir lo que importa.",
-  "Máquina de Calidad":"Audita seguridad, accesos y consumo — para que nada salga roto ni se gaste de más. Para empresas con sistemas digitales o plataformas propias.",
-  "Máquina para Terapeutas":"Agenda, cobro, bienvenida al paciente y seguimiento entre sesiones. Diseñada exclusivamente para consultorios de terapia, psicología y coaching.",
+  "Studio de Adquisición":"Trae clientes nuevos: investiga el mercado, prospecta en LinkedIn y cierra ventas por WhatsApp. Ideal para empresas B2B o de servicios que quieren llenar su pipeline.",
+  "Studio de Contenido":"Publica en redes en lotes semanales, gestiona campañas pagas (Meta/Google), posiciona en Google y mantiene la identidad visual. Para empresas que necesitan visibilidad online constante.",
+  "Studio de Atención":"Resuelve el 90% de consultas en el primer contacto por WhatsApp y email, sin intervención humana. Para empresas con muchos clientes o consultas frecuentes.",
+  "Studio de Operaciones":"El backoffice completo: lleva las cuentas, automatiza flujos, gestiona proyectos, el CRM y la agenda. Para PyMEs que quieren operar sin caos administrativo.",
+  "Studio de Cumplimiento":"Revisa contratos, cuida la protección de datos (LGPD/GDPR) y alerta riesgos legales antes de que ocurran. Para empresas que firman contratos o manejan datos de clientes.",
+  "Studio de Análisis":"Convierte los datos del negocio en decisiones: reportes, dashboards y números reales en lugar de suposiciones. Para empresas que quieren medir lo que importa.",
+  "Studio de Calidad":"Audita seguridad, accesos y consumo — para que nada salga roto ni se gaste de más. Para empresas con sistemas digitales o plataformas propias.",
+  "Studio para Terapeutas":"Gestiona la agenda, el cobro, la bienvenida al paciente y el seguimiento entre sesiones. Diseñada exclusivamente para consultorios de terapia, psicología y coaching.",
+  "Studio para Profesionales":"Lara, Leo y Nina: redes sociales, nuevos clientes y agenda automática para profesionales de salud y bienestar. Para terapeutas, odontólogos, psicólogos y coaches que quieren crecer sin contratar personal.",
   "General":"Agentes de uso general sin equipo asignado."
 };
 function computeWorkforces(){
   const byGroup={};
   Object.keys(AGENTS).forEach(k=>{const g=AGENTS[k].grupo||"General";(byGroup[g]=byGroup[g]||[]).push(k);});
-  WORKFORCES=Object.keys(byGroup).map(g=>({n:g,d:WF_DESC[g]||"Equipo de agentes de "+g+".",members:byGroup[g]}));
+  WORKFORCES=Object.keys(byGroup).map(g=>{const n=WF_RENAME[g]||g;return{n,d:WF_DESC[n]||WF_DESC[g]||"Equipo de agentes de "+g+".",members:byGroup[g]};});
 }
 
 function execToTask(e){
