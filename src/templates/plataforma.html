@@ -258,10 +258,21 @@ function agentToRecord(a){
   return {id:a.id,n:a.name,orixá:a.orixa||"",grupo:a.group||"General",modelo:a.default_tier||"economy",idioma:"PT/ES",estado:a.status==="active"?"activo":(a.status||"activo"),d:a.description||"",prompt:a.system_prompt||"",tools:a.tools||[],dailyBudget:a.daily_budget_usd,caseMemory:!!a.case_memory};
 }
 
+const WF_DESC={
+  "Máquina de Adquisición":"Trae clientes nuevos: investiga el mercado, prospecta en LinkedIn y cierra ventas por WhatsApp. Ideal para empresas B2B o de servicios que quieren llenar su pipeline.",
+  "Máquina de Contenido":"Publica en redes en lotes semanales, gestiona campañas pagas (Meta/Google), posiciona en Google y mantiene la identidad visual. Para empresas que necesitan visibilidad online constante.",
+  "Máquina de Atención":"Resuelve el 90% de consultas en el primer contacto por WhatsApp y email, sin intervención humana. Para empresas con muchos clientes o consultas frecuentes.",
+  "Máquina de Operaciones":"El backoffice completo: lleva las cuentas, automatiza flujos, gestiona proyectos, el CRM y la agenda. Para PyMEs que quieren operar sin caos administrativo.",
+  "Máquina de Cumplimiento":"Revisa contratos, cuida la protección de datos (LGPD/GDPR) y alerta riesgos legales antes de que ocurran. Para empresas que firman contratos o manejan datos de clientes.",
+  "Máquina de Análisis":"Convierte los datos del negocio en decisiones: reportes, dashboards y números reales en lugar de suposiciones. Para empresas que quieren medir lo que importa.",
+  "Máquina de Calidad":"Audita seguridad, accesos y consumo — para que nada salga roto ni se gaste de más. Para empresas con sistemas digitales o plataformas propias.",
+  "Máquina para Terapeutas":"Agenda, cobro, bienvenida al paciente y seguimiento entre sesiones. Diseñada exclusivamente para consultorios de terapia, psicología y coaching.",
+  "General":"Agentes de uso general sin equipo asignado."
+};
 function computeWorkforces(){
   const byGroup={};
   Object.keys(AGENTS).forEach(k=>{const g=AGENTS[k].grupo||"General";(byGroup[g]=byGroup[g]||[]).push(k);});
-  WORKFORCES=Object.keys(byGroup).map(g=>({n:g,d:"Equipo de agentes de "+g+".",members:byGroup[g]}));
+  WORKFORCES=Object.keys(byGroup).map(g=>({n:g,d:WF_DESC[g]||"Equipo de agentes de "+g+".",members:byGroup[g]}));
 }
 
 function execToTask(e){
@@ -488,8 +499,8 @@ function render(){renderTree();const V=document.getElementById("view");
     });
     body=tbody+`<button class="btn" style="margin-top:4px" onclick="saveToolKeys()">💾 Guardar configuración</button>`;
   }
-  else if(current.startsWith("wf:")){const w=WORKFORCES[current.split(":")[1]];title=w.n;crumb="Equipos ›";help=w.d+" Un equipo trabaja coordinado por un jefe (orquestador).";
-    body=`<div class="wf"><div class="orch"><div class="ag">J</div><div><b>Jefe del equipo (orquestador)</b><div class="mini">Reparte el trabajo y junta los resultados.</div></div></div><div class="members">${w.members.map(m=>`<div class="member"><div class="ag">${m.slice(0,2)}</div>${AGENTS[m].n}</div>`).join("")}</div></div>`;}
+  else if(current.startsWith("wf:")){const w=WORKFORCES[current.split(":")[1]];title=w.n;crumb="Equipos ›";help=w.d;
+    body=`<div class="panel pad" style="margin-bottom:16px"><p style="margin:0;font-size:15px;line-height:1.6">${w.d}</p></div><div class="wf"><div class="members" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${w.members.map(m=>`<div class="member" style="flex-direction:column;align-items:flex-start;padding:14px;gap:6px"><div style="display:flex;align-items:center;gap:8px"><div class="ag">${m.slice(0,2)}</div><b>${AGENTS[m].n}</b></div><div class="mini" style="color:var(--amber)">${AGENTS[m].orixá||''}</div><div class="mini" style="font-size:11px">${AGENTS[m].d||''}</div></div>`).join("")}</div></div>`;}
   else if(current.startsWith("cli:")){const ci=parseInt(current.split(":")[1]);const c=CLIENTS[ci];title=c.n;crumb="Clientes ›";help="Plan "+c.plan+" · "+c.mail;
     btn=`<button class="btn alt" style="color:var(--red);border-color:var(--red)" onclick="deleteClient(${ci})">🗑 Eliminar</button>`;
     const cf=c.features||{};
