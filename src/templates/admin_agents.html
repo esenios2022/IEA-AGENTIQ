@@ -104,9 +104,9 @@
             </span>
             {% endif %}
         </form>
-        <form class="import-box" method="post" action="/admin/agents/cleanup"
-              onsubmit="return confirm('¿Borrar todos los agentes que NO son parte del JSON maestro? Esta acción no se puede deshacer.')">
-            <button type="submit" style="background:#7a1f1f;color:#fbe4e4">🗑 Limpiar agentes extra (no maestros)</button>
+        <form class="import-box" method="post" action="/admin/agents/reset-all"
+              onsubmit="return confirm('¿Borrar TODOS los agentes y reimportar los 37 maestros desde cero? Esta acción no se puede deshacer.')">
+            <button type="submit" style="background:#7a1f1f;color:#fbe4e4">⚠️ Reset completo (borra todo e importa 37)</button>
             {% if request.query_params.get("deleted") is not none %}
             <span class="import-msg">
                 Eliminados: {{ request.query_params.get("deleted") }} &middot;

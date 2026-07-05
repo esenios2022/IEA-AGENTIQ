@@ -427,6 +427,24 @@ def cleanup_non_master_agents(
     )
 
 
+@app.post("/admin/agents/reset-all")
+def reset_all_agents(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """Delete EVERY agent unconditionally, then reimport the 37 masters fresh."""
+    all_agents = db.scalars(select(Agent)).all()
+    for agent in all_agents:
+        _delete_agent_cascade(db, agent)
+    db.flush()
+    result = sync_master_agents(db)
+    db.commit()
+    return RedirectResponse(
+        url=f"/admin/agents?imported={result.created}&updated={result.updated}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @app.post("/admin/agents/set-budget-all")
 def set_budget_all_agents(
     daily_budget_usd: float = Form(...),
