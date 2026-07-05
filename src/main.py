@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select, text
+from sqlalchemy import delete as sa_delete, select, text, update as sa_update
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -35,7 +35,7 @@ from src.config import settings
 from src.database import Base, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
-from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, PatientCase, UsageLog
+from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, PatientCase, ResponseCache, UsageLog
 from src.scheduler import start_scheduler
 from src.schemas import (
     AgentOut,
@@ -377,6 +377,18 @@ def import_master_agents(
     )
 
 
+def _delete_agent_cascade(db: Session, agent: Agent) -> None:
+    """Remove all FK-dependent rows before deleting an agent."""
+    db.execute(sa_delete(UsageLog).where(UsageLog.agent_id == agent.id))
+    db.execute(sa_update(ResponseCache).where(ResponseCache.agent_id == agent.id).values(agent_id=None))
+    db.execute(sa_update(KbArticle).where(KbArticle.agent_id == agent.id).values(agent_id=None))
+    for case in db.scalars(select(PatientCase).where(PatientCase.agent_id == agent.id)).all():
+        db.execute(sa_delete(CaseMessage).where(CaseMessage.case_id == case.id))
+    db.execute(sa_delete(PatientCase).where(PatientCase.agent_id == agent.id))
+    db.execute(sa_delete(ClientAgent).where(ClientAgent.agent_id == agent.id))
+    db.delete(agent)
+
+
 @app.post("/admin/agents/{agent_id}/delete")
 def delete_agent(
     agent_id: str,
@@ -386,10 +398,7 @@ def delete_agent(
     agent = db.get(Agent, agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
-    assigned = db.scalar(select(ClientAgent).where(ClientAgent.agent_id == agent.id))
-    if assigned:
-        raise HTTPException(status_code=400, detail="El agente está asignado a un cliente. Desasignalo primero.")
-    db.delete(agent)
+    _delete_agent_cascade(db, agent)
     db.commit()
     return RedirectResponse(url="/admin/agents?deleted=1&kept=0", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -414,7 +423,7 @@ def cleanup_non_master_agents(
             if assigned:
                 kept += 1  # skip agents assigned to clients
             else:
-                db.delete(agent)
+                _delete_agent_cascade(db, agent)
                 deleted += 1
     db.commit()
     return RedirectResponse(
