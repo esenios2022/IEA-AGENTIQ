@@ -114,6 +114,16 @@
             </span>
             {% endif %}
         </form>
+        <form class="import-box" method="post" action="/admin/agents/set-budget-all"
+              onsubmit="return confirm('¿Aplicar este presupuesto a TODOS los agentes?')">
+            <input type="number" name="daily_budget_usd" step="0.01" min="0" value="0.33"
+                   style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid rgba(205,163,73,0.4); font-size:0.9rem;">
+            <span style="font-size:0.85rem; color:var(--text-muted)">USD/día por agente</span>
+            <button type="submit">Aplicar a todos</button>
+            {% if request.query_params.get("budget_updated") is not none %}
+            <span class="import-msg">Actualizados: {{ request.query_params.get("budget_updated") }}</span>
+            {% endif %}
+        </form>
         {% if agents %}
             {% for group_name, group_agents in groups.items() %}
             <div class="group-block">
@@ -128,7 +138,9 @@
                         {% endif %}
                         <div class="status">{{ agent.status }} &middot; {{ agent.created_at.strftime("%Y-%m-%d") }}</div>
                         {% if agent.daily_budget_usd %}
-                        <div class="budget">Presupuesto: ${{ "%.2f"|format(agent.daily_budget_usd) }}/día</div>
+                        <div class="budget">Límite: ${{ "%.2f"|format(agent.daily_budget_usd) }}/día &middot; ≈${{ "%.0f"|format(agent.daily_budget_usd * 30) }}/mes</div>
+                        {% else %}
+                        <div class="budget" style="color:#c0392b;">Sin límite de gasto</div>
                         {% endif %}
                         <div class="links">
                             <a href="/admin/agents/{{ agent.id }}">Ver / Editar</a>

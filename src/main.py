@@ -432,6 +432,25 @@ def cleanup_non_master_agents(
     )
 
 
+@app.post("/admin/agents/set-budget-all")
+def set_budget_all_agents(
+    daily_budget_usd: float = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    all_agents = db.scalars(select(Agent)).all()
+    budget = daily_budget_usd if daily_budget_usd > 0 else None
+    for agent in all_agents:
+        agent.daily_budget_usd = budget
+        if agent.status == "paused" and budget:
+            agent.status = "active"
+    db.commit()
+    return RedirectResponse(
+        url=f"/admin/agents?budget_updated={len(all_agents)}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @app.get("/admin/usage")
 def usage_page(
     request: Request,
@@ -528,6 +547,23 @@ def update_agent_definition(
         agent.name = definition["agent_name"]
     db.commit()
     return RedirectResponse(url=f"/admin/agents/{agent_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/agents/{agent_id}/set-budget")
+def set_agent_budget(
+    agent_id: str,
+    daily_budget_usd: float = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    agent.daily_budget_usd = daily_budget_usd if daily_budget_usd > 0 else None
+    if agent.status == "paused" and daily_budget_usd > 0:
+        agent.status = "active"
+    db.commit()
+    return RedirectResponse(url=f"/admin/agents/{agent_id}?budget_saved=1", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/admin/agents/{agent_id}/knowledge/upload")

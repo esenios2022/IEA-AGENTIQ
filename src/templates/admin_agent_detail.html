@@ -75,7 +75,21 @@
             <div><strong>Estado:</strong> {{ agent.status }}</div>
             <div><strong>Requerimiento original:</strong> {{ agent.requirement or "-" }}</div>
             <div><strong>Creado:</strong> {{ agent.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
-            {% if agent.daily_budget_usd %}<div><strong>Presupuesto diario:</strong> ${{ "%.2f"|format(agent.daily_budget_usd) }}</div>{% endif %}
+            <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;">
+                <strong>Presupuesto diario:</strong>
+                <form method="post" action="/admin/agents/{{ agent.id }}/set-budget" style="display:flex; align-items:center; gap:8px; margin:0;">
+                    <input type="number" name="daily_budget_usd" step="0.01" min="0"
+                           value="{{ '%.2f'|format(agent.daily_budget_usd) if agent.daily_budget_usd else '' }}"
+                           placeholder="Sin límite"
+                           style="width:90px; padding:4px 8px; border-radius:6px; border:1px solid rgba(205,163,73,0.4); font-size:0.9rem;">
+                    <span style="font-size:0.85rem; color:var(--text-muted)">USD/día</span>
+                    <button type="submit" style="margin:0; padding:4px 12px; font-size:0.8rem;">Guardar</button>
+                    {% if request.query_params.get("budget_saved") is not none %}
+                    <span style="color:var(--emerald); font-size:0.82rem;">✓ Guardado</span>
+                    {% endif %}
+                </form>
+                <span style="font-size:0.75rem; color:var(--text-muted);">≈ ${{ "%.0f"|format(agent.daily_budget_usd * 30) if agent.daily_budget_usd else "—" }}/mes</span>
+            </div>
         </div>
 
         <div class="crew-box">
