@@ -227,6 +227,72 @@ def get_agent(agent_id: str, db: Session = Depends(get_db)):
     return _agent_out(agent)
 
 
+@app.post("/api/agents", response_model=AgentOut)
+def create_agent_api(
+    name: str = Form(...),
+    role: str = Form(""),
+    description: str = Form(""),
+    group: str = Form("General"),
+    system_prompt: str = Form(""),
+    default_tier: str = Form("economy"),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    definition = {
+        "group": group,
+        "instructions": {"system_prompt": system_prompt},
+        "llm_routing": {"default_tier": default_tier},
+    }
+    agent = Agent(
+        name=name,
+        role=role or name,
+        description=description,
+        definition=definition,
+        status="active",
+    )
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+    return _agent_out(agent)
+
+
+@app.post("/api/agents/{agent_id}/update")
+def update_agent_api(
+    agent_id: str,
+    name: str = Form(None),
+    description: str = Form(None),
+    system_prompt: str = Form(None),
+    default_tier: str = Form(None),
+    group: str = Form(None),
+    agent_status: str = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    definition = dict(agent.definition or {})
+    if name is not None:
+        agent.name = name
+    if description is not None:
+        agent.description = description
+    if agent_status is not None:
+        agent.status = agent_status
+    if group is not None:
+        definition["group"] = group
+    if system_prompt is not None:
+        instructions = dict(definition.get("instructions") or {})
+        instructions["system_prompt"] = system_prompt
+        definition["instructions"] = instructions
+    if default_tier is not None:
+        routing = dict(definition.get("llm_routing") or {})
+        routing["default_tier"] = default_tier
+        definition["llm_routing"] = routing
+    agent.definition = definition
+    db.commit()
+    return {"success": True}
+
+
 @app.post("/api/agents/{agent_id}/group")
 def update_agent_group(
     agent_id: str,

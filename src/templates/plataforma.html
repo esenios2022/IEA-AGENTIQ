@@ -695,11 +695,11 @@ function agentDetail(k){const g=AGENTS[k];
       <option${g.modelo==='mistral-large'?' selected':''}>mistral-large</option>
     </optgroup>
   </select></div><div><label>Idioma</label><select><option>${g.idioma}</option><option>PT-BR</option><option>ES</option></select></div></div>
-  <label>Qué hace (lo ve el cliente)</label><textarea rows="2">${g.d}</textarea>
-  <label>Prompt (sus instrucciones)</label><textarea rows="4">${g.prompt}</textarea>
+  <label>Qué hace (lo ve el cliente)</label><textarea id="ag_desc_${k}" rows="2">${g.d}</textarea>
+  <label>Prompt (sus instrucciones)</label><textarea id="ag_prompt_${k}" rows="4">${g.prompt}</textarea>
   <label>Herramientas</label>${g.tools.map(t=>`<div class="toolrow"><div>🧰 ${t}</div><button style="background:none;border:none;color:var(--red);font-size:18px">✕</button></div>`).join("")}
   <div class="toolrow" style="opacity:.8"><div>➕ Agregar herramienta…</div><button style="background:none;border:none;color:var(--green);font-size:18px">＋</button></div>
-  <div class="actions"><button class="btn alt" onclick="alert('Pausar (demo)')">Pausar</button><button class="btn" onclick="alert('Guardado (demo)')">Guardar cambios</button></div></div><div class="panel pad" style="margin-top:16px"><h3 style="margin-top:0">Lo que está haciendo (${ts.length})</h3><div class="mini" style="margin-bottom:10px">Tocá una tarea para desplegar el paso a paso.</div>${act}</div>`;}
+  <div class="actions"><button class="btn alt" id="btn_pause_${k}" onclick="pauseAgent('${k}')">Pausar</button><button class="btn" id="btn_save_${k}" onclick="saveAgent('${k}')">Guardar cambios</button></div></div><div class="panel pad" style="margin-top:16px"><h3 style="margin-top:0">Lo que está haciendo (${ts.length})</h3><div class="mini" style="margin-bottom:10px">Tocá una tarea para desplegar el paso a paso.</div>${act}</div>`;}
 
 /* CREAR AGENTE (funcional: aparece en la lista) */
 function newAgentForm(){return `<div class="panel pad" style="max-width:680px">
@@ -740,13 +740,74 @@ function newAgentForm(){return `<div class="panel pad" style="max-width:680px">
   <label>Prompt (instrucciones)</label><textarea id="na_p" rows="3" placeholder="Rol: ... SOP: 1)... 2)... Salida: ..."></textarea>
   <label>Herramientas</label>${Object.keys(TOOLS_CAT).map(cat=>`<div style="margin-bottom:10px"><div class="mini" style="color:var(--brand);font-weight:700;margin-bottom:5px">${cat}</div><div style="display:flex;flex-wrap:wrap">${TOOLS_CAT[cat].map(t=>`<label class="toolchk"><input type="checkbox" value="${t}" ${ACTIVE_TOOLS.has(t)?'checked':''}> ${t}</label>`).join('')}</div></div>`).join('')}
   <div class="actions"><button class="btn alt" onclick="nav('inicio')">Cancelar</button><button class="btn" onclick="createAgent()">Crear agente</button></div></div>`;}
-function createAgent(){
+async function createAgent(){
   const n=document.getElementById("na_n").value.trim();
   if(!n){alert("Poné un nombre");return;}
-  const tools=[...document.querySelectorAll(".toolchk input:checked")].map(c=>c.value);
-  const key="A"+(Object.keys(AGENTS).length+1);
-  AGENTS[key]={n,grupo:document.getElementById("na_g").value||"General",modelo:document.getElementById("na_m").value.split(" ")[0],idioma:document.getElementById("na_i").value,estado:"activo",d:document.getElementById("na_d").value||"(sin descripción)",prompt:document.getElementById("na_p").value||"",tools:tools.length?tools:["Búsqueda web"]};
-  open.agentes=true;current="agent:"+key;render();
+  const grupo=document.getElementById("na_g").value||"General";
+  const modelo=document.getElementById("na_m").value||"economy";
+  const descr=document.getElementById("na_d").value||"";
+  const prom=document.getElementById("na_p").value||"";
+  const btn=document.querySelector('.btn[onclick="createAgent()"]');
+  if(btn){btn.disabled=true;btn.textContent="Creando...";}
+  try{
+    const b=new URLSearchParams();
+    b.append("name",n);b.append("description",descr);b.append("group",grupo);
+    b.append("system_prompt",prom);b.append("default_tier",modelo.split("/")[1]||modelo);
+    const r=await fetch("/api/agents",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||"Error "+r.status);}
+    const agent=await r.json();
+    await bootstrapAdmin();
+    open.agentes=true;
+    const newKey=Object.keys(AGENTS).find(k=>AGENTS[k].id===agent.id)||Object.keys(AGENTS).at(-1);
+    current="agent:"+newKey;render();
+  }catch(e){
+    alert("Error al crear agente: "+e.message);
+    if(btn){btn.disabled=false;btn.textContent="Crear agente";}
+  }
+}
+async function saveAgent(k){
+  const g=AGENTS[k];
+  if(!g||!g.id){alert("Agente sin ID — recargá la página");return;}
+  const descEl=document.getElementById("ag_desc_"+k);
+  const promptEl=document.getElementById("ag_prompt_"+k);
+  const modelEl=document.getElementById("ag_model_"+k);
+  const btn=document.getElementById("btn_save_"+k);
+  if(btn){btn.disabled=true;btn.textContent="Guardando...";}
+  try{
+    const b=new URLSearchParams();
+    if(descEl)b.append("description",descEl.value);
+    if(promptEl)b.append("system_prompt",promptEl.value);
+    if(modelEl)b.append("default_tier",modelEl.value);
+    const r=await fetch("/api/agents/"+g.id+"/update",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||"Error "+r.status);}
+    if(descEl)g.d=descEl.value;
+    if(promptEl)g.prompt=promptEl.value;
+    if(modelEl)g.modelo=modelEl.value;
+    if(btn){btn.disabled=false;btn.textContent="Guardado ✓";}
+    setTimeout(()=>{if(btn)btn.textContent="Guardar cambios";},2000);
+  }catch(e){
+    alert("Error al guardar: "+e.message);
+    if(btn){btn.disabled=false;btn.textContent="Guardar cambios";}
+  }
+}
+async function pauseAgent(k){
+  const g=AGENTS[k];
+  if(!g||!g.id){alert("Agente sin ID — recargá la página");return;}
+  const isPaused=g.estado==="pausado";
+  const newStatus=isPaused?"activo":"pausado";
+  const btn=document.getElementById("btn_pause_"+k);
+  if(btn){btn.disabled=true;}
+  try{
+    const b=new URLSearchParams();
+    b.append("agent_status",isPaused?"active":"paused");
+    const r=await fetch("/api/agents/"+g.id+"/update",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||"Error "+r.status);}
+    g.estado=newStatus;
+    render();
+  }catch(e){
+    alert("Error: "+e.message);
+    if(btn)btn.disabled=false;
+  }
 }
 
 /* MODALES */
