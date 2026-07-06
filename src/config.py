@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     composio_api_key: str | None = None
     serper_api_key: str | None = None
     openai_api_key: str | None = None
+    gemini_api_key: str | None = None  # Used for Lisa Mawu by default
 
 
 settings = Settings()

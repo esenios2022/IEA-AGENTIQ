@@ -15,11 +15,14 @@ from sqlalchemy.orm import Session
 
 from src.agent_executor import run_agent as run_lean_agent
 from src.case_memory import append_message, get_case_history
+from src.config import settings
 from src.cost import BudgetDecision, check_budget, record_usage
 from src.crew_runtime import run_crew
 from src.llm_pricing import TIER_MODELS
 from src.models import Agent, ResponseCache
 from src.tiering import select_tier
+
+LISA_CODE = "agent_032"
 
 CACHE_TTL = timedelta(hours=24)
 
@@ -79,10 +82,13 @@ def run(
 ) -> RunOutcome:
     definition = agent.definition or {}
 
-    # If client provides their own Gemini key, bypass budget/cost tracking entirely.
-    if gemini_key:
+    # Lisa Mawu uses Gemini: prefer caller-supplied key, then platform env var.
+    # Either way cost is $0 to the Anthropic budget.
+    is_lisa = agent.agent_code == LISA_CODE or agent.name == "Lisa Mawu"
+    effective_gemini_key = gemini_key or (settings.gemini_api_key if is_lisa else None)
+    if effective_gemini_key:
         from src.gemini_executor import run_gemini
-        exec_result = run_gemini(agent, extra_input or "", gemini_key, history=history)
+        exec_result = run_gemini(agent, extra_input or "", effective_gemini_key, history=history)
         return RunOutcome(result=exec_result.text, cost_usd=0.0, tier_used="gemini-free", cached=False)
 
     decision = check_budget(db, agent)
