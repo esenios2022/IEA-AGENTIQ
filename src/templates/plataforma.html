@@ -293,7 +293,7 @@ function execToTask(e){
   const steps=[["done","Tarea recibida",time]];
   if(e.status==="done")steps.push(["done",e.cached?"Respondida desde caché (costo $0)":"Completada · $"+Number(e.cost_usd).toFixed(4),time]);
   else steps.push(["err","Error: "+(e.error_message||"desconocido"),time]);
-  return {id:e.id,ag:code,cli:e.client_name||"—",t:e.input_text||("Ejecución de "+(AGENTS[code]?AGENTS[code].n:"agente")),st:e.status,steps,cost:e.cost_usd,tier:e.tier,result:e.result_text};
+  return {id:e.id,ag:code,cli:e.client_name||"—",t:e.input_text||("Ejecución de "+(AGENTS[code]?AGENTS[code].n:"agente")),st:e.status,steps,cost:e.cost_usd,tier:e.tier,result:e.result_text,err:e.error_message||"",dt:e.created_at};
 }
 
 async function bootstrapAdmin(){
@@ -337,6 +337,8 @@ async function refreshExecutions(){
     usage.by_agent.forEach(row=>{const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===row.agent_id);if(code)CONSUMO[code]={dia:row.spend_today_usd,mes:row.spend_period_usd};});
   }
 }
+
+async function refreshMonitor(){await refreshExecutions();render();}
 
 async function runAgentReal(code,inputText){
   const rec=AGENTS[code];
@@ -475,6 +477,7 @@ function renderTree(){
     h+=treeItem("c_analitica","📊","Analítica");
     h+=treeItem("c_catalogo","🛒","Catálogo");
     h+=treeItem("c_historial","📑","Historial");
+    h+=treeItem("c_monitor","📡","Monitor");
     h+=treeItem("c_api","🔌","Conexión & API");
     var cf=(CLIENTS.find(c=>c.n===me)||{}).features||{};FEATURES.forEach(function(ff){if(ff.estado==="ok"&&cf[ff.k]){var tgt=ff.k==="encuestas"?"c_encuestas":(ff.k==="flujos"?"c_flujos":"c_feat_"+ff.k);h+=treeItem(tgt,ff.ic,ff.n);}});
   }else{
@@ -496,6 +499,7 @@ function renderTree(){
       CLIENTS.forEach((c,i)=>{h+=`<div class="child ${current==='cli:'+i?'on':''}" onclick="nav('cli:${i}')">🏢 ${c.n}</div>`;});
       h+=`<div class="addrow" onclick="nuevoCliente()">＋ Nuevo cliente</div></div>`;}
     h+=treeItem("ejec","⚡","Ejecuciones");
+    h+=treeItem("monitor","📡","Monitor");
     h+=treeItem("tools","🧰","Herramientas");
     h+=treeItem("a_rent","💰","Rentabilidad");
     h+=treeItem("a_analitica","📊","Analítica");
@@ -527,6 +531,53 @@ function render(){renderTree();const V=document.getElementById("view");
   else if(current==="newagent"){title="Nuevo agente";crumb="Agentes ›";help="Completá los datos y tocá Crear. El agente va a aparecer en la lista de la izquierda.";body=newAgentForm();}
   else if(current==="ejec"){title="Ejecuciones";help="Todas las tareas de todos los clientes. Tocá una para ver el detalle.";
     body=`<div class="panel"><table><thead><tr><th>Tarea</th><th>Cliente</th><th>Agente</th><th>Estado</th></tr></thead><tbody>${TASKS.map(t=>`<tr onclick="openTask('${t.id}')"><td><b>${t.t}</b></td><td>${t.cli}</td><td class="mini">${AGENTS[t.ag]?AGENTS[t.ag].n:t.ag}</td><td>${badge(t.st)}</td></tr>`).join("")}</tbody></table></div>`;}
+
+  else if(current==="monitor"||current==="c_monitor"){
+    title="Monitor de agentes";help="Actividad en tiempo real: ejecuciones, errores y costos. Se actualiza cada 30 s.";
+    btn=`<button class="btn alt" onclick="refreshMonitor()">🔄 Actualizar</button>`;
+    const visTasks=role==="cli"?TASKS.filter(t=>t.cli===me):TASKS;
+    const errCount=visTasks.filter(t=>t.st==="err").length;
+    const costTotal=visTasks.reduce((s,t)=>s+Number(t.cost||0),0);
+    const succRate=visTasks.length?Math.round((visTasks.filter(t=>t.st==="done").length/visTasks.length)*100):100;
+    const pausedCount=Object.values(AGENTS).filter(a=>a.estado==="pausado").length;
+    const cols=role==="adm"?7:6;
+    let mrows="";
+    visTasks.forEach(t=>{
+      const isErr=t.st==="err";
+      const agName=AGENTS[t.ag]?AGENTS[t.ag].n:t.ag;
+      const errMsg=isErr?(t.err||(t.steps[1]?t.steps[1][1].replace(/^Error:\s*/,""):"Error desconocido")):"";
+      const inp=(t.t||"").slice(0,90)+(t.t&&t.t.length>90?"…":"");
+      const out=isErr?"":((t.result||"").slice(0,90)+((t.result||"").length>90?"…":""));
+      const time=t.steps[0]?t.steps[0][2]:"—";
+      const costStr=Number(t.cost||0)>0?"$"+Number(t.cost).toFixed(4):"$0.00";
+      const tierLabel=t.tier==="gemini-free"?`<span style="font-size:10px;color:#16a34a">🟢 Gemini</span>`:(t.tier?`<span class="mini">${t.tier}</span>`:"");
+      mrows+=`<tr style="${isErr?"background:rgba(220,38,38,.05)":""}">
+        <td class="mini" style="white-space:nowrap">${time}</td>
+        <td><div style="display:flex;align-items:center;gap:6px"><div class="ag" style="width:22px;height:22px;font-size:9px;border-radius:5px;flex-shrink:0">${t.ag.slice(0,2)}</div><b style="font-size:13px">${agName}</b></div></td>
+        <td style="white-space:nowrap">${isErr?'<span class="badge err">❌ Error</span>':'<span class="badge ok">✅ OK</span>'}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${inp||"—"}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:${isErr?"var(--red)":"inherit"}">${isErr?errMsg:out||"—"}</td>
+        <td style="white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums">${costStr} ${tierLabel}</td>
+        ${role==="adm"?`<td class="mini" style="white-space:nowrap">${t.cli}</td>`:""}
+      </tr>`;
+    });
+    body=`<div class="kpis">
+      <div class="kpi"><div class="n">${visTasks.length}</div><div class="l">Ejecuciones</div></div>
+      <div class="kpi"><div class="n" style="color:${errCount>0?"var(--red)":"var(--green)"}">${errCount}</div><div class="l">Errores</div></div>
+      <div class="kpi"><div class="n" style="color:var(--brand)">$${costTotal.toFixed(4)}</div><div class="l">Costo total</div></div>
+      <div class="kpi"><div class="n" style="color:${succRate<80?"var(--amber)":"var(--green)"}">${succRate}%</div><div class="l">Éxito</div></div>
+    </div>
+    ${pausedCount>0?`<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:9px 14px;margin-bottom:12px;font-size:13px">⚠️ <b>${pausedCount} agente${pausedCount>1?"s":""} pausado${pausedCount>1?"s":""}</b> por límite de presupuesto diario. Se reactivarán automáticamente mañana.</div>`:""}
+    <div class="panel" style="overflow-x:auto">
+      <table style="min-width:680px">
+        <thead><tr><th>Hora</th><th>Agente</th><th>Estado</th><th>Input</th><th>Respuesta / Error</th><th>Costo</th>${role==="adm"?"<th>Cliente</th>":""}</tr></thead>
+        <tbody>${mrows||`<tr><td colspan="${cols}" class="mini" style="text-align:center;padding:24px">Sin ejecuciones todavía.</td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="mini" style="margin-top:8px;color:var(--muted)">Actualizando cada 30 s · ${new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</div>`;
+    if(!window._monitorTimer){window._monitorTimer=setInterval(async()=>{if(current==="monitor"||current==="c_monitor"){await refreshExecutions();render();}},30000);}
+  }
+
   else if(current==="tools"){title="Herramientas & Integraciones";help="Activá cada herramienta y configurá su API key. Igual que CrewAI — tus agentes usan las herramientas habilitadas acá.";
     let tbody="";
     Object.keys(TOOLS_CAT).forEach(cat=>{
