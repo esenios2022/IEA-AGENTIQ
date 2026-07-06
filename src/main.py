@@ -946,6 +946,48 @@ def update_client(
     return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.post("/admin/clients/{client_id}/api-keys")
+def set_client_api_keys(
+    client_id: str,
+    gemini_key: str = Form(""),
+    anthropic_key: str = Form(""),
+    openai_key: str = Form(""),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    config = dict(client.config or {})
+    api_keys = dict(config.get("api_keys", {}))
+    for field, val in [("gemini", gemini_key), ("anthropic", anthropic_key), ("openai", openai_key)]:
+        if val.strip():
+            api_keys[field] = val.strip()
+    config["api_keys"] = api_keys
+    client.config = config
+    db.commit()
+    return RedirectResponse(url=f"/admin/clients/{client_id}?keys_saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/clients/{client_id}/api-keys/delete")
+def delete_client_api_key(
+    client_id: str,
+    provider: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    config = dict(client.config or {})
+    api_keys = dict(config.get("api_keys", {}))
+    api_keys.pop(provider, None)
+    config["api_keys"] = api_keys
+    client.config = config
+    db.commit()
+    return RedirectResponse(url=f"/admin/clients/{client_id}?keys_saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.get("/api/me/connect", response_model=ConnectToolkitResponse)
 def connect_my_toolkit(toolkit: str, request: Request, db: Session = Depends(get_db)):
     client = get_current_client(request, db)
@@ -972,11 +1014,12 @@ def run_my_agent(
     agent = db.get(Agent, agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    client_api_keys = (client.config or {}).get("api_keys", {})
     try:
         outcome = run_agent_service(
             db, agent, payload.input,
             user_id=str(client.id), client_id=client.id,
-            gemini_key=payload.gemini_key,
+            gemini_key=payload.gemini_key or client_api_keys.get("gemini"),
             history=payload.history,
         )
     except AgentPausedError as exc:

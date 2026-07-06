@@ -83,6 +83,55 @@
             <button type="submit">Guardar cambios</button>
         </form>
 
+        <h2 style="margin-top:32px;">API Keys del cliente</h2>
+        <form method="post" action="/admin/clients/{{ client.id }}/api-keys" style="margin-bottom:24px;">
+            {% if request.query_params.get("keys_saved") is not none %}
+            <div style="background:rgba(22,52,41,.1);border:1px solid rgba(22,52,41,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.9rem;color:var(--emerald)">
+                ✓ API Keys guardadas correctamente.
+            </div>
+            {% endif %}
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0;">
+                Las API Keys del cliente se usan automáticamente cuando sus agentes ejecutan tareas.
+                El costo va a la cuenta de cada proveedor del cliente, no a la plataforma.
+                Dejá en blanco los campos que no querés cambiar.
+            </p>
+            {% set client_keys = (client.config or {}).get("api_keys", {}) %}
+            <label>
+                🟢 Google Gemini API Key
+                {% if client_keys.get("gemini") %}
+                <span style="font-size:0.75rem;background:rgba(22,52,41,.1);color:var(--emerald);padding:1px 8px;border-radius:10px;margin-left:6px">Configurada ✓</span>
+                <form method="post" action="/admin/clients/{{ client.id }}/api-keys/delete" style="display:inline;margin-left:8px">
+                    <input type="hidden" name="provider" value="gemini">
+                    <button type="submit" style="margin:0;padding:2px 8px;font-size:0.7rem;background:none;border:1px solid #c0392b;color:#c0392b;border-radius:4px">Borrar</button>
+                </form>
+                {% endif %}
+            </label>
+            <input type="password" name="gemini_key" placeholder="{% if client_keys.get('gemini') %}••••••• (dejar en blanco para no cambiar){% else %}AQ.Ab8... o AIzaSy...{% endif %}" autocomplete="off">
+            <label>
+                🟠 Anthropic (Claude) API Key
+                {% if client_keys.get("anthropic") %}
+                <span style="font-size:0.75rem;background:rgba(22,52,41,.1);color:var(--emerald);padding:1px 8px;border-radius:10px;margin-left:6px">Configurada ✓</span>
+                <form method="post" action="/admin/clients/{{ client.id }}/api-keys/delete" style="display:inline;margin-left:8px">
+                    <input type="hidden" name="provider" value="anthropic">
+                    <button type="submit" style="margin:0;padding:2px 8px;font-size:0.7rem;background:none;border:1px solid #c0392b;color:#c0392b;border-radius:4px">Borrar</button>
+                </form>
+                {% endif %}
+            </label>
+            <input type="password" name="anthropic_key" placeholder="{% if client_keys.get('anthropic') %}••••••• (dejar en blanco para no cambiar){% else %}sk-ant-api03-...{% endif %}" autocomplete="off">
+            <label>
+                🔵 OpenAI API Key
+                {% if client_keys.get("openai") %}
+                <span style="font-size:0.75rem;background:rgba(22,52,41,.1);color:var(--emerald);padding:1px 8px;border-radius:10px;margin-left:6px">Configurada ✓</span>
+                <form method="post" action="/admin/clients/{{ client.id }}/api-keys/delete" style="display:inline;margin-left:8px">
+                    <input type="hidden" name="provider" value="openai">
+                    <button type="submit" style="margin:0;padding:2px 8px;font-size:0.7rem;background:none;border:1px solid #c0392b;color:#c0392b;border-radius:4px">Borrar</button>
+                </form>
+                {% endif %}
+            </label>
+            <input type="password" name="openai_key" placeholder="{% if client_keys.get('openai') %}••••••• (dejar en blanco para no cambiar){% else %}sk-...{% endif %}" autocomplete="off">
+            <button type="submit">Guardar API Keys</button>
+        </form>
+
         {% if assigned_ids %}
         <h2 style="margin-top:32px;">Tareas programadas</h2>
         <div class="admin-meta">
