@@ -640,7 +640,11 @@ def run_agent_with_crew(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     try:
-        outcome = run_agent_service(db, agent, payload.input)
+        outcome = run_agent_service(
+            db, agent, payload.input,
+            gemini_key=payload.gemini_key,
+            history=payload.history,
+        )
     except AgentPausedError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
@@ -969,7 +973,12 @@ def run_my_agent(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     try:
-        outcome = run_agent_service(db, agent, payload.input, user_id=str(client.id), client_id=client.id)
+        outcome = run_agent_service(
+            db, agent, payload.input,
+            user_id=str(client.id), client_id=client.id,
+            gemini_key=payload.gemini_key,
+            history=payload.history,
+        )
     except AgentPausedError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:

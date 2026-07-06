@@ -31,6 +31,8 @@ class AgentDefinitionUpdate(BaseModel):
 
 class CrewRunRequest(BaseModel):
     input: str | None = None
+    history: list[dict] | None = None  # [{"role": "user"|"assistant", "content": "..."}]
+    gemini_key: str | None = None  # client's own Gemini API key; cost goes to their account
 
 
 class CrewRunResponse(BaseModel):

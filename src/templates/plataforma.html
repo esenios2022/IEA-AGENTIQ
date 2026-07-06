@@ -233,7 +233,10 @@ let CONSUMO={};
 let role="cli", me="", myClientId=null, current="inicio";
 let open={agentes:true,equipos:false,clientes:false};
 let agOpen={};
-let CHAT=[],chatAgent="";
+let CHAT=[], chatAgent="";
+try { const _ch=localStorage.getItem("agiq_chat_v1"); if(_ch) CHAT=JSON.parse(_ch); } catch(e){}
+function _saveChat(){ try{localStorage.setItem("agiq_chat_v1",JSON.stringify(CHAT));}catch(e){} }
+function clearChatHistory(agCode){ CHAT=CHAT.filter(m=>m.ag!==agCode); _saveChat(); render(); }
 let helpOpen=false;
 let lang="es";
 let CASES=[],CASE_MESSAGES=[],currentCaseId=null;
@@ -337,7 +340,19 @@ async function runAgentReal(code,inputText){
   const rec=AGENTS[code];
   if(!rec)throw new Error("Agente no encontrado");
   const path=role==="cli"?("/api/me/agents/"+rec.id+"/run"):("/api/agents/"+rec.id+"/run");
-  const data=await api(path,{method:"POST",body:JSON.stringify({input:inputText||null})});
+
+  // Build conversation history (all prior turns for this agent, excluding pending placeholder)
+  const priorMsgs=CHAT.filter(m=>m.ag===code).slice(0,-2)
+    .filter(m=>!m.t.startsWith("⏳")&&!m.t.startsWith("⚠️"))
+    .map(m=>({role:m.who==="u"?"user":"assistant",content:m.t}));
+  const history=priorMsgs.length>0?priorMsgs:null;
+
+  // Use client's Gemini key for Lisa Mawu (free — charged to their Google account)
+  const isLisa=(rec.n==="Lisa Mawu"||rec.agent_code==="agent_032");
+  const geminiKey=isLisa?(localStorage.getItem("k_gem")||null):null;
+
+  const body={input:inputText||null,history,gemini_key:geminiKey};
+  const data=await api(path,{method:"POST",body:JSON.stringify(body)});
   await refreshExecutions();
   return data;
 }
@@ -585,7 +600,10 @@ function render(){renderTree();const V=document.getElementById("view");
     if(!ms.length)log="<div class='mini' style='margin:auto;text-align:center;max-width:380px'>Escribile al agente qué querés que haga. Ejemplo: «Buscá 30 clientes en Río y preparame las invitaciones». Él te contesta y va mostrando cada paso.</div>";
     ms.forEach(m=>{log+="<div class='bub "+(m.who==="u"?"u":"a")+"'><div class='nm'>"+(m.who==="u"?"Vos":AGENTS[chatAgent].n)+"</div>"+m.t+"</div>";});
     let oh="";opts.forEach(a=>{oh+="<option value='"+a+"'"+(a===chatAgent?" selected":"")+">"+AGENTS[a].n+"</option>";});
-    body=`<div class="chatwrap"><div class="chatsel">💬 Hablando con <select onchange="chatAgent=this.value;render()" style="width:auto;display:inline-block;padding:6px 10px">${oh}</select></div><div class="chatlog">${log}</div><div class="chatbar"><input id="chatmsg" placeholder="Escribí qué querés que haga..." onkeydown="if(event.key==='Enter')sendChat()"><button class="primary" onclick="sendChat()">Enviar</button></div></div>`;}
+    const isLisaChat=(AGENTS[chatAgent]&&(AGENTS[chatAgent].n==="Lisa Mawu"||AGENTS[chatAgent].agent_code==="agent_032"));
+    const gemBadge=isLisaChat&&localStorage.getItem("k_gem")?`<span style="background:#1a7340;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:8px">🟢 Gemini</span>`:``;
+    const noKeyWarn=isLisaChat&&!localStorage.getItem("k_gem")?`<div style="font-size:11px;color:#8a6d2f;background:rgba(205,163,73,.1);padding:4px 10px;border-bottom:1px solid var(--line)">⚠️ Lisa usará la API de la plataforma. Agregá tu Gemini API Key en Configuración para usar tu cuenta gratis.</div>`:"";
+    body=`<div class="chatwrap"><div class="chatsel" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px"><div>💬 Hablando con <select onchange="chatAgent=this.value;render()" style="width:auto;display:inline-block;padding:6px 10px">${oh}</select>${gemBadge}</div><button onclick="clearChatHistory('${chatAgent}')" style="font-size:11px;padding:3px 10px;background:none;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--muted)">🗑 Limpiar historial</button></div>${noKeyWarn}<div class="chatlog" id="chatlog">${log}</div><div class="chatbar"><input id="chatmsg" placeholder="Escribí qué querés que haga..." onkeydown="if(event.key==='Enter')sendChat()"><button class="primary" onclick="sendChat()">Enviar</button></div></div>`;}
 
   else if(current.startsWith("cases:")){
     const code=current.split(":")[1];const rec=AGENTS[code];
@@ -913,15 +931,20 @@ async function sendChat(){
   const t=el.value.trim();el.value="";
   CHAT.push({ag:chatAgent,who:"u",t:t});
   CHAT.push({ag:chatAgent,who:"a",t:"⏳ Ejecutando..."});
+  _saveChat();
   render();
   const l=document.getElementById("chatlog");if(l)l.scrollTop=l.scrollHeight;
   try{
     const data=await runAgentReal(chatAgent,t);
-    const meta=`[tier: ${data.tier_used}${data.cached?" · desde caché":""} · costo: $${Number(data.cost_usd).toFixed(4)}]\n\n`;
+    const isGemini=data.tier_used==="gemini-free";
+    const meta=isGemini
+      ?"[🟢 Gemini · cuenta propia · $0.00]\n\n"
+      :`[tier: ${data.tier_used}${data.cached?" · desde caché":""} · costo: $${Number(data.cost_usd).toFixed(4)}]\n\n`;
     CHAT[CHAT.length-1].t=meta+data.result;
   }catch(err){
     CHAT[CHAT.length-1].t="⚠️ "+(err.message||err);
   }
+  _saveChat();
   render();
   const l2=document.getElementById("chatlog");if(l2)l2.scrollTop=l2.scrollHeight;
 }

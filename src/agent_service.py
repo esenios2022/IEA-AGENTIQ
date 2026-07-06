@@ -74,8 +74,16 @@ def run(
     user_id: str | None = None,
     client_id: uuid.UUID | None = None,
     case_id: uuid.UUID | None = None,
+    gemini_key: str | None = None,
+    history: list[dict] | None = None,
 ) -> RunOutcome:
     definition = agent.definition or {}
+
+    # If client provides their own Gemini key, bypass budget/cost tracking entirely.
+    if gemini_key:
+        from src.gemini_executor import run_gemini
+        exec_result = run_gemini(agent, extra_input or "", gemini_key, history=history)
+        return RunOutcome(result=exec_result.text, cost_usd=0.0, tier_used="gemini-free", cached=False)
 
     decision = check_budget(db, agent)
     if decision == BudgetDecision.PAUSED:
@@ -109,16 +117,17 @@ def run(
             )
             return RunOutcome(result=cached_row.response, cost_usd=0.0, tier_used=tier, cached=True)
 
-    history = get_case_history(db, case_id) if case_id is not None else None
+    case_history = get_case_history(db, case_id) if case_id is not None else None
+    effective_history = case_history if case_id is not None else history
 
     execution_id = uuid.uuid4()
     try:
         if case_id is not None:
-            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=history)
+            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=effective_history)
         elif _is_multi_step(definition):
             exec_result = run_crew(agent, extra_input, user_id=user_id, tier=tier)
         else:
-            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id)
+            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=effective_history)
     except Exception as exc:
         record_usage(
             db,
