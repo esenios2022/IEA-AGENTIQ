@@ -8,7 +8,7 @@ from src.agent_runtime import system_prompt_for
 from src.exec_result import ExecResult
 from src.models import Agent
 
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 _META_PREFIXES = ("[tier:", "[🟢 Gemini", "[⚠️")
 

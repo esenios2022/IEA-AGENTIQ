@@ -237,6 +237,8 @@ let CHAT=[], chatAgent="";
 try { const _ch=localStorage.getItem("agiq_chat_v1"); if(_ch) CHAT=JSON.parse(_ch); } catch(e){}
 function _saveChat(){ try{localStorage.setItem("agiq_chat_v1",JSON.stringify(CHAT));}catch(e){} }
 function clearChatHistory(agCode){ CHAT=CHAT.filter(m=>m.ag!==agCode); _saveChat(); render(); }
+let GEMINI_SERVER=false; // true when server has GEMINI_API_KEY configured
+fetch("/api/config/providers").then(r=>r.json()).then(d=>{GEMINI_SERVER=!!d.gemini;}).catch(()=>{});
 let helpOpen=false;
 let lang="es";
 let CASES=[],CASE_MESSAGES=[],currentCaseId=null;
@@ -601,8 +603,9 @@ function render(){renderTree();const V=document.getElementById("view");
     ms.forEach(m=>{log+="<div class='bub "+(m.who==="u"?"u":"a")+"'><div class='nm'>"+(m.who==="u"?"Vos":AGENTS[chatAgent].n)+"</div>"+m.t+"</div>";});
     let oh="";opts.forEach(a=>{oh+="<option value='"+a+"'"+(a===chatAgent?" selected":"")+">"+AGENTS[a].n+"</option>";});
     const isLisaChat=(AGENTS[chatAgent]&&(AGENTS[chatAgent].n==="Lisa Mawu"||AGENTS[chatAgent].agent_code==="agent_032"));
-    const gemBadge=isLisaChat&&localStorage.getItem("k_gem")?`<span style="background:#1a7340;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:8px">🟢 Gemini</span>`:``;
-    const noKeyWarn=isLisaChat&&!localStorage.getItem("k_gem")?`<div style="font-size:11px;color:#8a6d2f;background:rgba(205,163,73,.1);padding:4px 10px;border-bottom:1px solid var(--line)">⚠️ Lisa usará la API de la plataforma. Agregá tu Gemini API Key en Configuración para usar tu cuenta gratis.</div>`:"";
+    const geminiReady=isLisaChat&&(GEMINI_SERVER||!!localStorage.getItem("k_gem"));
+    const gemBadge=geminiReady?`<span style="background:#1a7340;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:8px">🟢 Gemini</span>`:``;
+    const noKeyWarn=isLisaChat&&!geminiReady?`<div style="font-size:11px;color:#8a6d2f;background:rgba(205,163,73,.1);padding:4px 10px;border-bottom:1px solid var(--line)">⚠️ Lisa usará la API de la plataforma. Agregá tu Gemini API Key en Configuración para usar tu cuenta gratis.</div>`:"";
     body=`<div class="chatwrap"><div class="chatsel" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px"><div>💬 Hablando con <select onchange="chatAgent=this.value;render()" style="width:auto;display:inline-block;padding:6px 10px">${oh}</select>${gemBadge}</div><button onclick="clearChatHistory('${chatAgent}')" style="font-size:11px;padding:3px 10px;background:none;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--muted)">🗑 Limpiar historial</button></div>${noKeyWarn}<div class="chatlog" id="chatlog">${log}</div><div class="chatbar"><input id="chatmsg" placeholder="Escribí qué querés que haga..." onkeydown="if(event.key==='Enter')sendChat()"><button class="primary" onclick="sendChat()">Enviar</button></div></div>`;}
 
   else if(current.startsWith("cases:")){

@@ -105,6 +105,15 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/config/providers")
+def provider_config():
+    """Tells the frontend which AI providers are configured server-side."""
+    return {
+        "gemini": bool(settings.gemini_api_key),
+        "anthropic": bool(settings.anthropic_api_key),
+    }
+
+
 def _serve_static_html(filename: str) -> HTMLResponse:
     with open(f"src/templates/{filename}", encoding="utf-8") as f:
         return HTMLResponse(f.read())
