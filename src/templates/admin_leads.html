@@ -52,7 +52,9 @@
                     <th>ID</th>
                     <th>Nombre</th>
                     <th>Email</th>
-                    <th>Empresa</th>
+                    <th>Teléfono</th>
+                    <th>Tenant</th>
+                    <th>Estado</th>
                     <th>Fecha</th>
                 </tr>
             </thead>
@@ -62,7 +64,9 @@
                     <td>{{ lead.id }}</td>
                     <td>{{ lead.nombre }}</td>
                     <td>{{ lead.email }}</td>
-                    <td>{{ lead.empresa or "-" }}</td>
+                    <td>{{ lead.telefono or "-" }}</td>
+                    <td>{{ lead.tenant }}</td>
+                    <td>{{ lead.estado }}</td>
                     <td>{{ lead.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
                 </tr>
                 {% endfor %}

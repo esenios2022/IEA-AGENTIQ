@@ -147,3 +147,156 @@ ejecutadas satisfactoriamente.
   arquitectónica explícita: agregar, medir, comparar, decidir después.
 - No se conectó eAlumina — depende de tener acceso al repositorio real
   de eAlumina, que este agente todavía no tiene.
+
+---
+
+# FASE 2.2 — Ciclo de adquisición de pacientes (Lead → WhatsApp → estado)
+
+**Objetivo de negocio, no solo técnico**: el `Lead` representa un
+**paciente potencial** para eAlumina, no un contacto genérico — esta
+fase construye el primer eslabón real de un sistema de adquisición de
+pacientes para los terapeutas registrados, operado desde IEA-AGENTIQ
+mientras no hay acceso al repositorio real de eAlumina (ver FASE 2.1).
+
+## El flujo real
+
+```
+Lead nuevo (con telefono)
+        │
+        ▼
+POST /api/leads  ──BackgroundTask──►  qualify_and_contact_lead()
+        │                                      │
+        │                          1. Clasificación real (AI LAB, AIRuntime)
+        │                             lead.clasificacion_ia
+        │                                      │
+        │                          2. Mensaje de bienvenida real (AI LAB)
+        │                                      │
+        │                          3. Envío real por WhatsApp (AI LAB, Evolution API)
+        │                                      │
+        │                          4. LeadInteraction registrada (sent | failed)
+        │                                      │
+        └──────────────────────────► lead.estado = "contactado" (si tuvo éxito)
+```
+
+Cada paso de IA (clasificación y mensaje) corre como un `RUN_AGENT`
+real dentro del AI LAB (`AiLabClient.generate_message()` →
+`POST /api/v1/workflow/run`) — **IEA-AGENTIQ no genera texto por su
+cuenta en este flujo**, siguiendo la regla arquitectónica explícita
+("IEA AGENTIQ NO ejecuta IA"). El envío usa
+`AiLabClient.whatsapp_send()` → `POST /api/v1/whatsapp/send`, el mismo
+`WhatsAppGateway` real (Evolution API) del AI LAB.
+
+## Modelo de datos — el Lead como paciente potencial
+
+Campos agregados a `Lead` en esta fase, más allá de los de FASE 2.1:
+
+| Campo | Qué representa |
+|---|---|
+| `tenant` | A qué cliente de IEA AGENTIQ pertenece este paciente potencial — `"ealumina"` hoy, mismo modelo sirve para Terra Araras u otros sin cambios de código |
+| `idioma` | Idioma del paciente (default `"es"`) — usado para generar el mensaje en el idioma correcto |
+| `tipo_terapia` | Categoría de terapia buscada (ej. "ansiedad", "terapia de pareja") — si no viene declarada, la clasificación IA la infiere |
+| `disponibilidad` | Disponibilidad declarada para sesión |
+| `clasificacion_ia` | Resultado real del paso de análisis IA — texto libre, ver limitación de formato más abajo |
+
+**Deliberadamente NO implementado en esta fase — preparado, no
+construido**: selección real de terapeuta. `AutomationRuntime`/
+`WorkflowRuntime` podrían orquestar ese paso, pero necesita un
+directorio real de terapeutas (idioma, especialidad, disponibilidad,
+modalidad) que hoy vive en eAlumina — un repositorio al que este
+agente todavía no tiene acceso (mismo bloqueo que motivó FASE 2.1 en
+vez de una integración directa con eAlumina). Los campos de arriba
+existen específicamente para que ese paso futuro tenga con qué
+trabajar sin volver a tocar el modelo de datos.
+
+## Canal de disparo — solo teléfono, por ahora
+
+La automatización se dispara únicamente si el `Lead` trae `telefono`.
+Esto es intencional para esta primera versión — según feedback
+explícito del Arquitecto Principal, canales adicionales (Instagram DM,
+formularios web dedicados, LinkedIn, Google Maps) son un paso futuro
+real, no simulado aquí.
+
+## Cómo probar el flujo completo
+
+```bash
+# 1. Levantar el AI LAB Service real (repo IEA-AGENTIQ-AI-LAB)
+#    export AI_LAB_SERVICE_API_KEY=... && python -m service.server
+
+# 2. En este repo, configurar .env:
+#    AI_LAB_BASE_URL=http://localhost:8000
+#    AI_LAB_API_KEY=<misma key>
+
+# 3. Crear un lead con telefono — dispara la automatizacion automaticamente
+curl -X POST http://localhost:8000/api/leads \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Maria",
+    "email": "maria@example.com",
+    "telefono": "5511999999999",
+    "plan_interes": "ansiedad",
+    "pais": "Brasil",
+    "ciudad": "Sao Paulo",
+    "disponibilidad": "tardes entre semana"
+  }'
+
+# 4. Ver el resultado real (clasificacion_ia, estado) en /admin/leads,
+#    o consultar las interacciones registradas:
+curl http://localhost:8000/api/leads/<id>/interactions
+
+# 5. Para reintentar manualmente sin crear un lead nuevo:
+curl -X POST http://localhost:8000/api/leads/<id>/qualify
+```
+
+Tests automatizados: `tests/test_lead_qualification.py` (5 unitarios,
+mockean `ai_lab_client`) y `tests/test_real_lead_qualification.py`
+(real, contra un AI LAB Service corriendo de verdad — se salta
+automáticamente si `AI_LAB_BASE_URL`/`AI_LAB_API_KEY` no están
+configurados).
+
+## Verificación real realizada en esta fase
+
+- **Loop completo probado contra infraestructura real**, no simulada:
+  2 llamadas reales al AI LAB (clasificación + mensaje, ~2.4-5.8s cada
+  una con `llama3.2` local) y un intento real de envío por WhatsApp.
+- **Hallazgo honesto sobre el formato de clasificación**: el modelo
+  local (`llama3.2`) no siempre respeta el formato estricto pedido
+  (`tipo_terapia: X | urgencia: Y`) — en una corrida real devolvió
+  `"Terapia de pareja: baja | urgencia: baja"`, un formato cercano
+  pero no exacto. Funciona como texto libre legible para un humano
+  revisando `/admin/leads`, pero **no es apto todavía para parsear
+  programáticamente** (ej. para alimentar un futuro motor de selección
+  de terapeuta automático) sin validación/reintento adicional — un
+  hallazgo real, no una suposición, y un paso pendiente real si se
+  quiere clasificación estructurada confiable.
+- **El envío de WhatsApp falló en la prueba real** con el mismo
+  hallazgo ya documentado en el AI LAB desde el Sprint 21: sin un
+  número de WhatsApp emparejado (QR) en el entorno de Evolution API,
+  el envío da timeout real. El código lo maneja correctamente —
+  registra un `LeadInteraction` con `status="failed"` y deja
+  `lead.estado` sin cambios, en vez de fallar silenciosamente o romper
+  la creación del lead.
+- **12 tests nuevos** (7 unitarios de `AiLabClient` + 5 de
+  `lead_qualification`) más 2 reales (integración completa contra AI
+  LAB real, y el ya existente de FASE 2.1) — 21 passed, 3 skipped
+  (reales, se saltan sin un AI LAB Service corriendo).
+- Misma limitación de entorno que FASE 2.1: la suite completa de
+  IEA-AGENTIQ (`test_main.py`) no pudo ejecutarse por falta de
+  PostgreSQL local (puerto 5432) en este entorno de desarrollo.
+
+## Próximos pasos recomendados (no construidos en esta fase)
+
+1. **Agente "Cazador de Pacientes"** (sugerido explícitamente por el
+   Arquitecto Principal) — separado del agente de clasificación actual:
+   uno recibe leads pasivamente, otro saldría a buscar pacientes
+   activamente (redes sociales, Google Maps, formularios). Requiere su
+   propio diseño, no es una extensión trivial de este flujo.
+2. **Canales adicionales de entrada**: Instagram DM, formulario web
+   dedicado, LinkedIn.
+3. **Selección real de terapeuta** — bloqueada hasta tener acceso al
+   directorio real de terapeutas de eAlumina.
+4. **Clasificación estructurada confiable** — validar/reintentar el
+   formato de `clasificacion_ia`, o pedir un modelo más grande
+   (`model_hint`) para ese paso específico.
+5. **Agenda real** — el último eslabón del flujo que describió el
+   Arquitecto Principal (Lead → ... → terapeuta → agenda) no está
+   construido; depende de 3 (selección de terapeuta) primero.

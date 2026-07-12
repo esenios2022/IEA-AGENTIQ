@@ -16,6 +16,41 @@ class Lead(Base):
     email: Mapped[str] = mapped_column(String(255))
     empresa: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # FASE 2.2 — campos ya diseñados en material_subido_fabian/HANDOFF_CLAUDE_CODE.md,
+    # nunca antes implementados. Todos opcionales o con default: agregar estos campos
+    # no cambia el comportamiento de ningun llamador existente de POST /api/leads.
+    telefono: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    ciudad: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pais: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    plan_interes: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    fuente: Mapped[str] = mapped_column(String(100), default="landing_web")
+    estado: Mapped[str] = mapped_column(String(50), default="prospecto")
+    notas: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Campos agregados a pedido explicito (mensaje del Arquitecto Principal durante esta
+    # misma fase): el Lead debe poder representar un PACIENTE potencial, no solo un
+    # contacto generico — necesarios para el paso de clasificacion/seleccion de terapeuta
+    # que esta fase prepara pero NO implementa (ver src/lead_qualification.py).
+    tenant: Mapped[str] = mapped_column(String(100), default="ealumina")  # eAlumina primero; Terra Araras y otros clientes de IEA AGENTIQ despues, mismo modelo
+    idioma: Mapped[str] = mapped_column(String(10), default="es")
+    tipo_terapia: Mapped[str | None] = mapped_column(String(255), nullable=True)  # ej. "ansiedad", "terapia de pareja", "duelo"
+    disponibilidad: Mapped[str | None] = mapped_column(String(255), nullable=True)  # ej. "tardes entre semana", "fines de semana"
+    clasificacion_ia: Mapped[str | None] = mapped_column(Text, nullable=True)  # generada por el paso real de analisis IA, ver qualify_and_contact_lead()
+
+
+class LeadInteraction(Base):
+    """Un registro real por cada intento de contacto automatizado hacia un Lead — FASE 2.2."""
+
+    __tablename__ = "lead_interactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lead_id: Mapped[int] = mapped_column(ForeignKey("leads.id"))
+    channel: Mapped[str] = mapped_column(String(50), default="whatsapp")
+    direction: Mapped[str] = mapped_column(String(20), default="outbound")
+    message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(50))  # "sent" | "failed"
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Agent(Base):

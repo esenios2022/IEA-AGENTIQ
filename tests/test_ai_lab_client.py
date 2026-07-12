@@ -86,6 +86,46 @@ def test_does_not_retry_on_4xx():
     assert mock_request.call_count == 1
 
 
+def test_workflow_run_posts_expected_body():
+    client = _client()
+    payload = {"execution_id": "x", "status": "completed", "steps": [{"step_id": "s1", "success": True, "pending": False, "error": None, "output": {"content": "hola"}, "duration_ms": 10.0}]}
+    with patch("src.ai_lab_client.requests.request", return_value=_ok_response(payload)) as mock_request:
+        result = client.workflow_run(tenant_id="acme", name="test", steps=[{"id": "s1", "name": "x", "step_type": "run_agent", "message": "hola"}])
+
+    assert result["status"] == "completed"
+    args, kwargs = mock_request.call_args
+    assert args[1].endswith("/api/v1/workflow/run")
+    assert kwargs["json"]["tenant_id"] == "acme"
+
+
+def test_generate_message_returns_generated_text():
+    client = _client()
+    payload = {"execution_id": "x", "status": "completed", "steps": [{"step_id": "s1", "success": True, "pending": False, "error": None, "output": {"content": "Hola! Bienvenido."}, "duration_ms": 10.0}]}
+    with patch("src.ai_lab_client.requests.request", return_value=_ok_response(payload)):
+        text = client.generate_message(tenant_id="acme", prompt="saluda")
+
+    assert text == "Hola! Bienvenido."
+
+
+def test_generate_message_raises_when_workflow_not_completed():
+    client = _client()
+    payload = {"execution_id": "x", "status": "failed", "steps": []}
+    with patch("src.ai_lab_client.requests.request", return_value=_ok_response(payload)):
+        with pytest.raises(AiLabRequestError):
+            client.generate_message(tenant_id="acme", prompt="saluda")
+
+
+def test_whatsapp_send_posts_expected_body():
+    client = _client()
+    with patch("src.ai_lab_client.requests.request", return_value=_ok_response({"status": "sent"})) as mock_request:
+        result = client.whatsapp_send(tenant_id="acme", conversation_id="conv-1", to="5511999999999", text="hola")
+
+    assert result["status"] == "sent"
+    args, kwargs = mock_request.call_args
+    assert args[1].endswith("/api/v1/whatsapp/send")
+    assert kwargs["json"] == {"tenant_id": "acme", "conversation_id": "conv-1", "to": "5511999999999", "text": "hola"}
+
+
 def test_metrics_record_real_calls():
     from src.ai_lab_client import metrics
 

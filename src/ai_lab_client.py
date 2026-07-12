@@ -157,5 +157,26 @@ class AiLabClient:
             },
         )
 
+    def workflow_run(self, tenant_id: str, name: str, steps: list[dict[str, Any]]) -> dict[str, Any]:
+        """Real core.workflow.workflow_engine.WorkflowEngine execution (AI LAB Sprint 26 /api/v1/workflow/run) — see docs/SERVICE_API.md in the AI LAB repo for the full step contract (v1 supports run_agent/query_knowledge step_types only)."""
+        return self._request("POST", "/api/v1/workflow/run", {"tenant_id": tenant_id, "name": name, "steps": steps})
+
+    def generate_message(self, tenant_id: str, prompt: str, model_hint: str = "llama3.2") -> str:
+        """Convenience wrapper over workflow_run(): a single real RUN_AGENT step, returns the generated text. FASE 2.2 — IEA-AGENTIQ generates no text of its own; every AI generation goes through the AI LAB's AIRuntime."""
+        result = self.workflow_run(
+            tenant_id, name="generate_message",
+            steps=[{"id": "s1", "name": "generate", "step_type": "run_agent", "message": prompt, "model_hint": model_hint}],
+        )
+        if result.get("status") != "completed":
+            raise AiLabRequestError(f"AI LAB workflow did not complete: {result}")
+        return result["steps"][0]["output"].get("content", "")
+
+    def whatsapp_send(self, tenant_id: str, conversation_id: str, to: str, text: str) -> dict[str, Any]:
+        """Real infrastructure.whatsapp.whatsapp_gateway.WhatsAppGateway.send() (AI LAB Sprint 21/26 /api/v1/whatsapp/send)."""
+        return self._request(
+            "POST", "/api/v1/whatsapp/send",
+            {"tenant_id": tenant_id, "conversation_id": conversation_id, "to": to, "text": text},
+        )
+
 
 ai_lab_client = AiLabClient()

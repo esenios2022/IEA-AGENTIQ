@@ -4,6 +4,7 @@ from datetime import datetime
 from secrets import compare_digest
 
 from fastapi import (
+    BackgroundTasks,
     Depends,
     FastAPI,
     File,
@@ -32,10 +33,11 @@ from src.auth import get_current_client, hash_password, verify_password
 from src.case_memory import create_case, get_case, get_case_history, list_cases
 from src.composio_tools import start_connection
 from src.config import settings
-from src.database import Base, engine, get_db
+from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
-from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, PatientCase, ResponseCache, UsageLog
+from src.lead_qualification import qualify_and_contact_lead
+from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, LeadInteraction, PatientCase, ResponseCache, UsageLog
 from src.scheduler import start_scheduler
 from src.schemas import (
     AgentOut,
@@ -54,6 +56,7 @@ from src.schemas import (
     ExecutionOut,
     KbArticleOut,
     LeadCreate,
+    LeadInteractionOut,
     LeadOut,
     ProfitabilityByClientOut,
     ProfitabilityOut,
@@ -65,12 +68,25 @@ from src.usage_reports import agent_usage_summary, profitability_by_client, usag
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)  # creates lead_interactions (new table) for real, but never alters an existing table's columns
     # Safe column migrations — ADD COLUMN IF NOT EXISTS never fails on re-deploy
     with engine.connect() as conn:
         conn.execute(
             text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS config JSONB")
         )
+        # FASE 2.2 — leads already existed before these columns were added, same reasoning as clients.config above.
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ciudad VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS pais VARCHAR(100)"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS plan_interes VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS fuente VARCHAR(100) NOT NULL DEFAULT 'landing_web'"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS estado VARCHAR(50) NOT NULL DEFAULT 'prospecto'"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS notas TEXT"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tenant VARCHAR(100) NOT NULL DEFAULT 'ealumina'"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS idioma VARCHAR(10) NOT NULL DEFAULT 'es'"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tipo_terapia VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS disponibilidad VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS clasificacion_ia TEXT"))
         conn.commit()
     scheduler = start_scheduler()
     yield
@@ -125,12 +141,54 @@ def home():
 
 
 @app.post("/api/leads", response_model=LeadOut)
-def create_lead(lead: LeadCreate, db: Session = Depends(get_db)):
-    db_lead = Lead(nombre=lead.nombre, email=lead.email, empresa=lead.empresa)
+def create_lead(lead: LeadCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    db_lead = Lead(
+        nombre=lead.nombre, email=lead.email, empresa=lead.empresa,
+        telefono=lead.telefono, ciudad=lead.ciudad, pais=lead.pais, plan_interes=lead.plan_interes,
+        fuente=lead.fuente, notas=lead.notas, tenant=lead.tenant, idioma=lead.idioma,
+        tipo_terapia=lead.tipo_terapia, disponibilidad=lead.disponibilidad,
+    )
     db.add(db_lead)
     db.commit()
     db.refresh(db_lead)
+
+    # FASE 2.2 — automatico SOLO si se proveyo telefono. Ningun llamador existente de este
+    # endpoint envia ese campo hoy, asi que esto no cambia el comportamiento para nadie que
+    # ya lo use (Terra Araras u otros) — ver docs/AI_LAB_INTEGRATION.md.
+    if db_lead.telefono:
+        background_tasks.add_task(_run_lead_qualification, db_lead.id)
+
     return db_lead
+
+
+def _run_lead_qualification(lead_id: int) -> None:
+    """Corre en un BackgroundTask real de FastAPI — despues de responder al llamador, con su propia sesion de DB (la del request ya se cerro)."""
+    db = SessionLocal()
+    try:
+        db_lead = db.get(Lead, lead_id)
+        if db_lead is not None:
+            qualify_and_contact_lead(db_lead, db)
+    finally:
+        db.close()
+
+
+@app.post("/api/leads/{lead_id}/qualify", response_model=LeadInteractionOut)
+def qualify_lead_now(lead_id: int, db: Session = Depends(get_db)):
+    """Disparo manual/explicito del ciclo completo — para probar el flujo sobre un lead ya existente sin esperar al BackgroundTask, o para reintentar uno que fallo."""
+    db_lead = db.get(Lead, lead_id)
+    if db_lead is None:
+        raise HTTPException(status_code=404, detail="Lead no encontrado")
+    interaction = qualify_and_contact_lead(db_lead, db)
+    if interaction is None:
+        raise HTTPException(status_code=400, detail="El lead no tiene telefono — nada que contactar por WhatsApp.")
+    return interaction
+
+
+@app.get("/api/leads/{lead_id}/interactions", response_model=list[LeadInteractionOut])
+def list_lead_interactions(lead_id: int, db: Session = Depends(get_db)):
+    return db.scalars(
+        select(LeadInteraction).where(LeadInteraction.lead_id == lead_id).order_by(LeadInteraction.created_at.desc())
+    ).all()
 
 
 @app.get("/admin/leads")

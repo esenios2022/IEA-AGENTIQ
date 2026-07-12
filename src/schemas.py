@@ -1,3 +1,6 @@
+import uuid
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -5,10 +8,39 @@ class LeadCreate(BaseModel):
     nombre: str
     email: EmailStr
     empresa: str | None = None
+    # FASE 2.2 — todos opcionales, no rompen a ningun llamador existente.
+    telefono: str | None = None
+    ciudad: str | None = None
+    pais: str | None = None
+    plan_interes: str | None = None
+    fuente: str = "landing_web"
+    notas: str | None = None
+    # El Lead representa un PACIENTE potencial, no solo un contacto generico —
+    # ver src/lead_qualification.py para como se usan en la clasificacion/mensaje real.
+    tenant: str = "ealumina"
+    idioma: str = "es"
+    tipo_terapia: str | None = None
+    disponibilidad: str | None = None
 
 
 class LeadOut(LeadCreate):
     id: int
+    estado: str
+    clasificacion_ia: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class LeadInteractionOut(BaseModel):
+    id: uuid.UUID
+    lead_id: int
+    channel: str
+    direction: str
+    message: str
+    status: str
+    error: str | None
+    correlation_id: str | None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
