@@ -5,6 +5,8 @@ which isn't available in every environment these tests run in."""
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src import library
 from src.library_taxonomy import GENERIC_LIBRARY_FOLDERS
 
@@ -69,15 +71,55 @@ def test_update_asset_metadata_updates_only_provided_fields():
     db.commit.assert_called_once()
 
 
-def test_set_asset_status_updates_status():
+def test_transition_asset_status_advances_one_step():
     db = MagicMock()
     fake_asset = MagicMock(status="borrador")
     db.get.return_value = fake_asset
 
-    result = library.set_asset_status(db, "asset-1", "aprobado")
+    result = library.transition_asset_status(db, "asset-1", "en_revision")
 
     assert result is fake_asset
-    assert fake_asset.status == "aprobado"
+    assert fake_asset.status == "en_revision"
+    db.commit.assert_called_once()
+
+
+def test_transition_asset_status_rejects_skipping_a_step():
+    db = MagicMock()
+    fake_asset = MagicMock(status="borrador")
+    db.get.return_value = fake_asset
+
+    with pytest.raises(library.InvalidStatusTransitionError):
+        library.transition_asset_status(db, "asset-1", "aprobado")
+
+    assert fake_asset.status == "borrador"  # unchanged
+    db.commit.assert_not_called()
+
+
+def test_transition_asset_status_rejects_going_backwards():
+    db = MagicMock()
+    fake_asset = MagicMock(status="aprobado")
+    db.get.return_value = fake_asset
+
+    with pytest.raises(library.InvalidStatusTransitionError):
+        library.transition_asset_status(db, "asset-1", "en_revision")
+
+    db.commit.assert_not_called()
+
+
+def test_transition_asset_status_rejects_transitioning_past_archivado():
+    db = MagicMock()
+    fake_asset = MagicMock(status="archivado")
+    db.get.return_value = fake_asset
+
+    with pytest.raises(library.InvalidStatusTransitionError):
+        library.transition_asset_status(db, "asset-1", "borrador")
+
+
+def test_transition_asset_status_returns_none_when_not_found():
+    db = MagicMock()
+    db.get.return_value = None
+
+    assert library.transition_asset_status(db, "missing-id", "en_revision") is None
 
 
 def test_delete_asset_removes_from_storage_and_db():

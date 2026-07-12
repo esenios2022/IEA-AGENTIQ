@@ -181,14 +181,22 @@
                         {% if asset.storage_key %}
                         <a href="/admin/biblioteca/{{ asset.id }}/file" target="_blank">Ver</a>
                         {% endif %}
+                        {% if asset.status == "borrador" %}
+                        <form method="post" action="/admin/biblioteca/{{ asset.id }}/status" style="display:inline;">
+                            <input type="hidden" name="new_status" value="en_revision">
+                            <button type="submit">Enviar a revisión</button>
+                        </form>
+                        {% elif asset.status == "en_revision" %}
                         <form method="post" action="/admin/biblioteca/{{ asset.id }}/status" style="display:inline;">
                             <input type="hidden" name="new_status" value="aprobado">
                             <button type="submit">Aprobar</button>
                         </form>
+                        {% elif asset.status == "aprobado" %}
                         <form method="post" action="/admin/biblioteca/{{ asset.id }}/status" style="display:inline;">
                             <input type="hidden" name="new_status" value="archivado">
                             <button type="submit">Archivar</button>
                         </form>
+                        {% endif %}
                         <form method="post" action="/admin/biblioteca/{{ asset.id }}/delete" style="display:inline;">
                             <button type="submit" class="delete-btn">Eliminar</button>
                         </form>

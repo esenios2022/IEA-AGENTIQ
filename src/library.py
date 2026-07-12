@@ -25,6 +25,16 @@ from src.models import Client, LibraryAsset
 
 DEFAULT_SEARCH_LIMIT = 20
 
+# FASE 2.4A — flujo de estados obligatorio, un paso a la vez, sin saltos ni
+# retrocesos. Todavia sin publicacion automatica: "aprobado" es el final
+# util (un agente puede reutilizarlo), "archivado" es el final del ciclo de
+# vida del recurso.
+STATUS_FLOW: list[str] = ["borrador", "en_revision", "aprobado", "archivado"]
+
+
+class InvalidStatusTransitionError(Exception):
+    pass
+
 
 def _client_scope(client_id: uuid.UUID | str | None):
     scope = LibraryAsset.client_id.is_(None)
@@ -146,11 +156,30 @@ def move_asset(db: Session, asset_id: uuid.UUID | str, category: str, subcategor
     return update_asset_metadata(db, asset_id, category=category, subcategory=subcategory or None)
 
 
-def set_asset_status(db: Session, asset_id: uuid.UUID | str, status: str) -> LibraryAsset | None:
+def transition_asset_status(db: Session, asset_id: uuid.UUID | str, new_status: str) -> LibraryAsset | None:
+    """Avanza el estado EXACTAMENTE un paso en STATUS_FLOW. No permite saltos
+    (ej. borrador -> aprobado) ni retrocesos — regla de negocio explicita de
+    FASE 2.4A, no una limitacion tecnica."""
     asset = get_asset(db, asset_id)
     if asset is None:
         return None
-    asset.status = status
+
+    try:
+        current_index = STATUS_FLOW.index(asset.status)
+    except ValueError:
+        raise InvalidStatusTransitionError(f"El recurso tiene un estado desconocido: '{asset.status}'.")
+    try:
+        new_index = STATUS_FLOW.index(new_status)
+    except ValueError:
+        raise InvalidStatusTransitionError(f"Estado destino desconocido: '{new_status}'.")
+
+    if new_index != current_index + 1:
+        raise InvalidStatusTransitionError(
+            f"No se puede pasar de '{asset.status}' a '{new_status}' directamente. "
+            f"El flujo es: {' -> '.join(STATUS_FLOW)}."
+        )
+
+    asset.status = new_status
     db.commit()
     db.refresh(asset)
     return asset

@@ -90,6 +90,13 @@ def delete_asset(key: str) -> None:
 
 
 def get_asset_url(key: str, expires_in: int = DEFAULT_PRESIGNED_EXPIRES_SECONDS) -> str:
+    # FASE 2.4A: LibrarySaveTool guarda `source_url` (ej. un link de HeyGen/
+    # Canva/Runway) directamente como storage_key cuando el agente no subio
+    # bytes propios — esa URL ya es la ubicacion real del archivo, no una
+    # key de nuestro bucket S3. Devolverla tal cual, sin tratarla como key.
+    if key.startswith("http://") or key.startswith("https://"):
+        return key
+
     if settings.library_s3_public_base_url:
         return f"{settings.library_s3_public_base_url.rstrip('/')}/{key}"
 

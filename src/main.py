@@ -395,7 +395,10 @@ def set_library_asset_status(
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
-    asset = library.set_asset_status(db, asset_id, new_status)
+    try:
+        asset = library.transition_asset_status(db, asset_id, new_status)
+    except library.InvalidStatusTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if asset is None:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
     return RedirectResponse(url="/admin/biblioteca?status_saved=1", status_code=status.HTTP_303_SEE_OTHER)

@@ -55,6 +55,16 @@ def test_delete_asset_calls_delete_object():
     fake_client.delete_object.assert_called_once()
 
 
+def test_get_asset_url_returns_external_urls_as_is():
+    """FASE 2.4A — LibrarySaveTool stores an agent's source_url (HeyGen/Canva/
+    Runway link) directly as storage_key; it must never be treated as an S3
+    key (found via real functional testing — it was being silently mangled
+    into a broken presigned-URL path before this fix)."""
+    with patch.object(library_storage.settings, "library_s3_public_base_url", "https://cdn.example.com"):
+        url = library_storage.get_asset_url("https://heygen.example.com/videos/abc123.mp4")
+    assert url == "https://heygen.example.com/videos/abc123.mp4"
+
+
 def test_get_asset_url_uses_public_base_url_when_configured():
     with patch.object(library_storage.settings, "library_s3_public_base_url", "https://cdn.example.com"):
         url = library_storage.get_asset_url("global/Marca/key.txt")

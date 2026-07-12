@@ -42,6 +42,10 @@ def _map_tool(tool_id: str) -> dict | None:
         return {"name": "knowledge_base", "type": "knowledge_base"}
     if tool_id == "testing_tools":
         return {"name": "testing_tools", "type": "testing_tools"}
+    if tool_id == "library_search":
+        return {"name": "library_search", "type": "library_search"}
+    if tool_id == "library_save":
+        return {"name": "library_save", "type": "library_save"}
     return None
 
 
