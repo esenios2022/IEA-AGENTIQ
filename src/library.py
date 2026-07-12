@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import case, or_, select
 from sqlalchemy.orm import Session
 
 from src import library_storage
@@ -69,7 +69,16 @@ def search_assets(
             )
         )
 
-    stmt = select(LibraryAsset).where(*conditions).order_by(LibraryAsset.created_at.desc()).limit(limit)
+    # Prioridad de busqueda: primero los recursos propios del cliente, despues
+    # los Recursos Globales (client_id NULL) — regla de negocio explicita
+    # (biblioteca del cliente > Recursos Globales). Sin filtro de cliente no
+    # hay nada que priorizar, todo es ya Recursos Globales.
+    order = [LibraryAsset.created_at.desc()]
+    if client_id is not None:
+        client_priority = case((LibraryAsset.client_id == client_id, 0), else_=1)
+        order = [client_priority, LibraryAsset.created_at.desc()]
+
+    stmt = select(LibraryAsset).where(*conditions).order_by(*order).limit(limit)
     return list(db.scalars(stmt).all())
 
 

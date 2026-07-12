@@ -7,20 +7,32 @@ que todavia no tienen ningun LibraryAsset cargado.
 """
 
 GENERIC_LIBRARY_FOLDERS: dict[str, list[str] | dict[str, list[str]]] = {
-    "Marca": ["Logos", "Manual de identidad"],
+    # Marca: incluye Colores/Tipografías (estaban listadas sueltas en el pedido
+    # original de Recursos Globales, pero son parte de la identidad de marca).
+    "Marca": ["Logos", "Manual de identidad", "Colores", "Tipografías"],
     "Imágenes": [],
     "Videos": [],
+    "Música": [],
+    # Distinto de "Marca > Logos" (el logo propio de ESE cliente): logos
+    # genéricos/reutilizables sin marca específica, tipicamente Recursos
+    # Globales.
+    "Logos genéricos": [],
+    "Prompts": [],
+    "Plantillas": [],
+    "Recursos IA": [],
     "Redes Sociales": {
         "Instagram": ["Publicaciones", "Reels", "Historias", "Campañas"],
         "Facebook": ["Publicaciones", "Campañas"],
         "YouTube": ["Videos", "Shorts"],
         "LinkedIn": ["Publicaciones", "Campañas"],
     },
-    "Campañas": [],
+    "Campañas": ["Ideas de campañas"],
+    "Calendarios editoriales": [],
     "Artículos": [],
     "Emails": [],
     "Landing Pages": [],
     "Documentación": [],
+    "Contenido reutilizable": [],
 }
 
 # Extra especifico de eAlumina, no incluido por defecto para clientes nuevos
