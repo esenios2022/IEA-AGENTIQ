@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -179,3 +179,39 @@ class CaseMessage(Base):
     content: Mapped[str] = mapped_column(Text)
     cost_usd: Mapped[float | None] = mapped_column(Numeric(10, 6), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LibraryAsset(Base):
+    """Biblioteca Inteligente de Marketing (FASE 2.3) — un recurso reutilizable
+    (imagen, video, documento, prompt o plantilla) que los agentes de Marketing
+    podran buscar antes de generar contenido nuevo (busqueda todavia no conectada
+    a ningun agente en esta fase, ver src/tools/library_search.py).
+
+    `client_id` NULL significa "Recursos Globales" (visible para todos los
+    clientes), igual que el patron ya usado por KbArticle.client_id.
+    """
+
+    __tablename__ = "library_assets"
+    __table_args__ = (
+        Index("ix_library_assets_client_category_status", "client_id", "category", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clients.id"), nullable=True, index=True)
+    category: Mapped[str] = mapped_column(String(120), index=True)
+    subcategory: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_type: Mapped[str] = mapped_column(String(30))  # imagen | video | documento | audio | prompt | plantilla | otro
+    mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    file_extension: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    storage_key: Mapped[str] = mapped_column(String(500))
+    text_content: Mapped[str | None] = mapped_column(Text, nullable=True)  # prompts/plantillas guardados como texto inline
+    language: Mapped[str] = mapped_column(String(10), default="es")
+    tags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    author: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_by_agent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agents.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="borrador", index=True)  # borrador | en_revision | aprobado | archivado
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

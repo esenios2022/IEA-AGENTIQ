@@ -36,6 +36,7 @@ from src.config import settings
 from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
+from src import library, library_storage
 from src.lead_qualification import qualify_and_contact_lead
 from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, LeadInteraction, PatientCase, ResponseCache, UsageLog
 from src.scheduler import start_scheduler
@@ -245,6 +246,203 @@ def delete_knowledge_article(
         db.delete(article)
         db.commit()
     return RedirectResponse(url="/admin/knowledge", status_code=status.HTTP_303_SEE_OTHER)
+
+
+LIBRARY_MAX_UPLOAD_MB = 200
+
+
+@app.get("/admin/biblioteca")
+def list_library_page(
+    request: Request,
+    client_id: str | None = None,
+    category: str | None = None,
+    subcategory: str | None = None,
+    file_type: str | None = None,
+    language: str | None = None,
+    library_status: str | None = None,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    assets = library.search_assets(
+        db,
+        client_id=client_id,
+        category=category,
+        subcategory=subcategory,
+        file_type=file_type,
+        language=language,
+        status=library_status,
+        query=q,
+        limit=200,
+    )
+    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    folder_tree = library.get_folder_tree(db, client_id=client_id)
+    return templates.TemplateResponse(
+        request,
+        "admin_biblioteca.html",
+        {
+            "assets": assets,
+            "clients": clients,
+            "folder_tree": folder_tree,
+            "filters": {
+                "client_id": client_id,
+                "category": category,
+                "subcategory": subcategory,
+                "file_type": file_type,
+                "language": language,
+                "status": library_status,
+                "q": q,
+            },
+        },
+    )
+
+
+@app.post("/admin/biblioteca/upload")
+async def upload_library_asset(
+    title: str = Form(...),
+    description: str | None = Form(None),
+    client_id: str | None = Form(None),
+    category: str = Form(...),
+    subcategory: str | None = Form(None),
+    file_type: str = Form(...),
+    language: str = Form("es"),
+    tags: str | None = Form(None),
+    author: str | None = Form(None),
+    text_content: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    if not file and not text_content:
+        raise HTTPException(status_code=400, detail="Subí un archivo o escribí el contenido de texto")
+
+    storage_key = ""
+    mime_type = None
+    file_extension = None
+    file_size_bytes = None
+
+    if file and file.filename:
+        content = await file.read()
+        if len(content) > LIBRARY_MAX_UPLOAD_MB * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"El archivo supera el límite de {LIBRARY_MAX_UPLOAD_MB}MB")
+        mime_type = file.content_type or library_storage.guess_content_type(file.filename)
+        file_extension = file.filename.rsplit(".", 1)[-1] if "." in file.filename else None
+        file_size_bytes = len(content)
+        storage_key = library_storage.build_storage_key(client_id, category, subcategory, file.filename)
+        try:
+            library_storage.upload_asset(content, storage_key, content_type=mime_type)
+        except library_storage.LibraryStorageNotConfiguredError as exc:
+            raise HTTPException(status_code=503, detail=f"Storage no configurado: {exc}") from exc
+        except library_storage.LibraryStorageError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+
+    library.create_asset(
+        db,
+        client_id=client_id or None,
+        category=category,
+        subcategory=subcategory,
+        title=title,
+        description=description,
+        file_type=file_type,
+        mime_type=mime_type,
+        file_extension=file_extension,
+        file_size_bytes=file_size_bytes,
+        storage_key=storage_key,
+        text_content=text_content,
+        language=language,
+        tags=tag_list,
+        author=author,
+    )
+    return RedirectResponse(url="/admin/biblioteca?uploaded=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/biblioteca/{asset_id}/edit")
+def edit_library_asset(
+    asset_id: str,
+    title: str = Form(...),
+    description: str | None = Form(None),
+    category: str = Form(...),
+    subcategory: str | None = Form(None),
+    language: str = Form("es"),
+    tags: str | None = Form(None),
+    author: str | None = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+    asset = library.update_asset_metadata(
+        db,
+        asset_id,
+        title=title,
+        description=description,
+        category=category,
+        subcategory=subcategory or None,
+        language=language,
+        tags=tag_list,
+        author=author,
+    )
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    return RedirectResponse(url="/admin/biblioteca?edited=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/biblioteca/{asset_id}/status")
+def set_library_asset_status(
+    asset_id: str,
+    new_status: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    asset = library.set_asset_status(db, asset_id, new_status)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    return RedirectResponse(url="/admin/biblioteca?status_saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/biblioteca/{asset_id}/delete")
+def delete_library_asset(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    library.delete_asset(db, asset_id)
+    return RedirectResponse(url="/admin/biblioteca?deleted=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/admin/biblioteca/{asset_id}/file")
+def get_library_asset_file(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    asset = library.get_asset(db, asset_id)
+    if asset is None or not asset.storage_key:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    try:
+        url = library_storage.get_asset_url(asset.storage_key)
+    except library_storage.LibraryStorageError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+
+@app.post("/admin/biblioteca/clients/{client_id}/extra-categories")
+def set_library_client_extra_categories(
+    client_id: str,
+    extra_categories: str = Form(""),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    categories = [line.strip() for line in extra_categories.splitlines() if line.strip()]
+    cfg = dict(client.config or {})
+    cfg["library_extra_categories"] = categories
+    client.config = cfg
+    db.commit()
+    return RedirectResponse(url=f"/admin/biblioteca?client_id={client_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/architect-chat")

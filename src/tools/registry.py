@@ -8,6 +8,7 @@ separately in `src.tool_assembly`) into one dict, keyed by the name used in
 from src.tools.ai_lab_knowledge import AiLabKnowledgeSearchTool
 from src.tools.google_calendar import TOOL_REGISTRY as _GOOGLE_CALENDAR_TOOLS
 from src.tools.knowledge_base import KnowledgeBaseTool
+from src.tools.library_search import LibrarySearchTool
 from src.tools.postgres_query import PostgresQueryTool
 from src.tools.testing_tools import ChecklistTool
 from src.tools.web_search import SerperSearchTool
@@ -24,4 +25,10 @@ TOOL_REGISTRY = {
     # `TOOL_REGISTRY.get("ai_lab_knowledge")` never silently returns None for
     # callers that don't go through _matching_tools.
     "ai_lab_knowledge": AiLabKnowledgeSearchTool(),
+    # Same story as ai_lab_knowledge — "library_search" (FASE 2.3) needs a
+    # fresh instance scoped by client_id, see _matching_tools(). Not yet
+    # referenced by any agent's tools list (src/data/agents_config.json
+    # is untouched this phase); placeholder only so this key never
+    # silently returns None.
+    "library_search": LibrarySearchTool(),
 }

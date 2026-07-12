@@ -9,6 +9,7 @@ usable from either executor.
 from src.composio_tools import get_toolkit_tools
 from src.tools.ai_lab_knowledge import AiLabKnowledgeSearchTool
 from src.tools.knowledge_base import KnowledgeBaseTool
+from src.tools.library_search import LibrarySearchTool
 from src.tools.registry import TOOL_REGISTRY
 from src.tools.zapier import build_zapier_tools
 
@@ -43,6 +44,15 @@ def _matching_tools(definition: dict, agent_id=None, user_id=None) -> list:
         # is scoped to its own tenant (Client.id), never the shared singleton.
         if name == "ai_lab_knowledge":
             tools.append(AiLabKnowledgeSearchTool(tenant_id=str(user_id) if user_id else None))
+            seen_names.add(name)
+            continue
+        # FASE 2.3 — same reasoning: each agent's Biblioteca search is scoped to
+        # its own Client.id, never the shared singleton. Not referenced by any
+        # agent's tools list yet (src/data/agents_config.json untouched this
+        # phase) — this branch exists so the tool is ready when a future phase
+        # wires it in.
+        if name == "library_search":
+            tools.append(LibrarySearchTool(client_id=str(user_id) if user_id else None))
             seen_names.add(name)
             continue
         tool = TOOL_REGISTRY.get(name)
