@@ -7,6 +7,7 @@ usable from either executor.
 """
 
 from src.composio_tools import get_toolkit_tools
+from src.tools.ai_lab_knowledge import AiLabKnowledgeSearchTool
 from src.tools.knowledge_base import KnowledgeBaseTool
 from src.tools.registry import TOOL_REGISTRY
 from src.tools.zapier import build_zapier_tools
@@ -25,7 +26,7 @@ KNOWN_COMPOSIO_TOOLKITS = {
 }
 
 
-def _matching_tools(definition: dict, agent_id=None) -> list:
+def _matching_tools(definition: dict, agent_id=None, user_id=None) -> list:
     tools = []
     seen_names = set()
     for spec in definition.get("tools") or []:
@@ -36,6 +37,12 @@ def _matching_tools(definition: dict, agent_id=None) -> list:
         # knowledge-base search is scoped to its own uploaded documents.
         if name == "knowledge_base":
             tools.append(KnowledgeBaseTool(agent_id=str(agent_id) if agent_id else None))
+            seen_names.add(name)
+            continue
+        # Same reasoning as knowledge_base above — each agent's AI LAB search
+        # is scoped to its own tenant (Client.id), never the shared singleton.
+        if name == "ai_lab_knowledge":
+            tools.append(AiLabKnowledgeSearchTool(tenant_id=str(user_id) if user_id else None))
             seen_names.add(name)
             continue
         tool = TOOL_REGISTRY.get(name)
@@ -66,7 +73,7 @@ def _composio_tools(definition: dict, user_id: str) -> list:
 
 def assemble_tools(definition: dict, user_id: str, agent_id=None) -> list:
     return (
-        _matching_tools(definition, agent_id=agent_id)
+        _matching_tools(definition, agent_id=agent_id, user_id=user_id)
         + _composio_tools(definition, user_id)
         + build_zapier_tools(definition.get("tools") or [])
     )

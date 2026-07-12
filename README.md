@@ -86,6 +86,14 @@ Para ejecutar la suite de pruebas:
 pytest tests/
 ```
 
+## Integración con el AI LAB
+
+IEA-AGENTIQ se conecta al AI LAB Service (motor de ejecución, repositorio
+separado `IEA-AGENTIQ-AI-LAB`) vía `src/ai_lab_client.py`. Ver
+[docs/AI_LAB_INTEGRATION.md](docs/AI_LAB_INTEGRATION.md) para la
+arquitectura, configuración (`AI_LAB_BASE_URL`/`AI_LAB_API_KEY`) y
+ejemplos de uso.
+
 ## Contribuciones
 
 Las contribuciones son bienvenidas. Por favor leé [CONTRIBUTING.md](CONTRIBUTING.md) antes de enviar un pull request.
