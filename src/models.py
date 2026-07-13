@@ -215,3 +215,36 @@ class LibraryAsset(Base):
     status: Mapped[str] = mapped_column(String(20), default="borrador", index=True)  # borrador | en_revision | aprobado | archivado
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SocialPublication(Base):
+    """FASE 2.4 — una publicacion preparada para una red social, a partir de
+    un LibraryAsset ya aprobado. A diferencia de LibraryAsset, siempre
+    pertenece a un cliente real (no existe "publicacion global").
+
+    El flujo de status es secuencial, un paso a la vez, mismo espiritu que
+    LibraryAsset/STATUS_FLOW (ver src/social_publishing.py):
+    borrador -> revision_legal -> pendiente_aprobacion -> aprobado -> en_cola -> [publicado]
+    con "rechazado" como salida terminal desde cualquier paso previo a en_cola.
+
+    "publicado" existe como estado valido pero nada en esta fase lo alcanza
+    — el connector.publish() correspondiente esta construido pero no
+    conectado a ninguna ruta.
+    """
+
+    __tablename__ = "social_publications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clients.id"), index=True)
+    library_asset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("library_assets.id"))
+    platform: Mapped[str] = mapped_column(String(30), index=True)  # "instagram" por ahora, generico a futuro
+    caption: Mapped[str] = mapped_column(Text)  # version publicada — distinta del text_content del asset, un mismo asset puede reusarse con captions distintos
+    status: Mapped[str] = mapped_column(String(20), default="borrador", index=True)
+    legal_review_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    legal_review_verdict: Mapped[str | None] = mapped_column(String(20), nullable=True)  # FIRMAR | FIRMAR_CON_CAMBIOS | NO_FIRMAR
+    approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)  # texto libre, no hay sistema de usuarios admin individuales
+    created_by_agent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agents.id"), nullable=True)
+    platform_post_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # solo se llena si algun dia se publica de verdad
+    metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # metricas futuras, vacio por ahora
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

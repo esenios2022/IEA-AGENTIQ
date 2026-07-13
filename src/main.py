@@ -36,9 +36,12 @@ from src.config import settings
 from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
-from src import library, library_storage
+from src import library, library_storage, social_publishing
+from src.connectors.base import PublishValidationError
+from src.connectors.providers.base import SocialProviderError
+from src.connectors.registry import CONNECTORS
 from src.lead_qualification import qualify_and_contact_lead
-from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, LeadInteraction, PatientCase, ResponseCache, UsageLog
+from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, LeadInteraction, PatientCase, ResponseCache, SocialPublication, UsageLog
 from src.scheduler import start_scheduler
 from src.schemas import (
     AgentOut,
@@ -446,6 +449,142 @@ def set_library_client_extra_categories(
     client.config = cfg
     db.commit()
     return RedirectResponse(url=f"/admin/biblioteca?client_id={client_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/admin/publicaciones")
+def list_publications_page(
+    request: Request,
+    client_id: str | None = None,
+    platform: str | None = None,
+    pub_status: str | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    stmt = select(SocialPublication).order_by(SocialPublication.created_at.desc())
+    if client_id:
+        stmt = stmt.where(SocialPublication.client_id == client_id)
+    if platform:
+        stmt = stmt.where(SocialPublication.platform == platform)
+    if pub_status:
+        stmt = stmt.where(SocialPublication.status == pub_status)
+    publications = db.scalars(stmt).all()
+
+    clients = db.scalars(select(Client).order_by(Client.name)).all()
+    approved_assets = library.search_assets(db, client_id=client_id, status="aprobado", limit=200)
+    return templates.TemplateResponse(
+        request,
+        "admin_publicaciones.html",
+        {
+            "publications": publications,
+            "clients": clients,
+            "approved_assets": approved_assets,
+            "platforms": list(CONNECTORS),
+            "filters": {"client_id": client_id, "platform": platform, "status": pub_status},
+        },
+    )
+
+
+@app.post("/admin/publicaciones/prepare")
+def prepare_publication_route(
+    client_id: str = Form(...),
+    library_asset_id: str = Form(...),
+    platform: str = Form(...),
+    caption: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        social_publishing.prepare_publication(
+            db, client_id=client_id, library_asset_id=library_asset_id, platform=platform, caption=caption,
+        )
+    except (ValueError, PublishValidationError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(url="/admin/publicaciones?prepared=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/admin/publicaciones/{publication_id}/preview")
+def preview_publication_route(
+    publication_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    preview = social_publishing.get_preview(db, publication_id)
+    if preview is None:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return {
+        "platform": preview.platform,
+        "caption": preview.caption,
+        "media_url": preview.media_url,
+        "file_type": preview.file_type,
+        "warnings": preview.warnings,
+    }
+
+
+@app.post("/admin/publicaciones/{publication_id}/legal-review")
+def request_legal_review_route(
+    publication_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        publication = social_publishing.request_legal_review(db, publication_id)
+    except social_publishing.InvalidPublicationTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if publication is None:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return RedirectResponse(url="/admin/publicaciones?legal_reviewed=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/publicaciones/{publication_id}/approve")
+def approve_publication_route(
+    publication_id: str,
+    approved_by: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        publication = social_publishing.approve_publication(db, publication_id, approved_by)
+    except social_publishing.InvalidPublicationTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if publication is None:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return RedirectResponse(url="/admin/publicaciones?approved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/publicaciones/{publication_id}/reject")
+def reject_publication_route(
+    publication_id: str,
+    reason: str | None = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        publication = social_publishing.reject_publication(db, publication_id, reason)
+    except social_publishing.InvalidPublicationTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if publication is None:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return RedirectResponse(url="/admin/publicaciones?rejected=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/admin/clients/{client_id}/social-connect")
+def connect_client_social_platform(
+    client_id: str,
+    platform: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    connector = CONNECTORS.get(platform)
+    if connector is None:
+        raise HTTPException(status_code=400, detail=f"Plataforma no soportada: '{platform}'.")
+    try:
+        url = connector.get_auth_url(str(client.id))
+    except SocialProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
 
 @app.get("/architect-chat")
