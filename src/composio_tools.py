@@ -26,7 +26,23 @@ def get_toolkit_tools(user_id: str, toolkit_slugs: list[str]) -> list:
 
 
 def start_connection(user_id: str, toolkit_slug: str) -> str:
-    """Kicks off a Composio-hosted auth flow; returns the URL to send the user to."""
+    """Kicks off a Composio-hosted auth flow; returns the URL to send the user to.
+
+    `toolkits.authorize(user_id, toolkit)` (the previous implementation) hits an
+    endpoint Composio has since retired — confirmed against a real API key
+    (2026-07-12), it now fails with ComposioLegacyConnectedAccountsEndpointRetiredError.
+    The current flow needs an `auth_config_id` (one per toolkit, created in the
+    Composio dashboard) rather than just the toolkit slug — resolved here via
+    `auth_configs.list(toolkit_slug=...)` before calling `connected_accounts.link()`.
+    """
     composio = get_composio()
-    request = composio.toolkits.authorize(user_id=user_id, toolkit=toolkit_slug.lower())
+    auth_configs = composio.auth_configs.list(toolkit_slug=toolkit_slug.lower())
+    items = getattr(auth_configs, "items", None) or []
+    if not items:
+        raise RuntimeError(
+            f"No hay un auth_config configurado para el toolkit '{toolkit_slug}' en Composio — "
+            "hay que crearlo desde el dashboard de Composio antes de poder conectar esta integración."
+        )
+    auth_config_id = items[0].id
+    request = composio.toolkits.connected_accounts.link(user_id=user_id, auth_config_id=auth_config_id)
     return request.redirect_url
