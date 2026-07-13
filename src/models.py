@@ -202,7 +202,7 @@ class LibraryAsset(Base):
     subcategory: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    file_type: Mapped[str] = mapped_column(String(30))  # imagen | video | documento | audio | prompt | plantilla | otro
+    file_type: Mapped[str] = mapped_column(String(30))  # imagen | video | documento | audio | prompt | plantilla | informe | otro
     mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     file_extension: Mapped[str | None] = mapped_column(String(20), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)

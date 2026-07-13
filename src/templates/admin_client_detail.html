@@ -132,6 +132,23 @@
             <button type="submit">Guardar API Keys</button>
         </form>
 
+        <h2 style="margin-top:32px;">Departamento de Inteligencia Estratégica y Contextual (Cosmos)</h2>
+        <div class="admin-meta">
+            {% if request.query_params.get("generated_report") %}
+            <div style="background:rgba(22,52,41,.1);border:1px solid rgba(22,52,41,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.9rem;color:var(--emerald)">
+                ✓ Informe generado — <a href="/admin/biblioteca?client_id={{ client.id }}">verlo en la Biblioteca</a>.
+            </div>
+            {% endif %}
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0;">
+                Corre los especialistas habilitados (<code>Client.config['intelligence_sources']</code>, todos por
+                defecto) + el Coordinador Cosmos, y guarda el informe estratégico en la Biblioteca de este cliente,
+                listo para que el Departamento de Marketing lo reutilice.
+            </p>
+            <form method="post" action="/admin/clients/{{ client.id }}/generate-strategic-report">
+                <button type="submit">Generar informe estratégico ahora</button>
+            </form>
+        </div>
+
         {% if assigned_ids %}
         <h2 style="margin-top:32px;">Tareas programadas</h2>
         <div class="admin-meta">
