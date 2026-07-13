@@ -17,19 +17,33 @@ agentes.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.agent_service import run as run_agent_service
-from src.connectors.base import PublishPreview
+from src.connectors.base import PublishPreview, PublishValidationError
+from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
 from src.models import Agent, LibraryAsset, SocialPublication
 
 ELIAS_AGENT_CODE = "agent_004"
+FAVORABLE_VERDICTS = {"FIRMAR", "FIRMAR_CON_CAMBIOS"}
+TEST_MARKER = "\n\n[PRUEBA TÉCNICA - IEA AGENTIQ]"
 
 
 class InvalidPublicationTransitionError(Exception):
+    pass
+
+
+class PublishExecutionError(Exception):
+    """Alguna de las 5 reglas de seguridad obligatorias falló, o
+    connector.publish() falló contra la API real. En todos los casos el
+    motivo queda guardado en SocialPublication.publish_error y la
+    publicación permanece en 'en_cola' (nunca se pierde ni se saca de la
+    cola) — se puede reintentar apretando Publicar de nuevo."""
+
     pass
 
 
@@ -174,6 +188,87 @@ def reject_publication(db: Session, publication_id: uuid.UUID | str, reason: str
     if reason:
         note = f"\n\n[Rechazado manualmente: {reason}]"
         publication.legal_review_text = (publication.legal_review_text or "") + note
+    db.commit()
+    db.refresh(publication)
+    return publication
+
+
+def execute_publish(db: Session, publication_id: uuid.UUID | str) -> SocialPublication | None:
+    """FASE 2.5 — único punto de entrada real hacia connector.publish().
+    Antes de ejecutar, verifica las 5 reglas de seguridad obligatorias
+    (autorizado explícitamente por el usuario, 2026-07-13): (1) estado
+    en_cola, (2) aprobación humana registrada, (3) dictamen favorable de
+    Elías — FIRMAR o FIRMAR_CON_CAMBIOS, salvo is_test que la saltea a
+    propósito, (4) cuenta de la plataforma conectada y validada, (5) el
+    recurso existe. Cualquier falla (de estas reglas o de connector.
+    publish() contra la API real) se registra en publish_error y la
+    publicación queda en 'en_cola' para poder reintentar — nunca se
+    pierde ni se saca de la cola."""
+    publication = get_publication(db, publication_id)
+    if publication is None:
+        return None
+
+    def _fail(reason: str) -> None:
+        publication.publish_error = reason
+        db.commit()
+        raise PublishExecutionError(reason)
+
+    if publication.status != "en_cola":
+        _fail(f"No se puede publicar desde el estado '{publication.status}' (debe estar en 'en_cola').")
+    if not publication.approved_by:
+        _fail("Falta un usuario aprobador registrado para esta publicación.")
+    if not publication.is_test and publication.legal_review_verdict not in FAVORABLE_VERDICTS:
+        _fail(f"No hay un dictamen favorable de Elías registrado (veredicto actual: '{publication.legal_review_verdict}').")
+
+    asset = db.get(LibraryAsset, publication.library_asset_id)
+    if asset is None or not asset.storage_key:
+        _fail("El recurso de la Biblioteca ya no existe o no tiene un archivo asociado.")
+
+    connector = _get_connector(publication.platform)
+    if not connector.is_connected(str(publication.client_id)):
+        _fail(f"La cuenta de {publication.platform} no está conectada o no está activa.")
+
+    try:
+        result = connector.publish(str(publication.client_id), asset, publication.caption)
+    except (PublishValidationError, SocialProviderError) as exc:
+        _fail(str(exc))
+        return None  # inalcanzable, _fail siempre lanza — deja claro el flujo al lector
+
+    publication.status = "publicado"
+    publication.platform_post_id = result.get("id")
+    publication.publish_response = result
+    publication.publish_error = None
+    publication.published_at = datetime.utcnow()
+    db.commit()
+    db.refresh(publication)
+    return publication
+
+
+def prepare_test_publication(
+    db: Session,
+    *,
+    client_id: uuid.UUID | str,
+    library_asset_id: uuid.UUID | str,
+    platform: str,
+    caption: str,
+    approved_by: str,
+) -> SocialPublication:
+    """'Publicar en modo prueba' (sugerencia del usuario, 2026-07-13) — salta
+    a propósito la revisión legal, porque no es contenido de campaña real
+    sino una validación técnica del pipeline. Marca is_test=True y agrega
+    el marcador al caption para que nunca se confunda con una publicación
+    real en los registros. Quien dispara el test queda como aprobador
+    (satisface la regla de "aprobación humana registrada" de todos modos)."""
+    publication = prepare_publication(
+        db,
+        client_id=client_id,
+        library_asset_id=library_asset_id,
+        platform=platform,
+        caption=f"{caption}{TEST_MARKER}",
+    )
+    publication.is_test = True
+    publication.approved_by = approved_by
+    publication.status = "en_cola"
     db.commit()
     db.refresh(publication)
     return publication

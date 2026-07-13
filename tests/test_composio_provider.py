@@ -55,16 +55,36 @@ def test_is_connected_false_on_error_not_raised():
         assert provider.is_connected("client-1", "instagram") is False
 
 
-def test_call_action_executes_and_returns_dict():
+def test_call_action_unwraps_the_real_composio_envelope():
+    """Forma real verificada contra la API (2026-07-13, primera publicación real de
+    eAlumina): response.data = {"data": {...payload real...}, "error": None, "successful": True}
+    — no un dict plano como se había asumido antes de probar contra la API real."""
     provider = ComposioSocialProvider()
     fake_composio = MagicMock()
-    fake_composio.tools.execute.return_value = {"id": "container-1"}
+    fake_composio.tools.execute.return_value = MagicMock(
+        data={"data": {"id": "container-1"}, "error": None, "successful": True}
+    )
 
     with patch("src.connectors.providers.composio_provider.get_composio", return_value=fake_composio):
         result = provider.call_action("client-1", "INSTAGRAM_POST_IG_USER_MEDIA", {"caption": "hola"})
 
     assert result == {"id": "container-1"}
-    fake_composio.tools.execute.assert_called_once_with("INSTAGRAM_POST_IG_USER_MEDIA", {"caption": "hola"}, user_id="client-1")
+    fake_composio.tools.execute.assert_called_once_with(
+        "INSTAGRAM_POST_IG_USER_MEDIA", {"caption": "hola"}, user_id="client-1",
+        dangerously_skip_version_check=True,
+    )
+
+
+def test_call_action_raises_when_composio_envelope_reports_failure():
+    provider = ComposioSocialProvider()
+    fake_composio = MagicMock()
+    fake_composio.tools.execute.return_value = MagicMock(
+        data={"data": None, "error": "Invalid parameter: ig_user_id", "successful": False}
+    )
+
+    with patch("src.connectors.providers.composio_provider.get_composio", return_value=fake_composio):
+        with pytest.raises(SocialProviderError, match="ig_user_id"):
+            provider.call_action("client-1", "INSTAGRAM_POST_IG_USER_MEDIA", {})
 
 
 def test_call_action_wraps_failures():

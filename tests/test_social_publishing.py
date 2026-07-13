@@ -135,3 +135,154 @@ def test_reject_publication_from_borrador():
 
     assert publication.status == "rechazado"
     assert "marca no coincide" in publication.legal_review_text
+
+
+# --- FASE 2.5: execute_publish() y las 5 reglas de seguridad obligatorias ---
+
+def _queued_publication(**overrides):
+    defaults = dict(
+        status="en_cola", approved_by="Fabian", legal_review_verdict="FIRMAR",
+        is_test=False, library_asset_id="asset-1", client_id="client-1", platform="instagram",
+        caption="caption real",
+    )
+    defaults.update(overrides)
+    return MagicMock(**defaults)
+
+
+def test_execute_publish_rejects_wrong_status():
+    db = MagicMock()
+    publication = _queued_publication(status="borrador")
+
+    with patch("src.social_publishing.get_publication", return_value=publication):
+        with pytest.raises(social_publishing.PublishExecutionError, match="en_cola"):
+            social_publishing.execute_publish(db, "pub-1")
+
+    assert publication.publish_error
+
+
+def test_execute_publish_rejects_missing_approved_by():
+    db = MagicMock()
+    publication = _queued_publication(approved_by=None)
+
+    with patch("src.social_publishing.get_publication", return_value=publication):
+        with pytest.raises(social_publishing.PublishExecutionError, match="aprobador"):
+            social_publishing.execute_publish(db, "pub-1")
+
+
+def test_execute_publish_rejects_unfavorable_verdict():
+    db = MagicMock()
+    publication = _queued_publication(legal_review_verdict="INDETERMINADO")
+
+    with patch("src.social_publishing.get_publication", return_value=publication):
+        with pytest.raises(social_publishing.PublishExecutionError, match="Elías"):
+            social_publishing.execute_publish(db, "pub-1")
+
+
+def test_execute_publish_allows_firmar_con_cambios():
+    db = MagicMock()
+    publication = _queued_publication(legal_review_verdict="FIRMAR_CON_CAMBIOS")
+    db.get.return_value = _asset()
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = True
+    fake_connector.publish.return_value = {"id": "post-1"}
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        result = social_publishing.execute_publish(db, "pub-1")
+
+    assert result.status == "publicado"
+
+
+def test_execute_publish_rejects_when_platform_not_connected():
+    db = MagicMock()
+    publication = _queued_publication()
+    db.get.return_value = _asset()
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = False
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        with pytest.raises(social_publishing.PublishExecutionError, match="conectada"):
+            social_publishing.execute_publish(db, "pub-1")
+
+    fake_connector.publish.assert_not_called()
+
+
+def test_execute_publish_rejects_when_asset_missing():
+    db = MagicMock()
+    publication = _queued_publication()
+    db.get.return_value = None
+
+    with patch("src.social_publishing.get_publication", return_value=publication):
+        with pytest.raises(social_publishing.PublishExecutionError, match="recurso"):
+            social_publishing.execute_publish(db, "pub-1")
+
+
+def test_execute_publish_success_marks_publicado_and_stores_response():
+    db = MagicMock()
+    publication = _queued_publication()
+    db.get.return_value = _asset()
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = True
+    fake_connector.publish.return_value = {"id": "post-real-1"}
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        result = social_publishing.execute_publish(db, "pub-1")
+
+    assert result.status == "publicado"
+    assert result.platform_post_id == "post-real-1"
+    assert result.publish_response == {"id": "post-real-1"}
+    assert result.published_at is not None
+
+
+def test_execute_publish_on_connector_failure_stays_en_cola_and_records_error():
+    from src.connectors.providers.base import SocialProviderError
+
+    db = MagicMock()
+    publication = _queued_publication()
+    db.get.return_value = _asset()
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = True
+    fake_connector.publish.side_effect = SocialProviderError("Instagram rechazó la imagen")
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        with pytest.raises(social_publishing.PublishExecutionError, match="rechazó"):
+            social_publishing.execute_publish(db, "pub-1")
+
+    assert publication.status == "en_cola"  # nunca se pierde ni se saca de la cola
+    assert "rechazó" in publication.publish_error
+
+
+def test_execute_publish_is_test_skips_legal_review_check():
+    db = MagicMock()
+    publication = _queued_publication(is_test=True, legal_review_verdict=None)
+    db.get.return_value = _asset()
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = True
+    fake_connector.publish.return_value = {"id": "post-test-1"}
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        result = social_publishing.execute_publish(db, "pub-1")
+
+    assert result.status == "publicado"
+
+
+def test_prepare_test_publication_appends_marker_and_sets_en_cola():
+    db = MagicMock()
+    db.get.return_value = _asset()
+    fake_connector = MagicMock()
+    fake_connector.validate_content.return_value = []
+
+    with patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        publication = social_publishing.prepare_test_publication(
+            db, client_id="client-1", library_asset_id="asset-1", platform="instagram",
+            caption="probando el pipeline", approved_by="Fabian",
+        )
+
+    assert publication.is_test is True
+    assert publication.status == "en_cola"
+    assert publication.approved_by == "Fabian"
+    assert social_publishing.TEST_MARKER in publication.caption

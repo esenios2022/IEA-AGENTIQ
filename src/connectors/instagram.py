@@ -16,12 +16,24 @@ acepta cuentas Business o Creator, nunca personales — este connector no
 puede verificar el tipo de cuenta del lado nuestro antes de publicar
 (el propio publish() fallaria recien contra la API real si la cuenta es
 personal); se deja como advertencia informativa en build_preview.
+
+FASE 2.5 — publish() corregido tras la primera publicacion real (eAlumina,
+2026-07-13, ver https://www.instagram.com/p/Dat8-fYII4N/): la version
+original nunca habia sido ejercitada contra la API real y tenia 2 bugs
+reales, no detectables sin probar en vivo: (1) faltaba `ig_user_id`,
+parametro obligatorio de INSTAGRAM_POST_IG_USER_MEDIA/_PUBLISH — ahora se
+resuelve via INSTAGRAM_GET_USER_INFO antes de cada publish(); (2) Instagram
+rechaza cualquier image_url/video_url con query string (presigned URLs de
+S3 incluidas) — ahora se valida ANTES de llamar a Composio, con un error
+claro en vez de dejar que la API externa lo rechace de forma críptica.
 """
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from src.connectors.base import PublishPreview, PublishValidationError, SocialConnector
-from src.connectors.providers.base import SocialProvider
+from src.connectors.providers.base import SocialProvider, SocialProviderError
 from src.connectors.providers.composio_provider import ComposioSocialProvider
 from src.library_storage import LibraryStorageError, get_asset_url
 from src.models import LibraryAsset
@@ -29,6 +41,7 @@ from src.models import LibraryAsset
 MAX_CAPTION_LENGTH = 2200
 SUPPORTED_FILE_TYPES = {"imagen", "video"}
 
+GET_USER_INFO_ACTION = "INSTAGRAM_GET_USER_INFO"
 CREATE_CONTAINER_ACTION = "INSTAGRAM_POST_IG_USER_MEDIA"
 PUBLISH_CONTAINER_ACTION = "INSTAGRAM_POST_IG_USER_MEDIA_PUBLISH"
 
@@ -82,16 +95,45 @@ class InstagramConnector(SocialConnector):
 
         return PublishPreview(platform=self.platform, caption=caption, media_url=media_url, file_type=asset.file_type, warnings=warnings)
 
+    def _resolve_ig_user_id(self, client_id: str) -> str:
+        info = self.provider.call_action(client_id, GET_USER_INFO_ACTION, {})
+        ig_user_id = info.get("id")
+        if not ig_user_id:
+            raise SocialProviderError("No se pudo resolver el ig_user_id de la cuenta conectada.")
+        return ig_user_id
+
     def publish(self, client_id: str, asset: LibraryAsset, caption: str) -> dict:
-        """Implementado, nunca invocado desde ninguna ruta esta fase."""
+        """FASE 2.5 — ahora sí conectado a un botón real (POST /admin/publicaciones/{id}/publish)."""
         self.validate_content(asset, caption)
         media_url = get_asset_url(asset.storage_key)
+
+        if urlparse(media_url).query:
+            raise PublishValidationError(
+                "La URL del recurso tiene parámetros de consulta (típico de una presigned URL) — "
+                "Instagram las rechaza. Configurá LIBRARY_S3_PUBLIC_BASE_URL con un bucket público real "
+                "antes de publicar este recurso."
+            )
+
+        ig_user_id = self._resolve_ig_user_id(client_id)
 
         media_type = "REELS" if asset.file_type == "video" else "IMAGE"
         container = self.provider.call_action(
             client_id,
             CREATE_CONTAINER_ACTION,
-            {"media_type": media_type, "image_url" if media_type == "IMAGE" else "video_url": media_url, "caption": caption},
+            {
+                "ig_user_id": ig_user_id,
+                "media_type": media_type,
+                "image_url" if media_type == "IMAGE" else "video_url": media_url,
+                "caption": caption,
+            },
         )
-        container_id = container.get("id") or container.get("data", {}).get("id")
-        return self.provider.call_action(client_id, PUBLISH_CONTAINER_ACTION, {"creation_id": container_id})
+        container_id = container.get("id")
+        if not container_id:
+            raise SocialProviderError(f"No se pudo crear el contenedor de media: {container}")
+
+        result = self.provider.call_action(
+            client_id, PUBLISH_CONTAINER_ACTION, {"ig_user_id": ig_user_id, "creation_id": container_id},
+        )
+        if not result.get("id"):
+            raise SocialProviderError(f"La publicación no devolvió un id válido: {result}")
+        return result

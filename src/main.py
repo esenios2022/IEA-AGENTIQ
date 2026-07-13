@@ -567,6 +567,44 @@ def reject_publication_route(
     return RedirectResponse(url="/admin/publicaciones?rejected=1", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.post("/admin/publicaciones/{publication_id}/publish")
+def publish_publication_route(
+    publication_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        publication = social_publishing.execute_publish(db, publication_id)
+    except social_publishing.PublishExecutionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if publication is None:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return RedirectResponse(url="/admin/publicaciones?published=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/publicaciones/test-publish")
+def test_publish_route(
+    client_id: str = Form(...),
+    library_asset_id: str = Form(...),
+    platform: str = Form(...),
+    caption: str = Form(...),
+    approved_by: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """'Publicar en modo prueba' — bypassea revisión legal a propósito
+    (validación técnica del pipeline, no contenido de campaña real)."""
+    try:
+        publication = social_publishing.prepare_test_publication(
+            db, client_id=client_id, library_asset_id=library_asset_id,
+            platform=platform, caption=caption, approved_by=approved_by,
+        )
+        social_publishing.execute_publish(db, publication.id)
+    except (ValueError, PublishValidationError, social_publishing.PublishExecutionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(url="/admin/publicaciones?test_published=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.get("/admin/clients/{client_id}/social-connect")
 def connect_client_social_platform(
     client_id: str,

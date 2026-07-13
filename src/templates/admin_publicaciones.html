@@ -82,8 +82,8 @@
     <main class="admin-page">
         <h1>Publicaciones</h1>
         <p class="pipeline-hint">
-            Flujo: Biblioteca (recurso aprobado) &rarr; preparar publicación &rarr; revisión legal (Elías) &rarr; aprobación humana &rarr; cola de publicación.
-            <span class="no-publish-note">Todavía no hay publicación automática — el botón "Publicar" no existe en esta fase.</span>
+            Flujo: Biblioteca (recurso aprobado) &rarr; preparar publicación &rarr; revisión legal (Elías) &rarr; aprobación humana &rarr; cola de publicación &rarr; Publicar.
+            <span class="no-publish-note">Publicar ejecuta la acción real contra Instagram — no tiene vuelta atrás.</span>
         </p>
 
         <form class="kb-form filter-form" method="get" action="/admin/publicaciones">
@@ -133,12 +133,38 @@
             </form>
         </details>
 
+        <details>
+            <summary style="cursor:pointer; margin: 12px 0;">Publicar en modo prueba (salta la revisión legal — solo para validar el pipeline técnico)</summary>
+            <form class="kb-form" method="post" action="/admin/publicaciones/test-publish">
+                <select name="client_id" required>
+                    <option value="">Elegí un cliente</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="platform" required>
+                    {% for p in platforms %}
+                    <option value="{{ p }}">{{ p }}</option>
+                    {% endfor %}
+                </select>
+                <select name="library_asset_id" required>
+                    <option value="">Elegí un recurso aprobado de la Biblioteca</option>
+                    {% for asset in approved_assets %}
+                    <option value="{{ asset.id }}">{{ asset.title }} ({{ asset.category }}{% if asset.subcategory %} › {{ asset.subcategory }}{% endif %})</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="approved_by" placeholder="Tu nombre" required>
+                <textarea name="caption" placeholder="Texto de prueba (se le agrega automáticamente [PRUEBA TÉCNICA - IEA AGENTIQ])" required></textarea>
+                <button type="submit">Publicar en modo prueba</button>
+            </form>
+        </details>
+
         {% if publications %}
         <table class="admin-table">
             <thead>
                 <tr>
                     <th>Cliente</th><th>Plataforma</th><th>Caption</th><th>Estado</th>
-                    <th>Revisión legal</th><th>Aprobado por</th><th>Fecha</th><th>Acciones</th>
+                    <th>Revisión legal</th><th>Aprobado por</th><th>Resultado</th><th>Fecha</th><th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,7 +172,10 @@
                 <tr>
                     <td>{{ pub.client_id }}</td>
                     <td>{{ pub.platform }}</td>
-                    <td>{{ pub.caption[:80] }}{% if pub.caption|length > 80 %}...{% endif %}</td>
+                    <td>
+                        {% if pub.is_test %}<span class="status-badge status-rechazado">PRUEBA</span>{% endif %}
+                        {{ pub.caption[:80] }}{% if pub.caption|length > 80 %}...{% endif %}
+                    </td>
                     <td><span class="status-badge status-{{ pub.status }}">{{ pub.status }}</span></td>
                     <td class="legal-note">
                         {% if pub.legal_review_verdict %}
@@ -156,6 +185,15 @@
                         {% endif %}
                     </td>
                     <td>{{ pub.approved_by or "-" }}</td>
+                    <td class="legal-note">
+                        {% if pub.status == "publicado" %}
+                        ID: {{ pub.platform_post_id }}<br>{{ pub.published_at.strftime("%Y-%m-%d %H:%M") if pub.published_at else "" }}
+                        {% elif pub.publish_error %}
+                        <span style="color:#7a1f1f;">{{ pub.publish_error[:150] }}</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
                     <td>{{ pub.created_at.strftime("%Y-%m-%d") }}</td>
                     <td class="row-actions">
                         <a href="/admin/publicaciones/{{ pub.id }}/preview" target="_blank">Ver vista previa</a>
@@ -170,6 +208,10 @@
                         </form>
                         <form method="post" action="/admin/publicaciones/{{ pub.id }}/reject" style="display:inline;">
                             <button type="submit" class="reject-btn">Rechazar</button>
+                        </form>
+                        {% elif pub.status == "en_cola" %}
+                        <form method="post" action="/admin/publicaciones/{{ pub.id }}/publish" style="display:inline;" onsubmit="return confirm('Esto publica de verdad en ' + '{{ pub.platform }}' + '. ¿Confirmás?');">
+                            <button type="submit">Publicar</button>
                         </form>
                         {% endif %}
                     </td>

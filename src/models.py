@@ -224,12 +224,15 @@ class SocialPublication(Base):
 
     El flujo de status es secuencial, un paso a la vez, mismo espiritu que
     LibraryAsset/STATUS_FLOW (ver src/social_publishing.py):
-    borrador -> revision_legal -> pendiente_aprobacion -> aprobado -> en_cola -> [publicado]
+    borrador -> revision_legal -> pendiente_aprobacion -> aprobado -> en_cola -> publicado
     con "rechazado" como salida terminal desde cualquier paso previo a en_cola.
 
-    "publicado" existe como estado valido pero nada en esta fase lo alcanza
-    — el connector.publish() correspondiente esta construido pero no
-    conectado a ninguna ruta.
+    FASE 2.5 — connector.publish() ya esta conectado a un boton real
+    (POST /admin/publicaciones/{id}/publish, ver src/social_publishing.py::
+    execute_publish()), solo para Instagram. published_at/publish_response/
+    publish_error quedan vacios hasta el primer intento real de publicar.
+    is_test marca las publicaciones de "Publicar en modo prueba" (bypassea
+    la revision legal a proposito, nunca se confunde con contenido real).
     """
 
     __tablename__ = "social_publications"
@@ -244,7 +247,11 @@ class SocialPublication(Base):
     legal_review_verdict: Mapped[str | None] = mapped_column(String(20), nullable=True)  # FIRMAR | FIRMAR_CON_CAMBIOS | NO_FIRMAR
     approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)  # texto libre, no hay sistema de usuarios admin individuales
     created_by_agent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agents.id"), nullable=True)
-    platform_post_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # solo se llena si algun dia se publica de verdad
+    platform_post_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # solo se llena cuando se publica de verdad
     metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # metricas futuras, vacio por ahora
+    is_test: Mapped[bool] = mapped_column(Boolean, default=False)  # "Publicar en modo prueba" — bypassea revision legal, marcador visible en el caption
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # fecha/hora real del intento de publicar (exitoso o no)
+    publish_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # respuesta cruda de Instagram/Composio, exitosa o no
+    publish_error: Mapped[str | None] = mapped_column(Text, nullable=True)  # motivo si connector.publish() o una validacion previa fallo
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
