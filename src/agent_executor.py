@@ -65,7 +65,7 @@ def _run_loop(
 ) -> ExecResult:
     model = TIER_MODELS.get(tier, TIER_MODELS["standard"])
     max_tokens = TIER_MAX_TOKENS.get(tier, 2048)
-    temperature = TIER_TEMPERATURE.get(tier, 0.5)
+    temperature = TIER_TEMPERATURE.get(tier)  # None (e.g. "premium") -> omitido, ver llm_pricing.py
 
     definition = agent.definition or {}
 
@@ -99,10 +99,11 @@ def _run_loop(
         create_kwargs = dict(
             model=model,
             max_tokens=max_tokens,
-            temperature=temperature,
             system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
             messages=messages,
         )
+        if temperature is not None:
+            create_kwargs["temperature"] = temperature
         if anthropic_tools:
             create_kwargs["tools"] = anthropic_tools
         response = client.messages.create(**create_kwargs)

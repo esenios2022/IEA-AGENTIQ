@@ -19,7 +19,10 @@ TIER_MAX_TOKENS = {
 TIER_TEMPERATURE = {
     "economy": 0.3,
     "standard": 0.5,
-    "premium": 0.4,
+    # "premium" (claude-opus-4-8) intentionally omitted: the API rejects an
+    # explicit temperature for this model ("temperature is deprecated for
+    # this model", confirmed via a real call) — see agent_executor.py, which
+    # only sends temperature when TIER_TEMPERATURE.get(tier) is not None.
 }
 
 # USD per million tokens: (input, output)

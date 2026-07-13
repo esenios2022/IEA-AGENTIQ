@@ -21,11 +21,11 @@ KICKOFF_TIMEOUT_SECONDS = 240
 
 def _llm_for_tier(tier: str) -> LLM:
     model = TIER_MODELS.get(tier, TIER_MODELS["standard"])
-    return LLM(
-        model=f"anthropic/{model}",
-        max_tokens=TIER_MAX_TOKENS.get(tier, 2048),
-        temperature=TIER_TEMPERATURE.get(tier, 0.5),
-    )
+    llm_kwargs = dict(model=f"anthropic/{model}", max_tokens=TIER_MAX_TOKENS.get(tier, 2048))
+    temperature = TIER_TEMPERATURE.get(tier)  # None (e.g. "premium") -> omitido, ver llm_pricing.py
+    if temperature is not None:
+        llm_kwargs["temperature"] = temperature
+    return LLM(**llm_kwargs)
 
 
 def build_crew(
