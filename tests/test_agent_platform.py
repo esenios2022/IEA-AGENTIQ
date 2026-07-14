@@ -127,6 +127,30 @@ def test_agent_service_cache_and_budget(db, test_agent):
             agent_service.run(db, test_agent, extra_input="otra tarea distinta", user_id="tester")
 
 
+def test_agent_service_gemini_byok_records_real_tokens_but_zero_platform_cost(db, test_agent):
+    """Modo Producción — antes esta rama no llamaba record_usage() en
+    absoluto: una corrida real en Gemini quedaba invisible para
+    /admin/usage. Ahora sí se registra, con cost_usd=0 (BYOK, lo paga la
+    cuenta del cliente) pero tokens/tiempo reales."""
+    import src.agent_service as agent_service
+    from src.exec_result import ExecResult
+
+    fake_exec_result = ExecResult(text="Respuesta real de Gemini.", model="gemini-flash-latest", input_tokens=20, output_tokens=180)
+
+    with patch("src.gemini_executor.run_gemini", return_value=fake_exec_result):
+        outcome = agent_service.run(db, test_agent, extra_input="hola", user_id="tester", gemini_key="fake-key")
+
+    assert outcome.cost_usd == 0.0
+    assert outcome.tier_used == "gemini-free"
+
+    log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.tier == "gemini-byok").one()
+    assert log.model == "gemini-flash-latest"
+    assert log.input_tokens == 20
+    assert log.output_tokens == 180
+    assert float(log.cost_usd) == 0.0
+    assert log.duration_ms >= 0
+
+
 def test_usage_by_department_groups_by_agent_definition_group(db, test_agent):
     from src.cost import record_usage
     from src.models import Client

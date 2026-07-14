@@ -85,8 +85,13 @@ def record_usage(
     input_text: str | None = None,
     result_text: str | None = None,
     duration_ms: float = 0.0,
+    platform_cost: bool = True,
 ) -> UsageLog:
-    cost_usd = 0.0 if cached else calculate_cost_usd(model, input_tokens, output_tokens)
+    # platform_cost=False -- BYOK (ej. Gemini con la key propia del cliente): se
+    # registran tokens/tiempo reales para poder comparar, pero cost_usd queda en 0
+    # porque el gasto real lo paga la cuenta del cliente, no el presupuesto de la
+    # plataforma (check_budget() no debe pausar un agente por gasto que no es suyo).
+    cost_usd = 0.0 if (cached or not platform_cost) else calculate_cost_usd(model, input_tokens, output_tokens)
     log = UsageLog(
         agent_id=agent_id,
         client_id=client_id,

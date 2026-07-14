@@ -363,6 +363,22 @@ def test_generate_editorial_calendar_passes_tier_override_to_every_call():
         assert call.kwargs["tier_override"] == "economy"
 
 
+def test_generate_editorial_calendar_passes_gemini_key_to_every_call():
+    db = MagicMock()
+    db.get.return_value = _client(intelligence_sources=["astronomia"])
+    astronomia_agent = MagicMock(agent_code="agent_038")
+    coordinador_agent = MagicMock(agent_code="agent_046", id="agent-coord-id")
+    db.scalar.side_effect = [astronomia_agent, coordinador_agent, None]
+    fake_outcome = MagicMock(result=WELL_FORMED_TEXT)
+
+    with patch("src.editorial_calendar.run_agent_service", return_value=fake_outcome) as run_mock, \
+         patch("src.editorial_calendar.library.create_asset", return_value=MagicMock()):
+        editorial_calendar.generate_editorial_calendar(db, "client-1", weeks=2, gemini_key="fake-gemini-key")
+
+    for call in run_mock.call_args_list:
+        assert call.kwargs["gemini_key"] == "fake-gemini-key"
+
+
 def test_generate_editorial_calendar_batches_coordinador_calls_for_13_weeks():
     db = MagicMock()
     db.get.return_value = _client(intelligence_sources=["astronomia"])

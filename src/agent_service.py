@@ -82,9 +82,29 @@ def run(
     definition = agent.definition or {}
 
     # BYOK: if caller supplies a Gemini key (client's own), route to Gemini (cost $0 to platform).
+    # Se registra igual en UsageLog (tokens/tiempo reales, platform_cost=False -> cost_usd=0)
+    # para poder comparar corridas reales entre proveedores — antes esta rama no
+    # llamaba record_usage() en absoluto, así que una corrida en Gemini quedaba
+    # invisible para /admin/usage y para cualquier comparación de costo real.
     if gemini_key:
         from src.gemini_executor import run_gemini
+        gemini_started_at = time.monotonic()
         exec_result = run_gemini(agent, extra_input or "", gemini_key, history=history)
+        record_usage(
+            db,
+            agent_id=agent.id,
+            client_id=client_id,
+            execution_id=uuid.uuid4(),
+            model=exec_result.model,
+            tier="gemini-byok",
+            input_tokens=exec_result.input_tokens,
+            output_tokens=exec_result.output_tokens,
+            success=True,
+            input_text=extra_input,
+            result_text=exec_result.text,
+            duration_ms=(time.monotonic() - gemini_started_at) * 1000,
+            platform_cost=False,
+        )
         return RunOutcome(result=exec_result.text, cost_usd=0.0, tier_used="gemini-free", cached=False)
 
     decision = check_budget(db, agent)
