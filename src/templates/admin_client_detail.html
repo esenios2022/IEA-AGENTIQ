@@ -180,6 +180,17 @@
                 </p>
                 {% endif %}
             </div>
+
+            <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(205,163,73,0.2);">
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0;">
+                    ETAPA 4.1 — corre Daniel → Clara → Ariel → Valentina → Marco → Elena en cadena: cada uno lee
+                    la semana vigente del Calendario Editorial y guarda su pieza en la Biblioteca como borrador.
+                    No publica nada. Disparo manual únicamente.
+                </p>
+                <form method="post" action="/admin/clients/{{ client.id }}/generate-weekly-marketing">
+                    <button type="submit">Generar contenido de Marketing de la semana</button>
+                </form>
+            </div>
         </div>
 
         {% if assigned_ids %}

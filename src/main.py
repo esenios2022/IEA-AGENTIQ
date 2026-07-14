@@ -36,7 +36,7 @@ from src.config import settings
 from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
-from src import editorial_calendar, library, library_storage, social_publishing, strategic_intelligence
+from src import editorial_calendar, library, library_storage, marketing_pipeline, social_publishing, strategic_intelligence
 from src.connectors.base import PublishValidationError
 from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
@@ -1497,6 +1497,34 @@ def set_cosmos_calendar_schedule(
         client.cosmos_calendar_next_run_at = None
     db.commit()
     return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/clients/{client_id}/generate-weekly-marketing")
+def generate_weekly_marketing_route(
+    client_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """ETAPA 4.1 — Integración Cosmos → Marketing: corre Daniel → Clara →
+    Ariel → Valentina → Marco → Elena en cadena, cada uno leyendo la
+    semana vigente del Calendario Editorial (library_search) y guardando
+    su pieza en la Biblioteca como borrador (library_save). Disparo
+    manual únicamente — el disparo automático semanal es ETAPA 4.2."""
+    try:
+        result = marketing_pipeline.generate_weekly_marketing_content(db, client_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    saved_count = sum(1 for step in result["steps"] if step["saved_asset_id"])
+    return RedirectResponse(
+        url=(
+            f"/admin/biblioteca?client_id={client_id}"
+            f"&marketing_pieces={saved_count}&marketing_warnings={len(result['warnings'])}"
+        ),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @app.post("/admin/clients/{client_id}/api-keys/delete")

@@ -82,6 +82,15 @@
         <h1>Biblioteca de Marketing</h1>
         <p>Recursos reutilizables (imágenes, videos, documentos, prompts, plantillas) para los agentes del Departamento de Marketing y para el equipo. Recursos Globales quedan visibles para todos los clientes; los recursos de un cliente solo se ven al filtrar por ese cliente.</p>
 
+        {% if request.query_params.get("marketing_pieces") is not none %}
+        <div style="background:rgba(22,52,41,.1);border:1px solid rgba(22,52,41,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.9rem;color:var(--emerald)">
+            ✓ {{ request.query_params.get("marketing_pieces") }} pieza(s) nueva(s) guardadas como borrador.
+            {% if request.query_params.get("marketing_warnings") not in (None, "0") %}
+            <span style="color:#c0392b;">{{ request.query_params.get("marketing_warnings") }} advertencia(s) — algún agente no guardó nada, revisar manualmente.</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <p class="taxonomy-hint">
             Categorías disponibles:
             {% for cat, sub in folder_tree.items() %}
