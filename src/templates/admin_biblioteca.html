@@ -100,7 +100,7 @@
             <input type="text" name="subcategory" placeholder="Subcategoría" value="{{ filters.subcategory or '' }}">
             <select name="file_type">
                 <option value="">Cualquier tipo</option>
-                {% for ft in ["imagen","video","documento","audio","prompt","plantilla","informe","otro"] %}
+                {% for ft in ["imagen","video","documento","audio","prompt","plantilla","informe","calendario_editorial","otro"] %}
                 <option value="{{ ft }}" {% if filters.file_type == ft %}selected{% endif %}>{{ ft }}</option>
                 {% endfor %}
             </select>
@@ -128,7 +128,7 @@
                 <input type="text" name="category" placeholder="Categoría (ej: Redes Sociales)" required>
                 <input type="text" name="subcategory" placeholder="Subcategoría (ej: Instagram/Publicaciones)">
                 <select name="file_type" required>
-                    {% for ft in ["imagen","video","documento","audio","prompt","plantilla","informe","otro"] %}
+                    {% for ft in ["imagen","video","documento","audio","prompt","plantilla","informe","calendario_editorial","otro"] %}
                     <option value="{{ ft }}">{{ ft }}</option>
                     {% endfor %}
                 </select>

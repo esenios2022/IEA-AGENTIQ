@@ -115,6 +115,7 @@ def create_asset(
     author: str | None = None,
     created_by_agent_id: uuid.UUID | str | None = None,
     status: str = "borrador",
+    structured_content: dict | None = None,
 ) -> LibraryAsset:
     asset = LibraryAsset(
         client_id=client_id or None,
@@ -128,6 +129,7 @@ def create_asset(
         file_size_bytes=file_size_bytes,
         storage_key=storage_key,
         text_content=text_content,
+        structured_content=structured_content,
         language=language,
         tags=tags or None,
         author=author,

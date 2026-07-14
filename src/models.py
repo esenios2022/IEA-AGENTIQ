@@ -202,12 +202,13 @@ class LibraryAsset(Base):
     subcategory: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    file_type: Mapped[str] = mapped_column(String(30))  # imagen | video | documento | audio | prompt | plantilla | informe | otro
+    file_type: Mapped[str] = mapped_column(String(30))  # imagen | video | documento | audio | prompt | plantilla | informe | calendario_editorial | otro
     mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     file_extension: Mapped[str | None] = mapped_column(String(20), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     storage_key: Mapped[str] = mapped_column(String(500))
     text_content: Mapped[str | None] = mapped_column(Text, nullable=True)  # prompts/plantillas guardados como texto inline
+    structured_content: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # FASE 3.1 — datos estructurados (ej. semanas del calendario editorial) para consumo programatico, ademas de text_content legible
     language: Mapped[str] = mapped_column(String(10), default="es")
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)

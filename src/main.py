@@ -36,7 +36,7 @@ from src.config import settings
 from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
-from src import library, library_storage, social_publishing, strategic_intelligence
+from src import editorial_calendar, library, library_storage, social_publishing, strategic_intelligence
 from src.connectors.base import PublishValidationError
 from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
@@ -1425,6 +1425,27 @@ def generate_strategic_report_route(
     Cosmos) y guarda el informe en la Biblioteca del cliente."""
     try:
         asset = strategic_intelligence.generate_strategic_report(db, client_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return RedirectResponse(
+        url=f"/admin/biblioteca?client_id={client_id}&generated_report={asset.id}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@app.post("/admin/clients/{client_id}/generate-editorial-calendar")
+def generate_editorial_calendar_route(
+    client_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """FASE 3.1 — Calendario Editorial Inteligente: corre el Departamento
+    Cosmos sobre 13 semanas (90 días) y guarda el calendario editorial en
+    la Biblioteca del cliente, listo para que Marketing lo reutilice."""
+    try:
+        asset = editorial_calendar.generate_editorial_calendar(db, client_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:

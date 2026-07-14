@@ -144,8 +144,11 @@
                 defecto) + el Coordinador Cosmos, y guarda el informe estratégico en la Biblioteca de este cliente,
                 listo para que el Departamento de Marketing lo reutilice.
             </p>
-            <form method="post" action="/admin/clients/{{ client.id }}/generate-strategic-report">
+            <form method="post" action="/admin/clients/{{ client.id }}/generate-strategic-report" style="display:inline-block;margin-right:10px;">
                 <button type="submit">Generar informe estratégico ahora</button>
+            </form>
+            <form method="post" action="/admin/clients/{{ client.id }}/generate-editorial-calendar" style="display:inline-block;">
+                <button type="submit">Generar calendario editorial (90 días)</button>
             </form>
         </div>
 
