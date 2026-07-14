@@ -7,7 +7,8 @@ from sqlalchemy import select
 
 from src.agent_service import run as run_agent_service
 from src.database import SessionLocal
-from src.models import Agent, ClientAgent
+from src.editorial_calendar import roll_editorial_calendar
+from src.models import Agent, Client, ClientAgent
 
 CHECK_INTERVAL_SECONDS = 300
 
@@ -49,8 +50,39 @@ def _run_due_schedules() -> None:
         db.close()
 
 
+def _run_due_editorial_calendars() -> None:
+    """FASE 3.2A — regenera (deslizando) el Calendario Editorial de cada
+    cliente con cosmos_calendar_enabled=True cuyo turno ya llegó. Opt-in
+    por cliente, apagado por default (ver Client.cosmos_calendar_enabled)."""
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        due = db.scalars(
+            select(Client).where(
+                Client.cosmos_calendar_enabled.is_(True),
+                Client.cosmos_calendar_next_run_at.isnot(None),
+                Client.cosmos_calendar_next_run_at <= now,
+            )
+        ).all()
+
+        for client in due:
+            try:
+                roll_editorial_calendar(db, client.id)
+                client.cosmos_calendar_last_error = None
+            except Exception as exc:
+                client.cosmos_calendar_last_error = f"Error: {exc}"
+
+            client.cosmos_calendar_last_run_at = now
+            delta = FREQUENCY_DELTAS.get(client.cosmos_calendar_frequency, timedelta(days=7))
+            client.cosmos_calendar_next_run_at = now + delta
+            db.commit()
+    finally:
+        db.close()
+
+
 def start_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(_run_due_schedules, "interval", seconds=CHECK_INTERVAL_SECONDS)
+    scheduler.add_job(_run_due_editorial_calendars, "interval", seconds=CHECK_INTERVAL_SECONDS)
     scheduler.start()
     return scheduler

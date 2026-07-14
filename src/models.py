@@ -78,6 +78,12 @@ class Client(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # FASE 3.2A — regeneracion recurrente del Calendario Editorial (Departamento Cosmos), opt-in por cliente
+    cosmos_calendar_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    cosmos_calendar_frequency: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "weekly" | "daily"
+    cosmos_calendar_next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cosmos_calendar_last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cosmos_calendar_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ClientAgent(Base):

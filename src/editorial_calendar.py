@@ -1,24 +1,32 @@
 """
-FASE 3.1 — Calendario Editorial Inteligente (90 días / 13 semanas).
+FASE 3.1/3.2A — Calendario Editorial Inteligente (90 días / 13 semanas).
 
 Puente entre el Departamento Cosmos (FASE 3.0, src/strategic_intelligence.py)
-y Marketing: en vez de un informe de un solo día, calcula datos reales para
-N fechas ancla (cada 7 días) y pide a cada especialista UNA interpretación
-cubriendo todas las semanas de una sola vez — no N llamadas por especialista
-— para mantener el costo razonable (ver plan aprobado: ~9-11 llamadas reales
-para 13 semanas, en vez de ~117 si se repitiera el patrón diario).
+y Marketing: en vez de un informe de un solo día, mantiene un calendario
+deslizante de 13 semanas con tema, prioridad, objetivo de negocio, ideas de
+contenido por plataforma y un marketing_brief listo para Marketing (FASE
+3.2B, todavía no consumido).
 
 El Coordinador Cosmos SÍ se llama en lotes de COORDINADOR_BATCH_WEEKS
-semanas (no una sola llamada para las 13) — hallazgo real, no anticipado
-en el diseño original: una sola llamada de 13 semanas se corta a mitad de
-la semana 7 por el límite de max_tokens del tier asignado (confirmado en
-la verificación real de esta fase). Cada lote recibe el análisis completo
-de los especialistas como contexto, pero solo genera el formato semanal
-para las semanas de ese lote.
+semanas (no una sola llamada para todas) — hallazgo real, no anticipado en
+el diseño original: una sola llamada larga se corta a mitad de una semana
+por el límite de max_tokens del tier asignado (confirmado en la
+verificación real de FASE 3.1). Cada lote recibe el análisis completo de
+los especialistas como contexto, pero solo genera el formato semanal para
+las semanas de ese lote.
+
+FASE 3.2A agrega el calendario **deslizante**: `generate_editorial_calendar`
+sigue siendo el cold start (13 semanas nuevas, sin nada previo);
+`roll_editorial_calendar` (usado por el scheduler recurrente,
+src/scheduler.py) descarta las semanas ya vencidas del calendario vigente,
+renumera las que quedan y genera SOLO las semanas nuevas necesarias para
+volver a completar 13 — llamadas mucho más chicas que regenerar todo, y
+continuidad real de la planificación semana a semana. Cada calendario
+nuevo incrementa `calendar_version` y archiva (nunca borra) el anterior.
 
 src/strategic_intelligence.py (informe de un solo día) sigue existiendo sin
-cambios — este es un módulo nuevo y paralelo que reutiliza los mismos
-providers (src/cosmos/providers/) y el mismo run_agent_service.
+cambios — este es un módulo paralelo que reutiliza los mismos providers
+(src/cosmos/providers/) y el mismo run_agent_service.
 """
 
 from __future__ import annotations
@@ -45,7 +53,7 @@ from src.strategic_intelligence import (
 )
 
 WEEKS = 13
-COORDINADOR_BATCH_WEEKS = 5  # ver hallazgo real en el docstring del modulo
+COORDINADOR_BATCH_WEEKS = 2  # ver hallazgo real en el docstring del modulo (16 campos por semana, bajado de 5)
 
 CALCULABLE_SOURCES = {"astronomia", "astrologia", "maya", "dreamspell"}
 
@@ -54,7 +62,28 @@ WEEK_FIELD_LABELS = [
     "EVENTOS DESTACADOS",
     "ASPECTOS DE INTERÉS",
     "EMOCIONES PREDOMINANTES",
-    "IDEAS DE CONTENIDO",
+    "PRIORIDAD",
+    "OBJETIVO PRINCIPAL",
+    "AUDIENCIA",
+    "HASHTAGS",
+    "PALABRAS CLAVE",
+    "TERAPIAS RELACIONADAS",
+    "LLAMADO A LA ACCIÓN",
+    "IDEAS INSTAGRAM",
+    "IDEAS FACEBOOK",
+    "IDEAS LINKEDIN",
+    "IDEAS YOUTUBE",
+    "IDEAS EMAIL",
+]
+
+LIST_FIELD_KEYS = {"hashtags", "palabras_clave", "terapias_relacionadas"}
+
+PLATFORM_FIELDS = [
+    ("Instagram", "ideas_instagram"),
+    ("Facebook", "ideas_facebook"),
+    ("LinkedIn", "ideas_linkedin"),
+    ("YouTube", "ideas_youtube"),
+    ("Email", "ideas_email"),
 ]
 
 WEEK_HEADING_RE = re.compile(r"^##?\s*SEMANA\s+(\d+)\s*\(?(\d{4}-\d{2}-\d{2})?\)?", re.IGNORECASE | re.MULTILINE)
@@ -72,12 +101,19 @@ COORDINADOR_WEEK_TEMPLATE = (
     "EVENTOS DESTACADOS: ...\n"
     "ASPECTOS DE INTERÉS: ...\n"
     "EMOCIONES PREDOMINANTES: ...\n"
-    "IDEAS DE CONTENIDO:\n"
-    "- Reel: ...\n"
-    "- Carrusel: ...\n"
-    "- Video: ...\n"
-    "- Email: ...\n"
-    "- Artículo: ...\n\n"
+    "PRIORIDAD: ALTA, MEDIA o BAJA — según qué tan relevante es el contexto de esta semana\n"
+    "OBJETIVO PRINCIPAL: elegí uno — captar pacientes, generar confianza, educar, posicionar marca, "
+    "conseguir registros, vender una mentoría, webinar, evento, comunidad\n"
+    "AUDIENCIA: a quién le habla el contenido de esta semana, en una línea\n"
+    "HASHTAGS: 3 a 5, separados por coma\n"
+    "PALABRAS CLAVE: 3 a 5, separadas por coma\n"
+    "TERAPIAS RELACIONADAS: de las que ofrece el cliente, separadas por coma\n"
+    "LLAMADO A LA ACCIÓN: ...\n"
+    "IDEAS INSTAGRAM: ...\n"
+    "IDEAS FACEBOOK: ...\n"
+    "IDEAS LINKEDIN: ...\n"
+    "IDEAS YOUTUBE: ...\n"
+    "IDEAS EMAIL: ...\n\n"
     "Sé muy breve en cada campo (1 línea corta). Empezá tu respuesta directamente con la primera semana "
     "pedida, sin introducción ni texto de cierre."
 )
@@ -146,7 +182,7 @@ def _biodecoding_weekly_facts(provider, anchor_dates: list[date]) -> str:
     lines = [f"- {c.body_system}: {c.symbolic_theme}" for c in categories]
     return (
         provider.get_disclaimer()
-        + "\nCategorías generales del enfoque (aplican por igual a las 13 semanas, no varían por fecha):\n"
+        + "\nCategorías generales del enfoque (no varían por fecha):\n"
         + "\n".join(lines)
     )
 
@@ -179,8 +215,8 @@ def _build_weekly_specialist_prompt(weekly_facts_text: str, client: Client, anch
 def _build_general_specialist_prompt(client: Client, anchor_dates: list[date]) -> str:
     return (
         f"Cliente: {client.name}. Rango de análisis: {anchor_dates[0].isoformat()} a "
-        f"{anchor_dates[-1].isoformat()} ({len(anchor_dates)} semanas, calendario editorial trimestral).\n\n"
-        f"Dame tu análisis para este trimestre completo (no hace falta desglosarlo semana por semana).\n\n"
+        f"{anchor_dates[-1].isoformat()} ({len(anchor_dates)} semanas).\n\n"
+        f"Dame tu análisis para este período completo (no hace falta desglosarlo semana por semana).\n\n"
         f"{FRAMING_INSTRUCTION}"
     )
 
@@ -197,12 +233,35 @@ def _build_coordinador_prompt(
     fechas = ", ".join(f"Semana {i + 1}={d.isoformat()}" for i, d in enumerate(anchor_dates))
     week_list = ", ".join(f"Semana {i} ({d.isoformat()})" for i, d in batch)
     return (
-        f"Cliente: {client.name}. Calendario editorial de {len(anchor_dates)} semanas en total, "
-        f"fechas de inicio de cada semana: {fechas}.\n\n"
-        f"Análisis recibidos de los especialistas habilitados para todo el trimestre:\n\n{coord_input}\n\n"
+        f"Cliente: {client.name}. Calendario editorial — semanas de este pedido: {fechas}.\n\n"
+        f"Análisis recibidos de los especialistas habilitados:\n\n{coord_input}\n\n"
         + COORDINADOR_WEEK_TEMPLATE.format(week_list=week_list)
         + f"\n\n{FRAMING_INSTRUCTION}"
     )
+
+
+def _split_list_field(raw: str | None) -> list[str]:
+    """Convierte 'tag1, tag2, tag3' en una lista real. Nunca inventa
+    valores — si no hay nada, lista vacía."""
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _build_marketing_brief(week: dict) -> dict:
+    """Resumen determinístico en Python para FASE 3.2B (todavía no
+    consumido por nada) — no se le pide esto al LLM para evitar tokens
+    extra y posibles contradicciones con los campos ya generados de la
+    misma semana."""
+    canales = [platform for platform, field in PLATFORM_FIELDS if week.get(field)]
+    return {
+        "tema": week.get("tema_central"),
+        "audiencia": week.get("audiencia"),
+        "objetivo": week.get("objetivo_principal"),
+        "cta": week.get("llamado_a_la_accion"),
+        "canales": canales,
+        "urgencia": week.get("prioridad"),
+    }
 
 
 def _parse_coordinador_weeks(raw_text: str, anchor_dates: list[date]) -> list[dict]:
@@ -222,10 +281,20 @@ def _parse_coordinador_weeks(raw_text: str, anchor_dates: list[date]) -> list[di
 
         week = {"week_number": week_number, "start_date": start_date, "raw_text": chunk.strip()}
         for label in WEEK_FIELD_LABELS:
-            key = label.lower().replace(" ", "_").replace("í", "i").replace("é", "e")
+            key = (
+                label.lower()
+                .replace(" ", "_")
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+            )
             field_re = re.compile(rf"{re.escape(label)}:?\s*(.+?)(?=\n(?:{label_alternation}):|\Z)", re.IGNORECASE | re.DOTALL)
             field_match = field_re.search(chunk)
-            week[key] = field_match.group(1).strip() if field_match else None
+            raw_value = field_match.group(1).strip() if field_match else None
+            week[key] = _split_list_field(raw_value) if key in LIST_FIELD_KEYS else raw_value
+        week["marketing_brief"] = _build_marketing_brief(week)
         weeks.append(week)
     return weeks
 
@@ -270,17 +339,11 @@ def _confidence_table(
     return {"fuentes": fuentes, "nivel_global": nivel_global}
 
 
-def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS) -> LibraryAsset:
-    client = db.get(Client, client_id)
-    if client is None:
-        raise ValueError("Cliente no encontrado.")
-
-    enabled_sources = (client.config or {}).get("intelligence_sources") or DEFAULT_SOURCES
-    today = date.today()
-    anchor_dates = _week_anchor_dates(today, weeks)
+def _run_specialists(
+    db: Session, client: Client, client_id: uuid.UUID | str, enabled_sources: list[str], dates: list[date]
+) -> tuple[list[tuple[str, str]], set[str]]:
     sections: list[tuple[str, str]] = []
     sections_ran: set[str] = set()
-
     for key in enabled_sources:
         agent_code = SPECIALIST_AGENT_CODES.get(key)
         if agent_code is None:
@@ -290,29 +353,99 @@ def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: 
             continue
 
         if key in _WEEKLY_DATA_BUILDERS:
-            weekly_facts_text = _WEEKLY_DATA_BUILDERS[key](anchor_dates)
-            prompt = _build_weekly_specialist_prompt(weekly_facts_text, client, anchor_dates)
+            weekly_facts_text = _WEEKLY_DATA_BUILDERS[key](dates)
+            prompt = _build_weekly_specialist_prompt(weekly_facts_text, client, dates)
         else:
-            prompt = _build_general_specialist_prompt(client, anchor_dates)
+            prompt = _build_general_specialist_prompt(client, dates)
 
         outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id)
         sections.append((SPECIALIST_LABELS[key], outcome.result))
         sections_ran.add(key)
+    return sections, sections_ran
+
+
+def _run_ancestral(
+    db: Session,
+    client: Client,
+    client_id: uuid.UUID | str,
+    ancestral_modules: list[str],
+    dates: list[date],
+    sections: list[tuple[str, str]],
+) -> bool:
+    if not ancestral_modules:
+        return False
+    agent = db.scalar(select(Agent).where(Agent.agent_code == SPECIALIST_AGENT_CODES["ancestral"]))
+    if agent is None:
+        return False
+    active = get_active_modules(ancestral_modules)
+    real_data_text = (
+        "\n".join(f"- {m.label}: {m.summary}" for m in active) or "Módulos configurados pero sin contenido real todavía."
+    )
+    prompt = _build_general_specialist_prompt(client, dates) + f"\n\nDatos de tus módulos activos:\n{real_data_text}"
+    outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id)
+    sections.append((SPECIALIST_LABELS["ancestral"], outcome.result))
+    return True
+
+
+def _run_coordinador_batches(
+    db: Session,
+    coordinador: Agent,
+    sections: list[tuple[str, str]],
+    client: Client,
+    dates: list[date],
+    client_id: uuid.UUID | str,
+) -> list[dict]:
+    weeks: list[dict] = []
+    for batch in _batches(dates, COORDINADOR_BATCH_WEEKS):
+        coord_prompt = _build_coordinador_prompt(sections, client, dates, batch)
+        coord_outcome = run_agent_service(db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id)
+        weeks.extend(_parse_coordinador_weeks(coord_outcome.result, dates))
+    return weeks
+
+
+def _get_current_calendar(db: Session, client_id: uuid.UUID | str) -> LibraryAsset | None:
+    return db.scalar(
+        select(LibraryAsset)
+        .where(
+            LibraryAsset.client_id == client_id,
+            LibraryAsset.file_type == "calendario_editorial",
+            LibraryAsset.status == "aprobado",
+        )
+        .order_by(LibraryAsset.created_at.desc())
+    )
+
+
+def _archive_calendar(db: Session, current: LibraryAsset | None) -> int | None:
+    """Marca el calendario vigente como archivado (nunca se borra — sigue
+    disponible para consultar versiones anteriores) y devuelve su
+    calendar_version para que el nuevo incremente desde ahí. No hace commit
+    acá a propósito: queda pendiente en la sesión y se confirma junto con
+    el nuevo LibraryAsset en library.create_asset() — o ambos cambios
+    quedan (archivado viejo + creado nuevo) o ninguno, nunca a medias."""
+    if current is None:
+        return None
+    previous_version = (current.structured_content or {}).get("calendar_version")
+    current.status = "archivado"
+    return previous_version
+
+
+def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS) -> LibraryAsset:
+    """Cold start: genera un calendario nuevo de `weeks` semanas completas.
+    Usado cuando el cliente no tiene ningún calendario vigente todavía, o
+    cuando roll_editorial_calendar detecta que el vigente ya no tiene
+    ninguna semana útil."""
+    client = db.get(Client, client_id)
+    if client is None:
+        raise ValueError("Cliente no encontrado.")
+
+    enabled_sources = (client.config or {}).get("intelligence_sources") or DEFAULT_SOURCES
+    today = date.today()
+    anchor_dates = _week_anchor_dates(today, weeks)
+
+    sections, sections_ran = _run_specialists(db, client, client_id, enabled_sources, anchor_dates)
 
     ancestral_modules = (client.config or {}).get("ancestral_modules") or []
-    ancestral_ran = False
-    if ancestral_modules:
-        agent = db.scalar(select(Agent).where(Agent.agent_code == SPECIALIST_AGENT_CODES["ancestral"]))
-        if agent is not None:
-            active = get_active_modules(ancestral_modules)
-            real_data_text = (
-                "\n".join(f"- {m.label}: {m.summary}" for m in active)
-                or "Módulos configurados pero sin contenido real todavía."
-            )
-            prompt = _build_general_specialist_prompt(client, anchor_dates) + f"\n\nDatos de tus módulos activos:\n{real_data_text}"
-            outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id)
-            sections.append((SPECIALIST_LABELS["ancestral"], outcome.result))
-            ancestral_ran = True
+    ancestral_ran = _run_ancestral(db, client, client_id, ancestral_modules, anchor_dates, sections)
 
     if not sections:
         raise ValueError("El cliente no tiene ninguna fuente de inteligencia habilitada (Client.config['intelligence_sources']).")
@@ -321,21 +454,18 @@ def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: 
     if coordinador is None:
         raise RuntimeError(f"No se encontró el Coordinador Cosmos ({COORDINADOR_AGENT_CODE}).")
 
-    parsed_weeks: list[dict] = []
-    raw_texts: list[str] = []
-    for batch in _batches(anchor_dates, COORDINADOR_BATCH_WEEKS):
-        coord_prompt = _build_coordinador_prompt(sections, client, anchor_dates, batch)
-        coord_outcome = run_agent_service(db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id)
-        raw_texts.append(coord_outcome.result)
-        parsed_weeks.extend(_parse_coordinador_weeks(coord_outcome.result, anchor_dates))
-
+    parsed_weeks = _run_coordinador_batches(db, coordinador, sections, client, anchor_dates, client_id)
     confidence = _confidence_table(enabled_sources, sections_ran, ancestral_modules, ancestral_ran)
+
+    previous_version = _archive_calendar(db, _get_current_calendar(db, client_id))
+    calendar_version = (previous_version or 0) + 1
 
     structured_content = {
         "weeks": parsed_weeks,
         "confidence": confidence,
         "weeks_requested": weeks,
         "weeks_parsed": len(parsed_weeks),
+        "calendar_version": calendar_version,
     }
 
     return library.create_asset(
@@ -343,16 +473,106 @@ def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: 
         client_id=client.id,
         category="Documentación",
         subcategory="Calendario Editorial",
-        title=f"Calendario editorial Cosmos — {today.isoformat()} a {anchor_dates[-1].isoformat()}",
+        title=f"Calendario editorial Cosmos — {today.isoformat()} a {anchor_dates[-1].isoformat()} (v{calendar_version})",
         description="Generado por el Departamento de Inteligencia Estratégica y Contextual — calendario de 90 días para Marketing",
         file_type="calendario_editorial",
         mime_type=None,
         file_extension=None,
         file_size_bytes=None,
         storage_key="",
-        text_content="\n\n".join(raw_texts),
+        text_content="\n\n".join(w.get("raw_text") or "" for w in parsed_weeks),
         structured_content=structured_content,
-        tags=["inteligencia-estrategica", "cosmos", "calendario-editorial"] + list(enabled_sources),
+        tags=["inteligencia-estrategica", "cosmos", "calendario-editorial", f"v{calendar_version}"] + list(enabled_sources),
+        created_by_agent_id=coordinador.id,
+        status="aprobado",
+    )
+
+
+def roll_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS) -> LibraryAsset:
+    """Calendario deslizante (FASE 3.2A): descarta las semanas ya vencidas
+    del calendario vigente, renumera las que quedan y genera solo las
+    semanas nuevas necesarias para volver a completar `weeks` — llamadas
+    mucho más chicas que un cold start completo. Usado por el scheduler
+    recurrente (src/scheduler.py)."""
+    current = _get_current_calendar(db, client_id)
+    if current is None or not (current.structured_content or {}).get("weeks"):
+        return generate_editorial_calendar(db, client_id, weeks=weeks)
+
+    existing_weeks = current.structured_content["weeks"]
+    today = date.today()
+    first_start_raw = existing_weeks[0].get("start_date") if existing_weeks else None
+    weeks_to_advance = (
+        max(1, (today - date.fromisoformat(first_start_raw)).days // 7) if first_start_raw else len(existing_weeks)
+    )
+
+    if weeks_to_advance >= len(existing_weeks):
+        # El calendario vigente ya no tiene ninguna semana util - equivale a un cold start.
+        return generate_editorial_calendar(db, client_id, weeks=weeks)
+
+    client = db.get(Client, client_id)
+    if client is None:
+        raise ValueError("Cliente no encontrado.")
+
+    carried = existing_weeks[weeks_to_advance:]
+    for i, week in enumerate(carried, start=1):
+        week["week_number"] = i
+
+    last_carried_date = (
+        date.fromisoformat(carried[-1]["start_date"]) if carried and carried[-1].get("start_date") else today
+    )
+    new_dates = [last_carried_date + timedelta(weeks=i) for i in range(1, weeks_to_advance + 1)]
+
+    enabled_sources = (client.config or {}).get("intelligence_sources") or DEFAULT_SOURCES
+    sections, sections_ran = _run_specialists(db, client, client_id, enabled_sources, new_dates)
+
+    ancestral_modules = (client.config or {}).get("ancestral_modules") or []
+    ancestral_ran = _run_ancestral(db, client, client_id, ancestral_modules, new_dates, sections)
+
+    if not sections:
+        raise ValueError("El cliente no tiene ninguna fuente de inteligencia habilitada (Client.config['intelligence_sources']).")
+
+    coordinador = db.scalar(select(Agent).where(Agent.agent_code == COORDINADOR_AGENT_CODE))
+    if coordinador is None:
+        raise RuntimeError(f"No se encontró el Coordinador Cosmos ({COORDINADOR_AGENT_CODE}).")
+
+    new_weeks = _run_coordinador_batches(db, coordinador, sections, client, new_dates, client_id)
+    offset = len(carried)
+    for week in new_weeks:
+        week["week_number"] = offset + week["week_number"]
+
+    all_weeks = carried + new_weeks
+    confidence = _confidence_table(enabled_sources, sections_ran, ancestral_modules, ancestral_ran)
+
+    previous_version = _archive_calendar(db, current)
+    calendar_version = (previous_version or 0) + 1
+
+    structured_content = {
+        "weeks": all_weeks,
+        "confidence": confidence,
+        "weeks_requested": len(all_weeks),
+        "weeks_parsed": len(all_weeks),
+        "calendar_version": calendar_version,
+    }
+
+    last_week_date = (
+        date.fromisoformat(all_weeks[-1]["start_date"]) if all_weeks and all_weeks[-1].get("start_date") else today
+    )
+
+    return library.create_asset(
+        db,
+        client_id=client.id,
+        category="Documentación",
+        subcategory="Calendario Editorial",
+        title=f"Calendario editorial Cosmos — {today.isoformat()} a {last_week_date.isoformat()} (v{calendar_version})",
+        description="Generado por el Departamento de Inteligencia Estratégica y Contextual — calendario deslizante de 90 días para Marketing",
+        file_type="calendario_editorial",
+        mime_type=None,
+        file_extension=None,
+        file_size_bytes=None,
+        storage_key="",
+        text_content="\n\n".join(w.get("raw_text") or "" for w in all_weeks),
+        structured_content=structured_content,
+        tags=["inteligencia-estrategica", "cosmos", "calendario-editorial", f"v{calendar_version}"] + list(enabled_sources),
         created_by_agent_id=coordinador.id,
         status="aprobado",
     )

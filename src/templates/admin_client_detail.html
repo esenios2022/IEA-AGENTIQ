@@ -150,6 +150,36 @@
             <form method="post" action="/admin/clients/{{ client.id }}/generate-editorial-calendar" style="display:inline-block;">
                 <button type="submit">Generar calendario editorial (90 días)</button>
             </form>
+
+            <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(205,163,73,0.2);">
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0;">
+                    Regeneración automática y deslizante del Calendario Editorial (FASE 3.2A) — cada ciclo descarta
+                    las semanas ya vencidas y genera solo las semanas nuevas necesarias para volver a completar 13.
+                    Apagado por default: no se activa nada recurrente sin que lo prendas acá.
+                </p>
+                <form method="post" action="/admin/clients/{{ client.id }}/cosmos-calendar-schedule">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+                        <input type="checkbox" name="enabled" {% if client.cosmos_calendar_enabled %}checked{% endif %}>
+                        Regenerar automáticamente
+                    </label>
+                    <label style="display:block;font-size:0.8rem;margin:8px 0 4px;">Frecuencia</label>
+                    <select name="frequency" style="max-width:200px;">
+                        <option value="weekly" {% if client.cosmos_calendar_frequency != "daily" %}selected{% endif %}>Semanal</option>
+                        <option value="daily" {% if client.cosmos_calendar_frequency == "daily" %}selected{% endif %}>Diaria</option>
+                    </select>
+                    <div style="margin-top:10px;">
+                        <button type="submit">Guardar</button>
+                    </div>
+                </form>
+                {% if client.cosmos_calendar_last_run_at %}
+                <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0;">
+                    Última corrida automática: {{ client.cosmos_calendar_last_run_at.strftime("%Y-%m-%d %H:%M") }}
+                    {% if client.cosmos_calendar_last_error %}
+                    — <span style="color:#c0392b;">error: {{ client.cosmos_calendar_last_error }}</span>
+                    {% endif %}
+                </p>
+                {% endif %}
+            </div>
         </div>
 
         {% if assigned_ids %}

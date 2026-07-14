@@ -1,6 +1,6 @@
 import json
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from secrets import compare_digest
 
 from fastapi import (
@@ -1454,6 +1454,34 @@ def generate_editorial_calendar_route(
         url=f"/admin/biblioteca?client_id={client_id}&generated_report={asset.id}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+@app.post("/admin/clients/{client_id}/cosmos-calendar-schedule")
+def set_cosmos_calendar_schedule(
+    client_id: str,
+    enabled: str | None = Form(None),
+    frequency: str = Form("weekly"),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """FASE 3.2A — prende/apaga la regeneración automática (deslizante) del
+    Calendario Editorial para este cliente. Apagado por default — nada
+    recurrente ni de costo real se activa solo, el admin lo prende
+    explícitamente por cliente."""
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    client.cosmos_calendar_enabled = enabled is not None
+    client.cosmos_calendar_frequency = frequency
+    if client.cosmos_calendar_enabled:
+        if client.cosmos_calendar_next_run_at is None:
+            delta = timedelta(days=1) if frequency == "daily" else timedelta(days=7)
+            client.cosmos_calendar_next_run_at = datetime.utcnow() + delta
+    else:
+        client.cosmos_calendar_next_run_at = None
+    db.commit()
+    return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/admin/clients/{client_id}/api-keys/delete")
