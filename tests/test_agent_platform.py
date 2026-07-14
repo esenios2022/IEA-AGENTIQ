@@ -90,26 +90,68 @@ def test_sync_master_agents_is_idempotent(db):
 
 
 def test_agent_service_cache_and_budget(db, test_agent):
+    import time
+
     import src.agent_service as agent_service
 
+    def _slow_fake_response(*args, **kwargs):
+        # Simula tiempo real de red/inferencia — sin esto, la llamada mockeada
+        # es tan instantánea que duration_ms redondea a 0.00 (Numeric(10,2))
+        # y no distingue una ejecución real de una omitida.
+        time.sleep(0.01)
+        return _fake_response()
+
     with patch("src.agent_executor.Anthropic") as mock_anthropic:
-        mock_anthropic.return_value.messages.create.return_value = _fake_response()
+        mock_anthropic.return_value.messages.create.side_effect = _slow_fake_response
 
         outcome1 = agent_service.run(db, test_agent, extra_input="hola", user_id="tester")
         assert outcome1.cached is False
         assert outcome1.cost_usd > 0
         assert mock_anthropic.return_value.messages.create.call_count == 1
+        # Modo Producción — cada ejecución real registra su tiempo de ejecución (UsageLog.duration_ms)
+        log1 = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.cached.is_(False)).one()
+        assert log1.duration_ms > 0
 
         outcome2 = agent_service.run(db, test_agent, extra_input="hola", user_id="tester")
         assert outcome2.cached is True
         assert outcome2.cost_usd == 0.0
         assert mock_anthropic.return_value.messages.create.call_count == 1
+        # un cache hit no ejecuta nada real -> duration_ms=0, nunca inventado
+        log2 = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.cached.is_(True)).one()
+        assert log2.duration_ms == 0
 
         mock_anthropic.return_value.messages.create.return_value = _fake_response(text="urgente atendido")
         agent_service.run(db, test_agent, extra_input="esto es urgente", user_id="tester")
 
         with pytest.raises(agent_service.AgentPausedError):
             agent_service.run(db, test_agent, extra_input="otra tarea distinta", user_id="tester")
+
+
+def test_usage_by_department_groups_by_agent_definition_group(db, test_agent):
+    from src.cost import record_usage
+    from src.models import Client
+    from src.usage_reports import usage_by_department
+
+    client = Client(name="Cliente de prueba departamento", email=f"dept-test-{uuid.uuid4()}@test.local", password_hash="x")
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+    try:
+        record_usage(
+            db, agent_id=test_agent.id, client_id=client.id, execution_id=uuid.uuid4(),
+            model="claude-haiku-4-5-20251001", tier="economy", input_tokens=100, output_tokens=50,
+        )
+
+        rows, total = usage_by_department(db, client.id, period="day")
+
+        assert total > 0
+        # test_agent no tiene "group" en su definition -> cae en el fallback, nunca se inventa un departamento
+        assert rows[0]["department"] == "Sin departamento"
+        assert rows[0]["runs"] == 1
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
 
 
 def test_postgres_query_tool_guards():

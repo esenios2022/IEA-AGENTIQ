@@ -87,6 +87,27 @@ def agent_usage_summary(db: Session, agent_id, period: str = "month") -> dict:
     }
 
 
+def usage_by_department(db: Session, client_id, period: str = "day") -> tuple[list[dict], float]:
+    """Modo Producción — costo agregado por departamento para un cliente
+    específico (ej. "Cosmos: $0.42, Marketing: $0.71, Legal: $0.08, Total
+    día: $1.21"), agrupando por Agent.definition['group']. Reutiliza el
+    mismo agregado por agente de usage_by_agent(), solo cambia el nivel de
+    rollup — nunca se recalcula desde cero."""
+    rows, total = usage_by_agent(db, period=period, client_id=client_id)
+
+    agents = {str(a.id): a for a in db.scalars(select(Agent)).all()}
+    spend_by_department: dict[str, dict] = {}
+    for row in rows:
+        agent = agents.get(row["agent_id"])
+        department = ((agent.definition or {}).get("group") if agent else None) or "Sin departamento"
+        entry = spend_by_department.setdefault(department, {"department": department, "spend_usd": 0.0, "runs": 0})
+        entry["spend_usd"] += row["spend_period_usd"]
+        entry["runs"] += row["runs"]
+
+    results = sorted(spend_by_department.values(), key=lambda e: e["spend_usd"], reverse=True)
+    return results, total
+
+
 def profitability_by_client(db: Session, period: str = "month") -> tuple[list[dict], float]:
     start = _period_start(period)
 

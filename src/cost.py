@@ -84,6 +84,7 @@ def record_usage(
     error_message: str | None = None,
     input_text: str | None = None,
     result_text: str | None = None,
+    duration_ms: float = 0.0,
 ) -> UsageLog:
     cost_usd = 0.0 if cached else calculate_cost_usd(model, input_tokens, output_tokens)
     log = UsageLog(
@@ -95,6 +96,7 @@ def record_usage(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost_usd=cost_usd,
+        duration_ms=duration_ms,
         tool_calls=tool_calls,
         input_text=input_text,
         result_text=result_text,

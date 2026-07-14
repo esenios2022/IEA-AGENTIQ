@@ -64,10 +64,45 @@
         <p><a href="/admin/agents">&larr; Volver a agentes</a></p>
 
         <div class="period-tabs">
-            <a href="/admin/usage?period=day" class="{{ 'active' if period == 'day' }}">Hoy</a>
-            <a href="/admin/usage?period=week" class="{{ 'active' if period == 'week' }}">Últimos 7 días</a>
-            <a href="/admin/usage?period=month" class="{{ 'active' if period == 'month' }}">Últimos 30 días</a>
+            <a href="/admin/usage?period=day{{ '&client_id=' + selected_client_id if selected_client_id }}" class="{{ 'active' if period == 'day' }}">Hoy</a>
+            <a href="/admin/usage?period=week{{ '&client_id=' + selected_client_id if selected_client_id }}" class="{{ 'active' if period == 'week' }}">Últimos 7 días</a>
+            <a href="/admin/usage?period=month{{ '&client_id=' + selected_client_id if selected_client_id }}" class="{{ 'active' if period == 'month' }}">Últimos 30 días</a>
         </div>
+
+        <form method="get" action="/admin/usage" style="margin-bottom:20px;">
+            <input type="hidden" name="period" value="{{ period }}">
+            <label style="font-size:0.85rem;">Costo por departamento de un cliente:
+                <select name="client_id" onchange="this.form.submit()">
+                    <option value="">Elegí un cliente</option>
+                    {% for c in all_clients %}
+                    <option value="{{ c.id }}" {% if selected_client_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </form>
+
+        {% if selected_client_id %}
+        <h2>Costo por departamento ({{ 'hoy' if period == 'day' else ('últimos 7 días' if period == 'week' else 'últimos 30 días') }})</h2>
+        <div class="total-box">Total del período: <strong>${{ "%.4f"|format(department_total) }}</strong></div>
+        {% if department_rows %}
+        <table class="admin-table">
+            <thead>
+                <tr><th>Departamento</th><th>Gasto</th><th>Corridas</th></tr>
+            </thead>
+            <tbody>
+                {% for row in department_rows %}
+                <tr>
+                    <td>{{ row.department }}</td>
+                    <td>${{ "%.4f"|format(row.spend_usd) }}</td>
+                    <td>{{ row.runs }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-empty">Este cliente no tiene ejecuciones registradas en este período.</p>
+        {% endif %}
+        {% endif %}
 
         <div class="total-box">Gasto total del período: <strong>${{ "%.4f"|format(total) }}</strong></div>
 

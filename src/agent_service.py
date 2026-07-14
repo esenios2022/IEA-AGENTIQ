@@ -6,6 +6,7 @@ the lean executor or CrewAI -> record cost -> write cache. `main.py` and
 """
 
 import hashlib
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -121,6 +122,7 @@ def run(
     effective_history = case_history if case_id is not None else history
 
     execution_id = uuid.uuid4()
+    started_at = time.monotonic()
     try:
         if case_id is not None:
             exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=effective_history)
@@ -141,6 +143,7 @@ def run(
             success=False,
             error_message=str(exc),
             input_text=extra_input,
+            duration_ms=(time.monotonic() - started_at) * 1000,
         )
         raise
 
@@ -157,6 +160,7 @@ def run(
         success=True,
         input_text=extra_input,
         result_text=exec_result.text,
+        duration_ms=(time.monotonic() - started_at) * 1000,
     )
 
     if case_id is not None:

@@ -115,6 +115,7 @@ class UsageLog(Base):
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), default=0)
+    duration_ms: Mapped[float] = mapped_column(Numeric(10, 2), default=0)  # Modo Produccion — tiempo real de ejecucion, 0 en cache hits
     tool_calls: Mapped[int] = mapped_column(Integer, default=0)
     cached: Mapped[bool] = mapped_column(Boolean, default=False)
     success: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -387,6 +387,15 @@ def _run_ancestral(
     return True
 
 
+MAX_COORDINADOR_ATTEMPTS = 2
+
+RETRY_PREFIX = (
+    "REINTENTO — tu respuesta anterior no siguió el formato semanal pedido (probablemente volviste "
+    "a tu formato habitual de 7 preguntas). Es crítico que esta vez uses EXACTAMENTE el formato de "
+    "abajo, nada más, ninguna otra estructura.\n\n"
+)
+
+
 def _run_coordinador_batches(
     db: Session,
     coordinador: Agent,
@@ -395,11 +404,35 @@ def _run_coordinador_batches(
     dates: list[date],
     client_id: uuid.UUID | str,
 ) -> list[dict]:
+    """Hallazgo real de producción: el Coordinador a veces ignora
+    COORDINADOR_WEEK_TEMPLATE y vuelve a su formato de 7 preguntas fijado en
+    su propio system prompt — no es un evento único ya resuelto en FASE
+    3.1/3.2A, es probabilístico y puede repetirse en cualquier corrida real.
+    Sin este reintento+validación, una corrida fallida guardaba un
+    calendario con 0 semanas marcado igual como "aprobado", sin ningún
+    error — silenciosamente inservible para Marketing. Ahora: si un lote no
+    devuelve al menos tantas semanas como se pidieron, se reintenta con un
+    prefijo más forzado; si tras MAX_COORDINADOR_ATTEMPTS sigue fallando,
+    se levanta RuntimeError en vez de guardar un calendario incompleto."""
     weeks: list[dict] = []
     for batch in _batches(dates, COORDINADOR_BATCH_WEEKS):
-        coord_prompt = _build_coordinador_prompt(sections, client, dates, batch)
-        coord_outcome = run_agent_service(db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id)
-        weeks.extend(_parse_coordinador_weeks(coord_outcome.result, dates))
+        batch_weeks: list[dict] = []
+        for attempt in range(1, MAX_COORDINADOR_ATTEMPTS + 1):
+            coord_prompt = _build_coordinador_prompt(sections, client, dates, batch)
+            if attempt > 1:
+                coord_prompt = RETRY_PREFIX + coord_prompt
+            coord_outcome = run_agent_service(db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id)
+            batch_weeks = _parse_coordinador_weeks(coord_outcome.result, dates)
+            if len(batch_weeks) >= len(batch):
+                break
+        if len(batch_weeks) < len(batch):
+            week_numbers = [n for n, _ in batch]
+            raise RuntimeError(
+                f"El Coordinador Cosmos no devolvió el formato semanal esperado para las semanas "
+                f"{week_numbers} después de {MAX_COORDINADOR_ATTEMPTS} intentos — no se guardó ningún "
+                f"calendario incompleto."
+            )
+        weeks.extend(batch_weeks)
     return weeks
 
 

@@ -67,7 +67,7 @@ from src.schemas import (
     UsageByAgentOut,
     UsageOut,
 )
-from src.usage_reports import agent_usage_summary, profitability_by_client, usage_by_agent
+from src.usage_reports import agent_usage_summary, profitability_by_client, usage_by_agent, usage_by_department
 
 
 @asynccontextmanager
@@ -913,15 +913,30 @@ def set_budget_all_agents(
 def usage_page(
     request: Request,
     period: str = "day",
+    client_id: str | None = None,
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
     rows, total = usage_by_agent(db, period=period)
     clients_rows, clients_total = profitability_by_client(db, period="month")
+    department_rows, department_total = ([], 0.0)
+    if client_id:
+        department_rows, department_total = usage_by_department(db, client_id, period=period)
+    all_clients = db.scalars(select(Client).order_by(Client.name)).all()
     return templates.TemplateResponse(
         request,
         "admin_usage.html",
-        {"rows": rows, "total": total, "period": period, "clients_rows": clients_rows, "clients_total": clients_total},
+        {
+            "rows": rows,
+            "total": total,
+            "period": period,
+            "clients_rows": clients_rows,
+            "clients_total": clients_total,
+            "all_clients": all_clients,
+            "selected_client_id": client_id,
+            "department_rows": department_rows,
+            "department_total": department_total,
+        },
     )
 
 

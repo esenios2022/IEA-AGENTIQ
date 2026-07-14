@@ -182,6 +182,42 @@ def test_parse_coordinador_weeks_returns_empty_list_when_format_not_followed():
     assert weeks == []
 
 
+# --- _run_coordinador_batches (retry real de produccion: el Coordinador a
+# veces ignora el formato pedido y vuelve a su formato de 7 preguntas) ---
+
+def test_run_coordinador_batches_retries_on_malformed_output_then_succeeds():
+    db = MagicMock()
+    client = _client()
+    coordinador = MagicMock(id="coord-1")
+    dates = [date(2026, 7, 13), date(2026, 7, 20)]
+
+    bad_output = MagicMock(result="Informe en el formato viejo de 7 preguntas, sin encabezados de semana.")
+    good_output = MagicMock(result=WELL_FORMED_TEXT)
+
+    with patch("src.editorial_calendar.run_agent_service", side_effect=[bad_output, good_output]) as run_mock:
+        weeks = editorial_calendar._run_coordinador_batches(db, coordinador, [("Fuente", "texto")], client, dates, "client-1")
+
+    assert run_mock.call_count == 2
+    assert len(weeks) == 2
+    second_call_prompt = run_mock.call_args_list[1].args[2]
+    assert editorial_calendar.RETRY_PREFIX in second_call_prompt
+
+
+def test_run_coordinador_batches_raises_after_max_attempts_never_saves_partial_calendar():
+    db = MagicMock()
+    client = _client()
+    coordinador = MagicMock(id="coord-1")
+    dates = [date(2026, 7, 13), date(2026, 7, 20)]
+
+    bad_output = MagicMock(result="Informe en el formato viejo de 7 preguntas, sin encabezados de semana.")
+
+    with patch("src.editorial_calendar.run_agent_service", return_value=bad_output) as run_mock:
+        with pytest.raises(RuntimeError, match="no devolvió el formato"):
+            editorial_calendar._run_coordinador_batches(db, coordinador, [("Fuente", "texto")], client, dates, "client-1")
+
+    assert run_mock.call_count == editorial_calendar.MAX_COORDINADOR_ATTEMPTS
+
+
 # --- _archive_calendar ---
 
 def test_archive_calendar_marks_archived_and_returns_previous_version():
