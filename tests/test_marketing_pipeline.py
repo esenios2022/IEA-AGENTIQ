@@ -84,6 +84,21 @@ def test_generate_weekly_marketing_content_runs_all_6_agents_in_order():
     assert all(s["saved_asset_id"] is not None for s in result["steps"])
 
 
+def test_generate_weekly_marketing_content_passes_tier_override_to_every_call():
+    db = MagicMock()
+    db.get.return_value = _client()
+    agents = [MagicMock(agent_code=code, id=f"id-{code}") for code, _, _ in marketing_pipeline.PIPELINE]
+    db.scalar.side_effect = agents
+    fake_outcome = MagicMock(result="output", cost_usd=0.01)
+
+    with patch("src.marketing_pipeline.run_agent_service", return_value=fake_outcome) as run_mock, \
+         patch.object(marketing_pipeline, "_saved_asset_since", return_value=uuid.uuid4()):
+        marketing_pipeline.generate_weekly_marketing_content(db, "client-1", tier_override="economy")
+
+    for call in run_mock.call_args_list:
+        assert call.kwargs["tier_override"] == "economy"
+
+
 def test_generate_weekly_marketing_content_warns_when_an_agent_does_not_save():
     db = MagicMock()
     db.get.return_value = _client()

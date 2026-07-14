@@ -340,7 +340,12 @@ def _confidence_table(
 
 
 def _run_specialists(
-    db: Session, client: Client, client_id: uuid.UUID | str, enabled_sources: list[str], dates: list[date]
+    db: Session,
+    client: Client,
+    client_id: uuid.UUID | str,
+    enabled_sources: list[str],
+    dates: list[date],
+    tier_override: str | None = None,
 ) -> tuple[list[tuple[str, str]], set[str]]:
     sections: list[tuple[str, str]] = []
     sections_ran: set[str] = set()
@@ -358,7 +363,7 @@ def _run_specialists(
         else:
             prompt = _build_general_specialist_prompt(client, dates)
 
-        outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id)
+        outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id, tier_override=tier_override)
         sections.append((SPECIALIST_LABELS[key], outcome.result))
         sections_ran.add(key)
     return sections, sections_ran
@@ -371,6 +376,7 @@ def _run_ancestral(
     ancestral_modules: list[str],
     dates: list[date],
     sections: list[tuple[str, str]],
+    tier_override: str | None = None,
 ) -> bool:
     if not ancestral_modules:
         return False
@@ -382,7 +388,7 @@ def _run_ancestral(
         "\n".join(f"- {m.label}: {m.summary}" for m in active) or "Módulos configurados pero sin contenido real todavía."
     )
     prompt = _build_general_specialist_prompt(client, dates) + f"\n\nDatos de tus módulos activos:\n{real_data_text}"
-    outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id)
+    outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id, tier_override=tier_override)
     sections.append((SPECIALIST_LABELS["ancestral"], outcome.result))
     return True
 
@@ -403,6 +409,7 @@ def _run_coordinador_batches(
     client: Client,
     dates: list[date],
     client_id: uuid.UUID | str,
+    tier_override: str | None = None,
 ) -> list[dict]:
     """Hallazgo real de producción: el Coordinador a veces ignora
     COORDINADOR_WEEK_TEMPLATE y vuelve a su formato de 7 preguntas fijado en
@@ -421,7 +428,7 @@ def _run_coordinador_batches(
             coord_prompt = _build_coordinador_prompt(sections, client, dates, batch)
             if attempt > 1:
                 coord_prompt = RETRY_PREFIX + coord_prompt
-            coord_outcome = run_agent_service(db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id)
+            coord_outcome = run_agent_service(db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id, tier_override=tier_override)
             batch_weeks = _parse_coordinador_weeks(coord_outcome.result, dates)
             if len(batch_weeks) >= len(batch):
                 break
@@ -462,11 +469,15 @@ def _archive_calendar(db: Session, current: LibraryAsset | None) -> int | None:
     return previous_version
 
 
-def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS) -> LibraryAsset:
+def generate_editorial_calendar(
+    db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS, tier_override: str | None = None
+) -> LibraryAsset:
     """Cold start: genera un calendario nuevo de `weeks` semanas completas.
     Usado cuando el cliente no tiene ningún calendario vigente todavía, o
     cuando roll_editorial_calendar detecta que el vigente ya no tiene
-    ninguna semana útil."""
+    ninguna semana útil. `tier_override` (ej. "economy") fuerza el tier de
+    TODAS las llamadas — pensado para validar con saldo real limitado, ver
+    src/agent_service.py::run()."""
     client = db.get(Client, client_id)
     if client is None:
         raise ValueError("Cliente no encontrado.")
@@ -475,10 +486,10 @@ def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: 
     today = date.today()
     anchor_dates = _week_anchor_dates(today, weeks)
 
-    sections, sections_ran = _run_specialists(db, client, client_id, enabled_sources, anchor_dates)
+    sections, sections_ran = _run_specialists(db, client, client_id, enabled_sources, anchor_dates, tier_override)
 
     ancestral_modules = (client.config or {}).get("ancestral_modules") or []
-    ancestral_ran = _run_ancestral(db, client, client_id, ancestral_modules, anchor_dates, sections)
+    ancestral_ran = _run_ancestral(db, client, client_id, ancestral_modules, anchor_dates, sections, tier_override)
 
     if not sections:
         raise ValueError("El cliente no tiene ninguna fuente de inteligencia habilitada (Client.config['intelligence_sources']).")
@@ -487,7 +498,7 @@ def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: 
     if coordinador is None:
         raise RuntimeError(f"No se encontró el Coordinador Cosmos ({COORDINADOR_AGENT_CODE}).")
 
-    parsed_weeks = _run_coordinador_batches(db, coordinador, sections, client, anchor_dates, client_id)
+    parsed_weeks = _run_coordinador_batches(db, coordinador, sections, client, anchor_dates, client_id, tier_override)
     confidence = _confidence_table(enabled_sources, sections_ran, ancestral_modules, ancestral_ran)
 
     previous_version = _archive_calendar(db, _get_current_calendar(db, client_id))
@@ -521,7 +532,9 @@ def generate_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: 
     )
 
 
-def roll_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS) -> LibraryAsset:
+def roll_editorial_calendar(
+    db: Session, client_id: uuid.UUID | str, weeks: int = WEEKS, tier_override: str | None = None
+) -> LibraryAsset:
     """Calendario deslizante (FASE 3.2A): descarta las semanas ya vencidas
     del calendario vigente, renumera las que quedan y genera solo las
     semanas nuevas necesarias para volver a completar `weeks` — llamadas
@@ -529,7 +542,7 @@ def roll_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int 
     recurrente (src/scheduler.py)."""
     current = _get_current_calendar(db, client_id)
     if current is None or not (current.structured_content or {}).get("weeks"):
-        return generate_editorial_calendar(db, client_id, weeks=weeks)
+        return generate_editorial_calendar(db, client_id, weeks=weeks, tier_override=tier_override)
 
     existing_weeks = current.structured_content["weeks"]
     today = date.today()
@@ -540,7 +553,7 @@ def roll_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int 
 
     if weeks_to_advance >= len(existing_weeks):
         # El calendario vigente ya no tiene ninguna semana util - equivale a un cold start.
-        return generate_editorial_calendar(db, client_id, weeks=weeks)
+        return generate_editorial_calendar(db, client_id, weeks=weeks, tier_override=tier_override)
 
     client = db.get(Client, client_id)
     if client is None:
@@ -556,10 +569,10 @@ def roll_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int 
     new_dates = [last_carried_date + timedelta(weeks=i) for i in range(1, weeks_to_advance + 1)]
 
     enabled_sources = (client.config or {}).get("intelligence_sources") or DEFAULT_SOURCES
-    sections, sections_ran = _run_specialists(db, client, client_id, enabled_sources, new_dates)
+    sections, sections_ran = _run_specialists(db, client, client_id, enabled_sources, new_dates, tier_override)
 
     ancestral_modules = (client.config or {}).get("ancestral_modules") or []
-    ancestral_ran = _run_ancestral(db, client, client_id, ancestral_modules, new_dates, sections)
+    ancestral_ran = _run_ancestral(db, client, client_id, ancestral_modules, new_dates, sections, tier_override)
 
     if not sections:
         raise ValueError("El cliente no tiene ninguna fuente de inteligencia habilitada (Client.config['intelligence_sources']).")
@@ -568,7 +581,7 @@ def roll_editorial_calendar(db: Session, client_id: uuid.UUID | str, weeks: int 
     if coordinador is None:
         raise RuntimeError(f"No se encontró el Coordinador Cosmos ({COORDINADOR_AGENT_CODE}).")
 
-    new_weeks = _run_coordinador_batches(db, coordinador, sections, client, new_dates, client_id)
+    new_weeks = _run_coordinador_batches(db, coordinador, sections, client, new_dates, client_id, tier_override)
     offset = len(carried)
     for week in new_weeks:
         week["week_number"] = offset + week["week_number"]

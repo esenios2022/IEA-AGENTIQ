@@ -55,12 +55,15 @@ PIPELINE = [
 # producir el lote completo real es una decisión de costo (tier/
 # max_tokens más altos) para cuando este mecanismo ya esté probado.
 BASE_INSTRUCTION = (
-    "Antes de trabajar, buscá en la Biblioteca con library_search usando exactamente la palabra "
-    "\"calendario editorial\" (así, textual) para encontrar el Calendario Editorial vigente de este "
-    "cliente — vas a recibir current_week con el plan completo de la semana. Basá tu trabajo en eso, "
-    "nunca lo inventes. Guardá tu resultado con library_save APENAS lo tengas listo, antes de seguir "
-    "puliéndolo — es más importante que quede guardado (en 'borrador', pendiente de revisión humana) "
-    "a que sea perfecto."
+    "PASOS OBLIGATORIOS, EN ESTE ORDEN, SIN SALTARTE NINGUNO:\n"
+    "1. Llamá a library_search con exactamente la palabra \"calendario editorial\" (así, textual) para "
+    "encontrar el Calendario Editorial vigente de este cliente — vas a recibir current_week con el plan "
+    "completo de la semana. Basá tu trabajo en eso, nunca lo inventes.\n"
+    "2. Escribí tu pieza en 3-6 líneas. NO expliques tu proceso, NO armes una tabla de brief, NO listes "
+    "los pasos que vas a seguir — andá directo al contenido final.\n"
+    "3. Llamá a library_save con esa pieza INMEDIATAMENTE después de escribirla, en el mismo turno. Este "
+    "paso es obligatorio — un borrador guardado e imperfecto vale más que uno perfecto que nunca se guarda.\n"
+    "No agregues explicaciones antes ni después de estos 3 pasos."
 )
 
 
@@ -85,7 +88,12 @@ def _saved_asset_since(db: Session, agent_id, client_id, since: datetime) -> uui
     return asset.id if asset is not None else None
 
 
-def generate_weekly_marketing_content(db: Session, client_id: uuid.UUID | str) -> dict:
+def generate_weekly_marketing_content(
+    db: Session, client_id: uuid.UUID | str, tier_override: str | None = None
+) -> dict:
+    """`tier_override` (ej. "economy") fuerza el tier de las 6 llamadas —
+    pensado para validar con saldo real limitado, ver
+    src/agent_service.py::run()."""
     client = db.get(Client, client_id)
     if client is None:
         raise ValueError("Cliente no encontrado.")
@@ -102,7 +110,7 @@ def generate_weekly_marketing_content(db: Session, client_id: uuid.UUID | str) -
         # Margen de 5s hacia atrás — evita perder por milisegundos un asset
         # guardado justo al arrancar la llamada.
         started_at = datetime.utcnow() - timedelta(seconds=5)
-        outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id)
+        outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id, tier_override=tier_override)
 
         saved_asset_id = _saved_asset_since(db, agent.id, client.id, started_at)
         if saved_asset_id is None:

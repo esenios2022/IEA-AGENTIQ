@@ -77,6 +77,7 @@ def run(
     case_id: uuid.UUID | None = None,
     gemini_key: str | None = None,
     history: list[dict] | None = None,
+    tier_override: str | None = None,
 ) -> RunOutcome:
     definition = agent.definition or {}
 
@@ -93,7 +94,10 @@ def run(
             "Se reactiva automáticamente mañana."
         )
 
-    tier, _reason = select_tier(agent, extra_input)
+    if tier_override and tier_override in TIER_MODELS:
+        tier = tier_override
+    else:
+        tier, _reason = select_tier(agent, extra_input)
     if decision == BudgetDecision.FORCE_ECONOMY:
         tier = "economy"
 
