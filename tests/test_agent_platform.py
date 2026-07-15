@@ -6,7 +6,7 @@ import pytest
 from src.agent_seed import sync_master_agents
 from src.database import SessionLocal
 from src.llm_pricing import calculate_cost_usd
-from src.models import Agent, ResponseCache, UsageLog
+from src.models import Agent, Client, LibraryAsset, ResponseCache, UsageLog
 from src.tiering import select_tier
 from src.tools.postgres_query import PostgresQueryTool
 
@@ -111,6 +111,8 @@ def test_agent_service_cache_and_budget(db, test_agent):
         # Modo Producción — cada ejecución real registra su tiempo de ejecución (UsageLog.duration_ms)
         log1 = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.cached.is_(False)).one()
         assert log1.duration_ms > 0
+        # 2026-07-14 — provider explícito, nunca inferido de tier/model en tiempo de consulta
+        assert log1.provider == "claude"
 
         outcome2 = agent_service.run(db, test_agent, extra_input="hola", user_id="tester")
         assert outcome2.cached is True
@@ -141,7 +143,7 @@ def test_agent_service_gemini_byok_records_real_tokens_but_zero_platform_cost(db
         outcome = agent_service.run(db, test_agent, extra_input="hola", user_id="tester", gemini_key="fake-key")
 
     assert outcome.cost_usd == 0.0
-    assert outcome.tier_used == "gemini-free"
+    assert outcome.tier_used == "gemini-byok"
 
     log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.tier == "gemini-byok").one()
     assert log.model == "gemini-flash-latest"
@@ -149,6 +151,71 @@ def test_agent_service_gemini_byok_records_real_tokens_but_zero_platform_cost(db
     assert log.output_tokens == 180
     assert float(log.cost_usd) == 0.0
     assert log.duration_ms >= 0
+    assert log.provider == "gemini"
+
+
+def test_agent_service_gemini_platform_key_records_real_cost(db, test_agent):
+    """2026-07-14 — cuando la key es la propia de IEA-AGENTIQ (no BYOK del
+    cliente), platform_cost=True hace que el gasto real en Gemini entre al
+    cost-tracking de la plataforma (provider=gemini, cost_usd>0), en vez de
+    quedar invisible en $0 como en el caso BYOK."""
+    import src.agent_service as agent_service
+    from src.exec_result import ExecResult
+
+    fake_exec_result = ExecResult(text="Calendario real.", model="gemini-flash-latest", input_tokens=1000, output_tokens=1000)
+
+    with patch("src.gemini_executor.run_gemini", return_value=fake_exec_result):
+        outcome = agent_service.run(
+            db, test_agent, extra_input="generá el calendario", user_id="tester", gemini_key="platform-key", platform_cost=True
+        )
+
+    assert outcome.cost_usd > 0.0
+
+    log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.tier == "gemini-platform").one()
+    assert log.provider == "gemini"
+    assert float(log.cost_usd) == pytest.approx((1000 * 1.50 + 1000 * 9.00) / 1_000_000)
+
+
+def test_agent_service_populates_content_asset_id_when_agent_saves_to_library(db, test_agent):
+    """2026-07-14 — si el agente guarda un LibraryAsset durante su ejecución
+    (vía library_save), el UsageLog de esa misma ejecución debe quedar
+    vinculado a ese asset — necesario para responder "cuánto costó esta
+    publicación" sin adivinar."""
+    import src.agent_service as agent_service
+
+    client = Client(name="Cliente de prueba content_asset_id", email=f"asset-link-{uuid.uuid4()}@test.local", password_hash="x")
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    try:
+        with patch("src.agent_executor.Anthropic") as mock_anthropic:
+            def _save_asset_then_respond(*args, **kwargs):
+                asset = LibraryAsset(
+                    client_id=client.id,
+                    category="Documentación",
+                    subcategory=None,
+                    title="Pieza de prueba",
+                    file_type="texto",
+                    storage_key="",
+                    created_by_agent_id=test_agent.id,
+                    status="borrador",
+                )
+                db.add(asset)
+                db.commit()
+                return _fake_response()
+
+            mock_anthropic.return_value.messages.create.side_effect = _save_asset_then_respond
+            agent_service.run(db, test_agent, extra_input="guardá algo", user_id="tester", client_id=client.id)
+
+        log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.client_id == client.id).one()
+        saved_asset = db.query(LibraryAsset).filter(LibraryAsset.client_id == client.id).one()
+        assert log.content_asset_id == saved_asset.id
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.query(LibraryAsset).filter(LibraryAsset.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
 
 
 def test_usage_by_department_groups_by_agent_definition_group(db, test_agent):

@@ -78,6 +78,7 @@ def record_usage(
     tier: str,
     input_tokens: int,
     output_tokens: int,
+    provider: str = "claude",
     tool_calls: int = 0,
     cached: bool = False,
     success: bool = True,
@@ -86,6 +87,9 @@ def record_usage(
     result_text: str | None = None,
     duration_ms: float = 0.0,
     platform_cost: bool = True,
+    content_asset_id: uuid.UUID | None = None,
+    publication_id: uuid.UUID | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> UsageLog:
     # platform_cost=False -- BYOK (ej. Gemini con la key propia del cliente): se
     # registran tokens/tiempo reales para poder comparar, pero cost_usd queda en 0
@@ -98,6 +102,7 @@ def record_usage(
         execution_id=execution_id or uuid.uuid4(),
         model=model,
         tier=tier,
+        provider=provider,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost_usd=cost_usd,
@@ -108,6 +113,9 @@ def record_usage(
         cached=cached,
         success=success,
         error_message=error_message,
+        content_asset_id=content_asset_id,
+        publication_id=publication_id,
+        campaign_id=campaign_id,
     )
     db.add(log)
     db.commit()

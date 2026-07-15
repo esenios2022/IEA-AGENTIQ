@@ -8,6 +8,7 @@ usable from either executor.
 
 from src.composio_tools import get_toolkit_tools
 from src.tools.ai_lab_knowledge import AiLabKnowledgeSearchTool
+from src.tools.gemini_image_tool import GeminiImageTool
 from src.tools.knowledge_base import KnowledgeBaseTool
 from src.tools.library_save import LibrarySaveTool
 from src.tools.library_search import LibrarySearchTool
@@ -60,6 +61,13 @@ def _matching_tools(definition: dict, agent_id=None, user_id=None) -> list:
         # reasoning as library_search/knowledge_base above.
         if name == "library_save":
             tools.append(LibrarySaveTool(client_id=str(user_id) if user_id else None, created_by_agent_id=str(agent_id) if agent_id else None))
+            seen_names.add(name)
+            continue
+        # 2026-07-14 — misma razón que library_save: el UsageLog que graba
+        # (agent_id) y el LibraryAsset que crea (created_by_agent_id,
+        # client_id) tienen que ser reales, nunca el singleton compartido.
+        if name == "gemini_image":
+            tools.append(GeminiImageTool(client_id=str(user_id) if user_id else None, created_by_agent_id=str(agent_id) if agent_id else None))
             seen_names.add(name)
             continue
         tool = TOOL_REGISTRY.get(name)

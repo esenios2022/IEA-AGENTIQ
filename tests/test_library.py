@@ -3,12 +3,33 @@ convention as tests/test_lead_qualification.py) since this repo's test
 suite otherwise relies on a real configured Postgres (see test_main.py),
 which isn't available in every environment these tests run in."""
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src import library
 from src.library_taxonomy import GENERIC_LIBRARY_FOLDERS
+
+
+def test_find_recent_asset_returns_the_asset_when_found():
+    db = MagicMock()
+    fake_asset = MagicMock(id="asset-123")
+    db.scalar.return_value = fake_asset
+
+    result = library.find_recent_asset(db, created_by_agent_id="agent-1", client_id="client-1", since=datetime.utcnow())
+
+    assert result is fake_asset
+    db.scalar.assert_called_once()
+
+
+def test_find_recent_asset_returns_none_when_nothing_saved():
+    db = MagicMock()
+    db.scalar.return_value = None
+
+    result = library.find_recent_asset(db, created_by_agent_id="agent-1", client_id="client-1", since=datetime.utcnow())
+
+    assert result is None
 
 
 def test_search_assets_queries_and_returns_results():

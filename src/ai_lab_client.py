@@ -97,7 +97,7 @@ class AiLabClient:
             headers["X-API-Key"] = self.api_key
 
         url = f"{self.base_url}{path}"
-        started = time.monotonic()
+        started = time.perf_counter()
         retries_used = 0
         last_exc: Exception | None = None
 
@@ -111,7 +111,7 @@ class AiLabClient:
                     print(f"[ai_lab_client] {method} {path} attempt {attempt + 1} failed ({exc}), retrying (correlation_id={correlation_id})", flush=True)
                     time.sleep(RETRY_BACKOFF_SECONDS[min(attempt, len(RETRY_BACKOFF_SECONDS) - 1)])
                     continue
-                latency_ms = (time.monotonic() - started) * 1000
+                latency_ms = (time.perf_counter() - started) * 1000
                 metrics.record(latency_ms, success=False, retries=retries_used)
                 print(f"[ai_lab_client] {method} {path} failed after {attempt + 1} attempts (correlation_id={correlation_id}): {exc}", flush=True)
                 raise AiLabRequestError(f"AI LAB request failed: {exc}") from exc
@@ -122,7 +122,7 @@ class AiLabClient:
                 time.sleep(RETRY_BACKOFF_SECONDS[min(attempt, len(RETRY_BACKOFF_SECONDS) - 1)])
                 continue
 
-            latency_ms = (time.monotonic() - started) * 1000
+            latency_ms = (time.perf_counter() - started) * 1000
             success = response.ok
             metrics.record(latency_ms, success=success, retries=retries_used)
             if not success:
@@ -132,7 +132,7 @@ class AiLabClient:
             print(f"[ai_lab_client] {method} {path} ok in {latency_ms:.0f}ms (correlation_id={correlation_id}, retries={retries_used})", flush=True)
             return response.json()
 
-        latency_ms = (time.monotonic() - started) * 1000
+        latency_ms = (time.perf_counter() - started) * 1000
         metrics.record(latency_ms, success=False, retries=retries_used)
         raise AiLabRequestError(f"AI LAB request failed: {last_exc}")
 

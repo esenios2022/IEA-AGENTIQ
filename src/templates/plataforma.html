@@ -546,7 +546,7 @@ function render(){renderTree();const V=document.getElementById("view");
       const out=isErr?"":((t.result||"").slice(0,90)+((t.result||"").length>90?"…":""));
       const time=t.steps[0]?t.steps[0][2]:"—";
       const costStr=Number(t.cost||0)>0?"$"+Number(t.cost).toFixed(4):"$0.00";
-      const tierLabel=t.tier==="gemini-free"?`<span style="font-size:10px;color:#16a34a">🟢 Gemini</span>`:(t.tier?`<span class="mini">${t.tier}</span>`:"");
+      const tierLabel=(t.tier==="gemini-byok"||t.tier==="gemini-platform")?`<span style="font-size:10px;color:#16a34a">🟢 Gemini</span>`:(t.tier?`<span class="mini">${t.tier}</span>`:"");
       mrows+=`<tr style="${isErr?"background:rgba(220,38,38,.05)":""}">
         <td class="mini" style="white-space:nowrap">${time}</td>
         <td><div style="display:flex;align-items:center;gap:6px"><div class="ag" style="width:22px;height:22px;font-size:9px;border-radius:5px;flex-shrink:0">${t.ag.slice(0,2)}</div><b style="font-size:13px">${agName}</b></div></td>
@@ -986,9 +986,12 @@ async function sendChat(){
   const l=document.getElementById("chatlog");if(l)l.scrollTop=l.scrollHeight;
   try{
     const data=await runAgentReal(chatAgent,t);
-    const isGemini=data.tier_used==="gemini-free";
-    const meta=isGemini
-      ?"[🟢 Gemini · cuenta propia · $0.00]\n\n"
+    const isGeminiByok=data.tier_used==="gemini-byok";
+    const isGeminiPlatform=data.tier_used==="gemini-platform";
+    const meta=isGeminiByok
+      ?"[🟢 Gemini · cuenta propia del cliente · $0.00]\n\n"
+      :isGeminiPlatform
+      ?`[🟢 Gemini · cuenta IEA-AGENTIQ · costo: $${Number(data.cost_usd).toFixed(4)}]\n\n`
       :`[tier: ${data.tier_used}${data.cached?" · desde caché":""} · costo: $${Number(data.cost_usd).toFixed(4)}]\n\n`;
     CHAT[CHAT.length-1].t=meta+data.result;
   }catch(err){

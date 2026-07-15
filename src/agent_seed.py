@@ -46,6 +46,8 @@ def _map_tool(tool_id: str) -> dict | None:
         return {"name": "library_search", "type": "library_search"}
     if tool_id == "library_save":
         return {"name": "library_save", "type": "library_save"}
+    if tool_id == "gemini_image":
+        return {"name": "gemini_image", "type": "gemini_image"}
     return None
 
 

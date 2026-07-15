@@ -15,6 +15,7 @@ de ese cliente — mismo patron NULL-es-global que KbArticle.client_id.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import case, or_, select
 from sqlalchemy.orm import Session
@@ -140,6 +141,24 @@ def create_asset(
     db.commit()
     db.refresh(asset)
     return asset
+
+
+def find_recent_asset(
+    db: Session, *, created_by_agent_id: uuid.UUID | str, client_id: uuid.UUID | str | None, since: datetime
+) -> LibraryAsset | None:
+    """El único chequeo real de si un agente efectivamente guardó algo (nunca se
+    asume por fe): el asset más reciente creado por ese agente para ese cliente
+    desde `since`. Usado tanto para poblar UsageLog.content_asset_id como para
+    las advertencias de marketing_pipeline cuando un agente no guarda nada."""
+    return db.scalar(
+        select(LibraryAsset)
+        .where(
+            LibraryAsset.created_by_agent_id == created_by_agent_id,
+            LibraryAsset.client_id == client_id,
+            LibraryAsset.created_at >= since,
+        )
+        .order_by(LibraryAsset.created_at.desc())
+    )
 
 
 def update_asset_metadata(db: Session, asset_id: uuid.UUID | str, **fields) -> LibraryAsset | None:

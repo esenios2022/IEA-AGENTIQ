@@ -6,6 +6,7 @@ separately in `src.tool_assembly`) into one dict, keyed by the name used in
 """
 
 from src.tools.ai_lab_knowledge import AiLabKnowledgeSearchTool
+from src.tools.gemini_image_tool import GeminiImageTool
 from src.tools.google_calendar import TOOL_REGISTRY as _GOOGLE_CALENDAR_TOOLS
 from src.tools.knowledge_base import KnowledgeBaseTool
 from src.tools.library_save import LibrarySaveTool
@@ -35,4 +36,8 @@ TOOL_REGISTRY = {
     # "library_save" (FASE 2.4A) needs a fresh instance scoped by BOTH
     # client_id and created_by_agent_id — same placeholder-only story.
     "library_save": LibrarySaveTool(),
+    # 2026-07-14 — same placeholder-only story as library_save: needs a
+    # fresh instance scoped by client_id + created_by_agent_id so both
+    # LibraryAsset.created_by_agent_id and the UsageLog it records are real.
+    "gemini_image": GeminiImageTool(),
 }

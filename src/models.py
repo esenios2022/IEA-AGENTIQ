@@ -112,6 +112,19 @@ class UsageLog(Base):
     execution_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4)
     model: Mapped[str] = mapped_column(String(100))
     tier: Mapped[str] = mapped_column(String(20))
+    # 2026-07-14 -- explicito por pedido del usuario, nunca inferido de tier/model:
+    # tier ya no alcanza para distinguir proveedor una vez que Ollama/OpenAI entren en
+    # juego (ambos podrian correr en cualquier tier).
+    provider: Mapped[str] = mapped_column(String(20), default="claude")
+    # Que pieza de contenido concreta pagó esta llamada -- sin FK dura: se resuelve
+    # con una consulta best-effort a LibraryAsset despues de que el agente corre
+    # (ver agent_service.run/library.find_recent_asset), nunca inventado.
+    content_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # publication_id/campaign_id: todavia no existe ningun modelo Publication/Campaign
+    # en este repo -- columnas nullable preparadas para cuando ETAPA de publicacion/
+    # campaña de lanzamiento las produzca de verdad, ningun productor las llena hoy.
+    publication_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), default=0)

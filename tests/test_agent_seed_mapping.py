@@ -16,5 +16,14 @@ def test_library_save_maps_to_itself():
     assert _map_tool("library_save") == {"name": "library_save", "type": "library_save"}
 
 
+def test_gemini_image_maps_to_itself():
+    """2026-07-14 — el mismo modo de falla silenciosa que este archivo ya
+    documentaba para library_search/library_save: sin este mapeo,
+    gemini_image caía en unmapped_tools y Valentina reportaba (real,
+    confirmado en una corrida real de agente) "todavía no está conectada
+    al panel" en vez de poder generar la imagen."""
+    assert _map_tool("gemini_image") == {"name": "gemini_image", "type": "gemini_image"}
+
+
 def test_unmapped_tool_still_returns_none():
     assert _map_tool("heygen_api") is None

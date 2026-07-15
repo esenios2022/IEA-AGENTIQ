@@ -34,7 +34,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.agent_service import run as run_agent_service
-from src.models import Agent, Client, LibraryAsset
+from src.library import find_recent_asset
+from src.models import Agent, Client
 
 PIPELINE = [
     ("agent_017", "Daniel", "Investigá contexto de mercado, tendencias y competencia relevante para la semana actual del Calendario Editorial de este cliente."),
@@ -76,15 +77,7 @@ def _build_prompt(client: Client, instruction: str, previous_steps: list[dict]) 
 
 
 def _saved_asset_since(db: Session, agent_id, client_id, since: datetime) -> uuid.UUID | None:
-    asset = db.scalar(
-        select(LibraryAsset)
-        .where(
-            LibraryAsset.created_by_agent_id == agent_id,
-            LibraryAsset.client_id == client_id,
-            LibraryAsset.created_at >= since,
-        )
-        .order_by(LibraryAsset.created_at.desc())
-    )
+    asset = find_recent_asset(db, created_by_agent_id=agent_id, client_id=client_id, since=since)
     return asset.id if asset is not None else None
 
 
