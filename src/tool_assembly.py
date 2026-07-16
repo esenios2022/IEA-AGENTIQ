@@ -96,9 +96,17 @@ def _composio_tools(definition: dict, user_id: str) -> list:
         return []
 
 
-def assemble_tools(definition: dict, user_id: str, agent_id=None) -> list:
+def assemble_tools(definition: dict, user_id: str, agent_id=None, composio_user_id: str | None = None) -> list:
+    # 2026-07-16 -- user_id normalmente sirve DOS roles a la vez: scope de
+    # Biblioteca/knowledge base (tiene que ser el UUID real del Client) y
+    # identidad de Composio (a veces distinta -- confirmado real: la cuenta
+    # de Instagram de EALumina está conectada bajo user_id="ealumina" en
+    # Composio, no bajo el UUID del cliente). composio_user_id es un
+    # override opcional solo para el segundo rol; default None -> se sigue
+    # usando user_id como antes, cero cambio de comportamiento para todo
+    # el resto de callers.
     return (
         _matching_tools(definition, agent_id=agent_id, user_id=user_id)
-        + _composio_tools(definition, user_id)
+        + _composio_tools(definition, composio_user_id or user_id)
         + build_zapier_tools(definition.get("tools") or [])
     )

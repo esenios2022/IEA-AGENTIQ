@@ -94,6 +94,14 @@ def generate_weekly_marketing_content(
     steps: list[dict] = []
     warnings: list[str] = []
 
+    # 2026-07-16 -- ver comentario en tool_assembly.py::assemble_tools(): la
+    # cuenta real de Composio de este cliente puede estar conectada bajo un
+    # user_id propio (confirmado real para Instagram/EALumina: "ealumina",
+    # no el UUID) — si Client.config lo tiene, se usa para que los agentes
+    # con tools de Composio (ej. Ariel + composio_instagram) encuentren la
+    # cuenta ya conectada de verdad.
+    composio_user_id = (client.config or {}).get("composio_user_id")
+
     for agent_code, name, instruction in PIPELINE:
         agent = db.scalar(select(Agent).where(Agent.agent_code == agent_code))
         if agent is None:
@@ -103,7 +111,10 @@ def generate_weekly_marketing_content(
         # Margen de 5s hacia atrás — evita perder por milisegundos un asset
         # guardado justo al arrancar la llamada.
         started_at = datetime.utcnow() - timedelta(seconds=5)
-        outcome = run_agent_service(db, agent, prompt, user_id=str(client_id), client_id=client.id, tier_override=tier_override)
+        outcome = run_agent_service(
+            db, agent, prompt, user_id=str(client_id), client_id=client.id,
+            tier_override=tier_override, composio_user_id=composio_user_id,
+        )
 
         saved_asset_id = _saved_asset_since(db, agent.id, client.id, started_at)
         if saved_asset_id is None:

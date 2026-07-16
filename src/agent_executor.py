@@ -61,7 +61,12 @@ def _initial_task_text(agent: Agent, extra_input: str | None) -> str:
 
 
 def _run_loop(
-    agent: Agent, tier: str, extra_input: str | None, user_id: str, history: list[dict] | None = None
+    agent: Agent,
+    tier: str,
+    extra_input: str | None,
+    user_id: str,
+    history: list[dict] | None = None,
+    composio_user_id: str | None = None,
 ) -> ExecResult:
     model = TIER_MODELS.get(tier, TIER_MODELS["standard"])
     max_tokens = TIER_MAX_TOKENS.get(tier, 2048)
@@ -76,7 +81,7 @@ def _run_loop(
             if score >= SHORTCUT_SIMILARITY_THRESHOLD:
                 return ExecResult(text=article.respuesta, model=model, input_tokens=0, output_tokens=0, tool_calls=1)
 
-    tools = assemble_tools(definition, user_id, agent_id=agent.id)
+    tools = assemble_tools(definition, user_id, agent_id=agent.id, composio_user_id=composio_user_id)
     tools_by_name = {t.name: t for t in tools}
     anthropic_tools = [_tool_to_anthropic_schema(t) for t in tools]
 
@@ -143,11 +148,12 @@ def run_agent(
     extra_input: str | None = None,
     user_id: str | None = None,
     history: list[dict] | None = None,
+    composio_user_id: str | None = None,
 ) -> ExecResult:
     resolved_user_id = user_id or str(agent.id)
     print(f"[agent_executor] running agent {agent.id} (tier={tier})", flush=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_run_loop, agent, tier, extra_input, resolved_user_id, history)
+        future = executor.submit(_run_loop, agent, tier, extra_input, resolved_user_id, history, composio_user_id)
         try:
             return future.result(timeout=EXEC_TIMEOUT_SECONDS)
         except concurrent.futures.TimeoutError as exc:

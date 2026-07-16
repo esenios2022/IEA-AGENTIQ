@@ -91,6 +91,7 @@ def run(
     history: list[dict] | None = None,
     tier_override: str | None = None,
     platform_cost: bool = False,
+    composio_user_id: str | None = None,
 ) -> RunOutcome:
     definition = agent.definition or {}
 
@@ -176,11 +177,15 @@ def run(
     started_at = time.perf_counter()
     try:
         if case_id is not None:
-            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=effective_history)
+            exec_result = run_lean_agent(
+                agent, tier, extra_input, user_id=user_id, history=effective_history, composio_user_id=composio_user_id
+            )
         elif _is_multi_step(definition):
             exec_result = run_crew(agent, extra_input, user_id=user_id, tier=tier)
         else:
-            exec_result = run_lean_agent(agent, tier, extra_input, user_id=user_id, history=effective_history)
+            exec_result = run_lean_agent(
+                agent, tier, extra_input, user_id=user_id, history=effective_history, composio_user_id=composio_user_id
+            )
     except Exception as exc:
         record_usage(
             db,
