@@ -10,12 +10,24 @@ Modelo usado: `gemini-2.5-flash-image` vía `generate_content()` — los
 modelos Imagen dedicados (`imagen-4.0-*`) están restringidos ("no longer
 available to new users") para keys nuevas, confirmado real ese mismo día
 en gemini_executor.py. Este es el camino que sí funciona.
+
+2026-07-16 — composición real del logo aprobado: un modelo de generación
+de imagen por texto no reproduce de forma confiable un logo específico
+(confirmado real: la primera corrida produjo un fondo abstracto genérico
+sin ninguna relación con la marca). En vez de confiar en que el prompt
+"describa" el logo, esta tool busca el logo real aprobado del cliente en
+la Biblioteca (categoría Marca/Logos), le quita el fondo blanco de forma
+programática (los 3 logos reales del cliente son JPEG opacos, sin canal
+alfa) y lo compone sobre el fondo generado — así el resultado final
+siempre tiene el logo real y exacto, nunca una aproximación de la IA.
 """
 
+import io
 import mimetypes
 import uuid
 
 from crewai.tools import BaseTool
+from PIL import Image
 
 from src import library, library_storage
 from src.config import settings
@@ -25,6 +37,58 @@ from src.database import SessionLocal
 GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image"
 FORCED_STATUS = "borrador"
 DEFAULT_CATEGORY = "Imágenes"
+LOGO_WHITE_THRESHOLD = 245  # 0-255; píxeles con los 3 canales por encima de esto se vuelven transparentes
+LOGO_WIDTH_RATIO = 0.42  # ancho del logo compuesto, relativo al ancho del canvas final
+LOGO_BOTTOM_MARGIN_RATIO = 0.08  # margen inferior, relativo a la altura del canvas
+
+
+def _remove_near_white_background(image: Image.Image, threshold: int = LOGO_WHITE_THRESHOLD) -> Image.Image:
+    """Chroma-key simple sobre fondo blanco uniforme (confirmado real:
+    los 3 logos del cliente tienen fondo (254,254,254) uniforme en las
+    4 esquinas) — vuelve transparentes los píxeles cercanos al blanco,
+    con una transición suave cerca del umbral para evitar un recorte
+    con bordes duros."""
+    rgba = image.convert("RGBA")
+    pixels = rgba.load()
+    width, height = rgba.size
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = pixels[x, y]
+            min_channel = min(r, g, b)
+            if min_channel >= threshold:
+                pixels[x, y] = (r, g, b, 0)
+            elif min_channel >= threshold - 15:
+                # transición suave en vez de un corte duro
+                fade = int(255 * (threshold - min_channel) / 15)
+                pixels[x, y] = (r, g, b, fade)
+    return rgba
+
+
+def _find_approved_logo(db, client_id: str | None):
+    assets = library.search_assets(
+        db, client_id=client_id, category="Marca", subcategory="Logos", status="aprobado", limit=5
+    )
+    for asset in assets:
+        if "branco" in (asset.title or "").lower() or "1" in (asset.title or ""):
+            return asset
+    return assets[0] if assets else None
+
+
+def _compose_logo_onto_background(background_bytes: bytes, logo_bytes: bytes) -> bytes:
+    background = Image.open(io.BytesIO(background_bytes)).convert("RGBA")
+    logo = _remove_near_white_background(Image.open(io.BytesIO(logo_bytes)))
+
+    target_width = int(background.width * LOGO_WIDTH_RATIO)
+    scale = target_width / logo.width
+    logo = logo.resize((target_width, int(logo.height * scale)), Image.LANCZOS)
+
+    x = (background.width - logo.width) // 2
+    y = int(background.height - logo.height - background.height * LOGO_BOTTOM_MARGIN_RATIO)
+    background.alpha_composite(logo, (x, y))
+
+    out = io.BytesIO()
+    background.convert("RGB").save(out, format="PNG")
+    return out.getvalue()
 
 
 class GeminiImageTool(BaseTool):
@@ -68,6 +132,21 @@ class GeminiImageTool(BaseTool):
         usage = response.usage_metadata
         input_tokens = (usage.prompt_token_count or 0) if usage else 0
         output_tokens = (usage.candidates_token_count or 0) if usage else 0
+
+        logo_composed = False
+        compose_db = SessionLocal()
+        try:
+            logo_asset = _find_approved_logo(compose_db, self.client_id)
+            if logo_asset is not None:
+                try:
+                    logo_bytes = library_storage.download_asset(logo_asset.storage_key)
+                    image_bytes = _compose_logo_onto_background(image_bytes, logo_bytes)
+                    mime_type = "image/png"
+                    logo_composed = True
+                except (library_storage.LibraryStorageError, OSError) as exc:
+                    print(f"[gemini_image_tool] no se pudo componer el logo real ({exc}), sigo sin él", flush=True)
+        finally:
+            compose_db.close()
 
         extension = (mimetypes.guess_extension(mime_type) or ".png").lstrip(".")
         filename = f"{uuid.uuid4()}.{extension}"
@@ -128,4 +207,5 @@ class GeminiImageTool(BaseTool):
         # tras db.close() dispara un lazy-load contra una sesión cerrada
         # (DetachedInstanceError), confirmado real en la verificación end-to-end.
         url = library_storage.get_asset_url(storage_key)
-        return f"Imagen generada y guardada en la Biblioteca como borrador. asset_id={asset_id}, url={url}"
+        logo_note = " Logo real de la marca compuesto sobre el fondo generado." if logo_composed else ""
+        return f"Imagen generada y guardada en la Biblioteca como borrador. asset_id={asset_id}, url={url}.{logo_note}"

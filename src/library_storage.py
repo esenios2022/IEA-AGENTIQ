@@ -79,6 +79,16 @@ def upload_asset(content: bytes, key: str, content_type: str | None = None) -> N
     print(f"[library_storage] uploaded key={key} ({len(content)} bytes)", flush=True)
 
 
+def download_asset(key: str) -> bytes:
+    client = _get_s3_client()
+    try:
+        obj = client.get_object(Bucket=settings.library_s3_bucket, Key=key)
+        return obj["Body"].read()
+    except Exception as exc:
+        print(f"[library_storage] download failed for key={key}: {exc}", flush=True)
+        raise LibraryStorageError(f"Download failed: {exc}") from exc
+
+
 def delete_asset(key: str) -> None:
     client = _get_s3_client()
     try:

@@ -35,6 +35,7 @@ def test_run_generates_uploads_and_saves_asset_as_borrador():
 
     with patch.object(gemini_image_tool.settings, "gemini_api_key", "fake-key"), \
          patch("google.genai.Client") as mock_client_cls, \
+         patch("src.tools.gemini_image_tool._find_approved_logo", return_value=None), \
          patch("src.tools.gemini_image_tool.library_storage.upload_asset") as mock_upload, \
          patch("src.tools.gemini_image_tool.library_storage.get_asset_url", return_value="https://storage.example/img.png"), \
          patch("src.tools.gemini_image_tool.library.create_asset", return_value=fake_asset) as mock_create, \
@@ -87,6 +88,7 @@ def test_run_returns_clear_error_when_storage_not_configured():
 
     with patch.object(gemini_image_tool.settings, "gemini_api_key", "fake-key"), \
          patch("google.genai.Client") as mock_client_cls, \
+         patch("src.tools.gemini_image_tool._find_approved_logo", return_value=None), \
          patch(
              "src.tools.gemini_image_tool.library_storage.upload_asset",
              side_effect=gemini_image_tool.library_storage.LibraryStorageNotConfiguredError("no s3 configured"),
@@ -106,6 +108,7 @@ def test_run_skips_usage_recording_when_no_agent_id_bound():
 
     with patch.object(gemini_image_tool.settings, "gemini_api_key", "fake-key"), \
          patch("google.genai.Client") as mock_client_cls, \
+         patch("src.tools.gemini_image_tool._find_approved_logo", return_value=None), \
          patch("src.tools.gemini_image_tool.library_storage.upload_asset"), \
          patch("src.tools.gemini_image_tool.library_storage.get_asset_url", return_value="https://storage.example/img.png"), \
          patch("src.tools.gemini_image_tool.library.create_asset", return_value=fake_asset), \
@@ -114,3 +117,58 @@ def test_run_skips_usage_recording_when_no_agent_id_bound():
         tool._run(prompt="un colibrí dorado", title="Colibrí")
 
     mock_record.assert_not_called()
+
+
+def test_run_composes_real_logo_when_approved_asset_exists():
+    """El logo real (no una aproximación de la IA) se compone sobre el fondo
+    generado cuando existe un asset de Marca/Logos aprobado — confirma que
+    la tool llama a la composición real en vez de confiar en el prompt de
+    texto para reproducir el logo."""
+    fake_asset = MagicMock(id="asset-img-3")
+    fake_logo_asset = MagicMock(storage_key="client/Marca/Logos/logo.jpeg")
+    tool = GeminiImageTool(client_id="client-1", created_by_agent_id="agent-015")
+
+    with patch.object(gemini_image_tool.settings, "gemini_api_key", "fake-key"), \
+         patch("google.genai.Client") as mock_client_cls, \
+         patch("src.tools.gemini_image_tool._find_approved_logo", return_value=fake_logo_asset), \
+         patch("src.tools.gemini_image_tool.library_storage.download_asset", return_value=b"fake-logo-bytes"), \
+         patch("src.tools.gemini_image_tool._compose_logo_onto_background", return_value=b"composed-bytes") as mock_compose, \
+         patch("src.tools.gemini_image_tool.library_storage.upload_asset") as mock_upload, \
+         patch("src.tools.gemini_image_tool.library_storage.get_asset_url", return_value="https://storage.example/img.png"), \
+         patch("src.tools.gemini_image_tool.library.create_asset", return_value=fake_asset) as mock_create, \
+         patch("src.tools.gemini_image_tool.record_usage"):
+        mock_client_cls.return_value.models.generate_content.return_value = _fake_gemini_response()
+        result = tool._run(prompt="uma cena celestial dourada e azul", title="Fundo celestial")
+
+    mock_compose.assert_called_once_with(b"fake-png-bytes", b"fake-logo-bytes")
+    mock_upload.assert_called_once()
+    assert mock_upload.call_args[0][0] == b"composed-bytes"
+    assert mock_create.call_args[1]["file_size_bytes"] == len(b"composed-bytes")
+    assert "Logo real de la marca compuesto" in result
+
+
+def test_run_continues_without_logo_when_download_fails():
+    """Si falla la descarga del logo real, la tool sigue con el fondo solo
+    en vez de fallar toda la generación — degradación explícita, no un
+    error silencioso ni una excepción sin manejar."""
+    fake_asset = MagicMock(id="asset-img-4")
+    fake_logo_asset = MagicMock(storage_key="client/Marca/Logos/logo.jpeg")
+    tool = GeminiImageTool(client_id="client-1", created_by_agent_id="agent-015")
+
+    with patch.object(gemini_image_tool.settings, "gemini_api_key", "fake-key"), \
+         patch("google.genai.Client") as mock_client_cls, \
+         patch("src.tools.gemini_image_tool._find_approved_logo", return_value=fake_logo_asset), \
+         patch(
+             "src.tools.gemini_image_tool.library_storage.download_asset",
+             side_effect=gemini_image_tool.library_storage.LibraryStorageError("boom"),
+         ), \
+         patch("src.tools.gemini_image_tool.library_storage.upload_asset") as mock_upload, \
+         patch("src.tools.gemini_image_tool.library_storage.get_asset_url", return_value="https://storage.example/img.png"), \
+         patch("src.tools.gemini_image_tool.library.create_asset", return_value=fake_asset), \
+         patch("src.tools.gemini_image_tool.record_usage"):
+        mock_client_cls.return_value.models.generate_content.return_value = _fake_gemini_response()
+        result = tool._run(prompt="uma cena celestial dourada e azul", title="Fundo celestial")
+
+    assert mock_upload.call_args[0][0] == b"fake-png-bytes"  # el fondo original, sin componer
+    assert "asset_id=asset-img-4" in result
+    assert "Logo real" not in result
