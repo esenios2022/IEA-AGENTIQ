@@ -48,6 +48,13 @@ def _map_tool(tool_id: str) -> dict | None:
         return {"name": "library_save", "type": "library_save"}
     if tool_id == "gemini_image":
         return {"name": "gemini_image", "type": "gemini_image"}
+    # heygen_api queda deliberadamente afuera: no hay una HeyGenTool real
+    # todavia (decision del usuario 2026-07-17: no forzarlo para el Reel de
+    # b-roll) -- mapearlo sin una tool real detras lo sacaria de
+    # unmapped_tools (pierde la nota de "no conectada" en el prompt) sin
+    # darle al agente una tool que de verdad funcione.
+    if tool_id == "runway_api":
+        return {"name": "runway_api", "type": "runway_api"}
     return None
 
 
