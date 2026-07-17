@@ -13,6 +13,7 @@ from src.tools.knowledge_base import KnowledgeBaseTool
 from src.tools.library_save import LibrarySaveTool
 from src.tools.library_search import LibrarySearchTool
 from src.tools.registry import TOOL_REGISTRY
+from src.tools.runway_video_tool import RunwayVideoTool
 from src.tools.zapier import build_zapier_tools
 
 # Toolkit slugs Obatalá (or the master agent seed) can reference by name even
@@ -68,6 +69,13 @@ def _matching_tools(definition: dict, agent_id=None, user_id=None) -> list:
         # client_id) tienen que ser reales, nunca el singleton compartido.
         if name == "gemini_image":
             tools.append(GeminiImageTool(client_id=str(user_id) if user_id else None, created_by_agent_id=str(agent_id) if agent_id else None))
+            seen_names.add(name)
+            continue
+        # 2026-07-17 -- misma razon que gemini_image: el UsageLog (agent_id)
+        # y el LibraryAsset (created_by_agent_id, client_id) tienen que ser
+        # reales, nunca el singleton compartido.
+        if name == "runway_api":
+            tools.append(RunwayVideoTool(client_id=str(user_id) if user_id else None, created_by_agent_id=str(agent_id) if agent_id else None))
             seen_names.add(name)
             continue
         tool = TOOL_REGISTRY.get(name)

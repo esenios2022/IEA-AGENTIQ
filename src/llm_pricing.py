@@ -40,6 +40,15 @@ PRICING_USD_PER_MTOK = {
     # calculate_cost_usd() siga recibiendo tokens en vez de "cantidad de
     # imágenes". Input token price real: $0.30/Mtok.
     "gemini-2.5-flash-image": (0.30, 30.0),
+    # Runway cobra por creditos, no por token -- confirmado real 2026-07-17:
+    # una generacion veo3.1 de 4s consumio 160 creditos (balance 1000 -> 840).
+    # Sin el $/credito exacto de la factura del cliente todavia, se asume
+    # $0.01/credito (convencion estandar de la industria) => $0.40/segundo.
+    # record_usage() para este modelo pasa output_tokens=duration_seconds
+    # como proxy (no hay tokens reales), asi que el "precio por Mtok" de
+    # abajo esta elegido para que el calculo de más arriba de igual al
+    # costo real aproximado por segundo.
+    "runway-veo3.1": (0.0, 400_000.0),
 }
 
 DEFAULT_TIER = "economy"

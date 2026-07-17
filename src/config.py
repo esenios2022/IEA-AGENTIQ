@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     gemini_api_key: str | None = None  # Used for Lisa Mawu by default
     heygen_api_key: str | None = None
+    runway_api_key: str | None = None
     ai_lab_base_url: str | None = None  # AI LAB Service (Sprint 26), e.g. http://localhost:8000
     ai_lab_api_key: str | None = None
     # Biblioteca Inteligente de Marketing (FASE 2.3) — storage S3-compatible generico
