@@ -137,7 +137,12 @@ def provider_config():
 
 def _serve_static_html(filename: str) -> HTMLResponse:
     with open(f"src/templates/{filename}", encoding="utf-8") as f:
-        return HTMLResponse(f.read())
+        content = f.read()
+    # 2026-07-18 -- sin esto el navegador puede servir una version vieja de
+    # /plataforma desde su cache local sin siquiera consultar al servidor
+    # (confirmado real: un usuario seguia viendo el login embebido viejo
+    # despues de que el fix de auth ya estaba deployado y funcionando).
+    return HTMLResponse(content, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/")
@@ -1319,7 +1324,9 @@ def me(request: Request, db: Session = Depends(get_db)):
 @app.get("/login")
 def login_page(request: Request):
     default_tab = "admin" if request.query_params.get("as") == "admin" else "client"
-    return templates.TemplateResponse(request, "login.html", {"default_tab": default_tab})
+    return templates.TemplateResponse(
+        request, "login.html", {"default_tab": default_tab}, headers={"Cache-Control": "no-store"}
+    )
 
 
 @app.get("/portal")
