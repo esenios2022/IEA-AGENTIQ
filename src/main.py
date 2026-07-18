@@ -631,7 +631,16 @@ def architect_chat_page(request: Request):
 
 
 @app.get("/plataforma")
-def plataforma_page():
+def plataforma_page(request: Request):
+    # 2026-07-18 -- plataforma.html trae su PROPIO formulario de login
+    # embebido (visualmente distinto al de /login) que se muestra/oculta
+    # via JS despues de un fetch a /api/auth/me. Sin este chequeo del lado
+    # del servidor, cualquiera que entre a /plataforma sin sesion ve ese
+    # formulario -- si ya paso por /login, es un segundo login redundante
+    # y visualmente distinto, confirmado real por el usuario. Redirigir
+    # antes de servir el HTML garantiza un unico login, siempre.
+    if not (request.session.get("is_admin") or request.session.get("client_id")):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return _serve_static_html("plataforma.html")
 
 
