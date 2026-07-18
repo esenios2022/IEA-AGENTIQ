@@ -201,3 +201,18 @@ class ProfitabilityOut(BaseModel):
     period: str
     by_client: list[ProfitabilityByClientOut]
     total_usd: float
+
+
+class LibraryAssetOut(BaseModel):
+    id: str
+    category: str
+    subcategory: str | None = None
+    title: str
+    description: str | None = None
+    file_type: str
+    mime_type: str | None = None
+    text_content: str | None = None
+    url: str | None = None
+    status: str
+    agent_name: str | None = None
+    created_at: str

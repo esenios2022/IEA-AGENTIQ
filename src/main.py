@@ -62,6 +62,7 @@ from src.schemas import (
     LeadCreate,
     LeadInteractionOut,
     LeadOut,
+    LibraryAssetOut,
     ProfitabilityByClientOut,
     ProfitabilityOut,
     UsageByAgentOut,
@@ -802,6 +803,40 @@ def list_executions_api(
 def list_my_executions_api(request: Request, db: Session = Depends(get_db)):
     client = get_current_client(request, db)
     return _executions_query(db, client_id=client.id)
+
+
+def _library_asset_out(asset, agent_names: dict) -> LibraryAssetOut:
+    url = library_storage.get_asset_url(asset.storage_key) if asset.storage_key else None
+    return LibraryAssetOut(
+        id=str(asset.id),
+        category=asset.category,
+        subcategory=asset.subcategory,
+        title=asset.title,
+        description=asset.description,
+        file_type=asset.file_type,
+        mime_type=asset.mime_type,
+        text_content=asset.text_content,
+        url=url,
+        status=asset.status,
+        agent_name=agent_names.get(asset.created_by_agent_id) if asset.created_by_agent_id else None,
+        created_at=asset.created_at.isoformat(),
+    )
+
+
+@app.get("/api/me/biblioteca", response_model=list[LibraryAssetOut])
+def list_my_biblioteca_api(request: Request, db: Session = Depends(get_db)):
+    """Piezas reales (imagenes, video, textos) que el equipo del cliente
+    aprobo para la campana -- lo que faltaba para que un cliente pueda ver
+    lo que sus agentes produjeron antes de publicarlo (confirmado real:
+    el cliente no tenia ninguna forma de ver esto en /plataforma)."""
+    client = get_current_client(request, db)
+    # search_assets() por defecto filtra status="aprobado" -- sin status=None
+    # el cliente nunca ve lo que esta en borrador (justo lo que mas necesita
+    # revisar antes de aprobarlo, ej. el Reel del Dia 3), confirmado real
+    # via un test de browser que devolvia 0 videos y "0 en borrador".
+    assets = library.search_assets(db, client_id=str(client.id), status=None, limit=200)
+    agent_names = {a.id: a.name for a in db.scalars(select(Agent)).all()}
+    return [_library_asset_out(a, agent_names) for a in assets]
 
 
 @app.get("/admin/agents")

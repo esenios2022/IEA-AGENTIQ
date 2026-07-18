@@ -243,6 +243,15 @@ let helpOpen=false;
 let lang="es";
 let CASES=[],CASE_MESSAGES=[],currentCaseId=null;
 let PROFIT={by_client:[],total_usd:0};
+let BIBLIOTECA=[];
+
+// 2026-07-18 -- toFixed(4) sin indicar moneda se lee ambiguo (el punto
+// decimal se confunde con separador de miles) -- confirmado real por un
+// usuario que leyo "$1.8099" como "$54000" (era la proyeccion x30, ver
+// mas abajo, pero el formato tampoco ayudaba). USD siempre explicito,
+// 2 decimales salvo que el monto sea chico (< 1 centavo), donde 2
+// decimales redondearia a "$0.00" y ocultaria un gasto real.
+function fmtUsd(n){n=Number(n)||0;const decimals=Math.abs(n)<0.01&&n!==0?4:2;return "USD $"+n.toFixed(decimals);}
 
 const SHORT_CODE={"Juan":"SL","Lucas":"GS","Rafael":"SA","Camila":"RM","María":"CC","Elías":"CG","Clara":"BC","Santiago":"SH","Ariel":"CF","Gabriel":"OL","Bruno":"PC","Miguel":"GK","Valentina":"IX","Noa":"KA","Sofía":"WA","Theo":"GH"};
 let AGENT_CODE_BY_ID={}, USED_CODES=new Set();
@@ -324,6 +333,7 @@ async function bootstrapClient(meData){
   const usage=await api("/api/me/usage?period=month");
   CONSUMO={};
   usage.by_agent.forEach(row=>{const code=Object.keys(AGENTS).find(k=>AGENTS[k].id===row.agent_id);if(code)CONSUMO[code]={dia:row.spend_today_usd,mes:row.spend_period_usd};});
+  BIBLIOTECA=await api("/api/me/biblioteca");
 }
 
 async function refreshExecutions(){
@@ -467,6 +477,7 @@ function renderTree(){
   let h="";
   if(role==="cli"){
     h+=treeItem("c_tareas","🗒️","Mis tareas");
+    h+=treeItem("c_biblioteca","🖼️","Biblioteca");
     h+=treeItem("c_chat","💬","Hablar con un agente");
     h+=treeItem("c_agentes","🤖","Mis agentes");
     h+=treeItem("c_saldo","💳","Consumo y saldo");
@@ -678,10 +689,11 @@ function render(){renderTree();const V=document.getElementById("view");
   else if(current==="c_analitica"||current==="a_analitica"){title="Analítica";help="Cómo trabaja tu equipo de agentes: quién consume más y la actividad reciente, con datos reales de las ejecuciones.";
     const ags=role==="cli"?CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]):Object.keys(CONSUMO);
     const mx=Math.max.apply(null,ags.map(a=>CONSUMO[a].mes).concat([0.01]));
-    let barsA="";ags.forEach(a=>{const v=CONSUMO[a].mes;barsA+="<div style='margin-bottom:12px'><div style='display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px'><b>"+(AGENTS[a]?AGENTS[a].n:a)+"</b><span>$"+v.toFixed(4)+"</span></div><div style='height:10px;background:var(--soft);border-radius:6px;overflow:hidden'><div style='height:100%;width:"+Math.round(v/mx*100)+"%;background:linear-gradient(90deg,var(--brand2),var(--brand))'></div></div></div>";});
+    let barsA="";ags.forEach(a=>{const v=CONSUMO[a].mes;const desc=(AGENTS[a]&&AGENTS[a].d)?AGENTS[a].d.replace(/"/g,'&quot;'):'';barsA+="<div style='margin-bottom:12px'><div style='display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px'><b title=\""+desc+"\">"+(AGENTS[a]?AGENTS[a].n:a)+"</b><span>"+fmtUsd(v)+"</span></div><div style='height:10px;background:var(--soft);border-radius:6px;overflow:hidden'><div style='height:100%;width:"+Math.round(v/mx*100)+"%;background:linear-gradient(90deg,var(--brand2),var(--brand))'></div></div></div>";});
     let top="";let topv=-1;ags.forEach(a=>{if(CONSUMO[a].mes>topv){topv=CONSUMO[a].mes;top=a;}});
     const tot=ags.reduce((x,a)=>x+CONSUMO[a].mes,0);
-    body=`<div class="kpis"><div class="kpi"><div class="n">${ags.length}</div><div class="l">Agentes activos</div></div><div class="kpi"><div class="n">$${tot.toFixed(4)}</div><div class="l">Gasto (30 días)</div></div><div class="kpi"><div class="n" style="font-size:15px">${top&&AGENTS[top]?AGENTS[top].n:"-"}</div><div class="l">El que más consume</div></div><div class="kpi"><div class="n">${TASKS.filter(t=>t.st==="done").length}</div><div class="l">Tareas completadas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Consumo por agente (30 días)</h3>${barsA||'<p class="mini">Sin consumo todavía.</p>'}</div><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,6).map(taskRow).join("")||'<p class="mini">Sin ejecuciones todavía.</p>'}</div></div>`;}
+    const topDesc=(top&&AGENTS[top]&&AGENTS[top].d)?AGENTS[top].d:"";
+    body=`<div class="kpis"><div class="kpi"><div class="n">${ags.length}</div><div class="l">Agentes activos</div></div><div class="kpi"><div class="n">${fmtUsd(tot)}</div><div class="l">Gasto (30 días)</div></div><div class="kpi"><div class="n" style="font-size:15px" title="${topDesc.replace(/"/g,'&quot;')}">${top&&AGENTS[top]?AGENTS[top].n:"-"}</div><div class="l">El que más consume</div></div><div class="kpi"><div class="n">${TASKS.filter(t=>t.st==="done").length}</div><div class="l">Tareas completadas</div></div></div>${topDesc?`<div class="help" style="margin-bottom:14px">🔎 <b>${AGENTS[top].n}</b>: ${topDesc}</div>`:''}<div class="two"><div class="panel pad"><h3 style="margin-top:0">Consumo por agente (30 días)</h3>${barsA||'<p class="mini">Sin consumo todavía.</p>'}</div><div class="panel pad"><h3 style="margin-top:0">Ejecuciones recientes</h3>${TASKS.slice(0,6).map(taskRow).join("")||'<p class="mini">Sin ejecuciones todavía.</p>'}</div></div>`;}
 
   else if(current==="c_catalogo"||current==="a_catalogo"){title="Catálogo de agentes";help="Todo el equipo de IEA AGENTIQ. Contratá los que necesites por 1 mes (x2 = USD 78), 6 meses (x1.5 = USD 58.50/mes) o 1 año (USD 39/mes). Mínimo 1 mes.";
     const mine=role==="cli"?CLIENTS.find(c=>c.n===me).ag:[];
@@ -747,14 +759,24 @@ function render(){renderTree();const V=document.getElementById("view");
   /* CLIENTE */
   else if(current==="c_tareas"){const k=s=>myTasks.filter(t=>t.st===s).length;title="Mis tareas";help="Todo lo que le pediste a tus agentes y cómo va, paso a paso.";btn=`<button class="btn alt" onclick="nav('c_chat')" style="margin-right:8px">💬 Hablar con el agente</button><button class="btn" onclick="openNew()">➕ Nueva tarea</button>`;
     body=`<div class="kpis"><div class="kpi"><div class="n">${myTasks.length}</div><div class="l">Totales</div></div><div class="kpi"><div class="n" style="color:var(--brand)">${k('run')}</div><div class="l">En curso</div></div><div class="kpi"><div class="n" style="color:var(--amber)">${k('wait')}</div><div class="l">Tu OK</div></div><div class="kpi"><div class="n" style="color:var(--green)">${k('done')}</div><div class="l">Listas</div></div></div><div class="two"><div class="panel pad"><h3 style="margin-top:0">Tus tareas</h3>${myTasks.map(taskRow).join("")}</div><div class="panel pad"><h3 style="margin-top:0">¿Qué hace el agente?</h3>${feedFor(myTasks.find(t=>t.st==='run'||t.st==='wait')||myTasks[0])}</div></div>`;}
+  else if(current==="c_biblioteca"){title="Biblioteca";help="Todo lo que tus agentes generaron para la campaña: imágenes, videos y textos. «Borrador» significa que todavía nadie lo revisó — «Aprobado» ya está listo para publicar.";
+    const statusColor=s=>s==="aprobado"?"var(--green)":(s==="borrador"?"var(--amber)":"var(--muted)");
+    const cards=BIBLIOTECA.map(function(it){
+      let media="";
+      if(it.mime_type&&it.mime_type.indexOf("image/")===0&&it.url){media=`<img src="${it.url}" style="width:100%;height:180px;object-fit:cover;border-radius:8px 8px 0 0" loading="lazy">`;}
+      else if(it.mime_type&&it.mime_type.indexOf("video/")===0&&it.url){media=`<video src="${it.url}" controls preload="metadata" style="width:100%;height:180px;object-fit:cover;border-radius:8px 8px 0 0;background:#000"></video>`;}
+      else if(it.text_content){media=`<div style="height:180px;overflow:hidden;padding:12px;background:var(--soft);border-radius:8px 8px 0 0;font-size:12px;white-space:pre-wrap;color:var(--muted)">${it.text_content.slice(0,400)}</div>`;}
+      else{media=`<div style="height:180px;display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:8px 8px 0 0;font-size:32px">📄</div>`;}
+      return `<div class="panel" style="overflow:hidden">${media}<div style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><b style="font-size:13px">${it.title}</b><span class="mini" style="background:${statusColor(it.status)};color:#fff;padding:2px 8px;border-radius:100px;white-space:nowrap">${it.status}</span></div><div class="mini" style="margin-top:6px">${it.category}${it.subcategory?" · "+it.subcategory:""}</div>${it.agent_name?`<div class="mini" style="margin-top:2px;color:var(--brand)">Creado por ${it.agent_name}</div>`:""}</div></div>`;
+    }).join("");
+    body=`<div class="kpis"><div class="kpi"><div class="n">${BIBLIOTECA.length}</div><div class="l">Piezas totales</div></div><div class="kpi"><div class="n" style="color:var(--green)">${BIBLIOTECA.filter(i=>i.status==="aprobado").length}</div><div class="l">Aprobadas</div></div><div class="kpi"><div class="n" style="color:var(--amber)">${BIBLIOTECA.filter(i=>i.status==="borrador").length}</div><div class="l">En borrador</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">${cards||'<p class="mini">Todavía no hay nada generado.</p>'}</div>`;}
   else if(current==="c_agentes"){const mine=CLIENTS.find(c=>c.n===me).ag;title="Mis agentes";help="Los agentes que tenés contratados.";
     body=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${mine.map(a=>`<div class="panel pad"><div class="row"><div class="ag">${a.slice(0,2)}</div><div><b>${AGENTS[a].n}</b><div class="mini" style="color:var(--amber);font-weight:600">${AGENTS[a].orixá}</div></div></div><div class="mini" style="margin-top:8px">${AGENTS[a].d}</div>${AGENTS[a].caseMemory?`<button class="btn alt" style="margin-top:8px;padding:7px 12px;font-size:12px" onclick="navCases('${a}')">📁 Ver casos</button>`:''}</div>`).join("")}</div>`;}
-  else if(current==="c_saldo"){title="Consumo y saldo";help="Cuánto gastó cada agente hoy y en los últimos 30 días, con datos reales de las ejecuciones. La proyección estima el total a fin de mes si se mantiene el ritmo de hoy.";
+  else if(current==="c_saldo"){title="Consumo y saldo";help="Cuánto gastó cada agente hoy y en los últimos 30 días, con datos reales de las ejecuciones (en USD). Un gasto alto un día puntual (por ejemplo, cuando Cosmos arma el calendario editorial) no se repite todos los días.";
     const ags=CLIENTS.find(c=>c.n===me).ag.filter(a=>CONSUMO[a]);
     let sumDia=0,sumMes=0,rows="";
-    ags.forEach(a=>{sumDia+=CONSUMO[a].dia;sumMes+=CONSUMO[a].mes;rows+="<tr><td><div class='row'><div class='ag'>"+a.slice(0,2)+"</div><b>"+(AGENTS[a]?AGENTS[a].n:a)+"</b></div></td><td>$"+CONSUMO[a].dia.toFixed(4)+"</td><td>$"+CONSUMO[a].mes.toFixed(4)+"</td><td><b>~$"+(CONSUMO[a].dia*30).toFixed(4)+"</b></td></tr>";});
-    const proy=sumDia*30;
-    body=`<div class="kpis"><div class="kpi"><div class="n">$${sumDia.toFixed(4)}</div><div class="l">Gasto hoy</div></div><div class="kpi"><div class="n">$${sumMes.toFixed(4)}</div><div class="l">Gasto (30 días)</div></div><div class="kpi"><div class="n" style="color:var(--amber)">~$${proy.toFixed(4)}</div><div class="l">Proyección fin de mes</div></div></div><div class="panel"><table><thead><tr><th>Agente</th><th>Hoy</th><th>Últimos 30 días</th><th>Proyección mensual</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="mini" style="text-align:center;padding:20px">Todavía no hay consumo registrado.</td></tr>'}<tr style="background:var(--soft)"><td><b>Total del grupo</b></td><td><b>$${sumDia.toFixed(4)}</b></td><td><b>$${sumMes.toFixed(4)}</b></td><td><b>~$${proy.toFixed(4)}</b></td></tr></tbody></table></div>`;}
+    ags.forEach(a=>{sumDia+=CONSUMO[a].dia;sumMes+=CONSUMO[a].mes;const desc=(AGENTS[a]&&AGENTS[a].d)?AGENTS[a].d.replace(/"/g,'&quot;'):'';rows+="<tr><td><div class='row'><div class='ag'>"+a.slice(0,2)+"</div><b title=\""+desc+"\">"+(AGENTS[a]?AGENTS[a].n:a)+"</b></div></td><td>"+fmtUsd(CONSUMO[a].dia)+"</td><td>"+fmtUsd(CONSUMO[a].mes)+"</td></tr>";});
+    body=`<div class="kpis"><div class="kpi"><div class="n">${fmtUsd(sumDia)}</div><div class="l">Gasto hoy</div></div><div class="kpi"><div class="n">${fmtUsd(sumMes)}</div><div class="l">Gasto real, últimos 30 días</div></div></div><div class="panel"><table><thead><tr><th>Agente</th><th>Hoy</th><th>Últimos 30 días</th></tr></thead><tbody>${rows||'<tr><td colspan="3" class="mini" style="text-align:center;padding:20px">Todavía no hay consumo registrado.</td></tr>'}<tr style="background:var(--soft)"><td><b>Total del grupo</b></td><td><b>${fmtUsd(sumDia)}</b></td><td><b>${fmtUsd(sumMes)}</b></td></tr></tbody></table></div>`;}
 
   V.innerHTML=tr(`<div class="bar"><div><div class="crumb">${crumb||'&nbsp;'}</div><h1>${title}</h1></div><div style="display:flex;gap:8px;align-items:center"><button class="btn alt" onclick="setLang('es')" style="${lang==='es'?'border-color:var(--brand);color:var(--brand)':''}">ES</button><button class="btn alt" onclick="setLang('pt')" style="${lang==='pt'?'border-color:var(--brand);color:var(--brand)':''}">PT</button><button class="btn alt" onclick="toggleHelp()">✨ Ayuda</button>${btn}</div></div><div class="content">${help?`<div class="help">${help}</div>`:''}${body}</div>`);renderHelp();
 }
