@@ -137,3 +137,97 @@ class InstagramConnector(SocialConnector):
         if not result.get("id"):
             raise SocialProviderError(f"La publicación no devolvió un id válido: {result}")
         return result
+
+    def publish_carousel(self, client_id: str, assets: list[LibraryAsset], caption: str) -> dict:
+        """Post multi-imagen deslizable (carrusel) -- 2026-07-19, agregado para el carrusel
+        de apertura del Dia 1 de EALumina. Esquema real confirmado contra Composio antes de
+        escribir esto (composio.tools.get_raw_composio_tools(['INSTAGRAM_POST_IG_USER_MEDIA'])):
+        1) crear un contenedor hijo por imagen con is_carousel_item=true (sin caption --
+        el caption va SOLO en el contenedor padre); 2) crear un contenedor padre con
+        media_type=CAROUSEL y children=[ids de los hijos]; 3) publicar el padre con la
+        misma accion PUBLISH_CONTAINER_ACTION que un post simple.
+
+        No pasa por el flujo formal de SocialPublication (revision_legal -> aprobado ->
+        en_cola) -- deliberado, no un descuido: es un caso puntual de un solo asset este
+        dia (el carrusel del Dia 1), con contenido ya revisado a mano por el cliente
+        durante toda esta sesion. Generalizar el flujo de aprobacion a multiples assets
+        por publicacion queda para cuando haga falta de nuevo, no antes."""
+        if not (2 <= len(assets) <= 10):
+            raise PublishValidationError(f"Un carrusel necesita entre 2 y 10 imágenes (recibidas: {len(assets)}).")
+        for asset in assets:
+            if asset.file_type != "imagen" or not asset.storage_key:
+                raise PublishValidationError(f"'{asset.title}' no es una imagen con archivo real, no puede ir en un carrusel.")
+        if not caption or not caption.strip():
+            raise PublishValidationError("Falta el caption del carrusel.")
+
+        media_urls = []
+        for asset in assets:
+            media_url = get_asset_url(asset.storage_key)
+            if urlparse(media_url).query:
+                raise PublishValidationError(
+                    f"La URL de '{asset.title}' tiene parámetros de consulta (presigned) — Instagram la rechaza. "
+                    "Configurá LIBRARY_S3_PUBLIC_BASE_URL con un bucket público real."
+                )
+            media_urls.append(media_url)
+
+        ig_user_id = self._resolve_ig_user_id(client_id)
+
+        child_ids = []
+        for media_url in media_urls:
+            child = self.provider.call_action(
+                client_id,
+                CREATE_CONTAINER_ACTION,
+                {"ig_user_id": ig_user_id, "image_url": media_url, "is_carousel_item": True},
+            )
+            child_id = child.get("id")
+            if not child_id:
+                raise SocialProviderError(f"No se pudo crear un contenedor hijo del carrusel: {child}")
+            child_ids.append(child_id)
+
+        parent = self.provider.call_action(
+            client_id,
+            CREATE_CONTAINER_ACTION,
+            {"ig_user_id": ig_user_id, "media_type": "CAROUSEL", "children": child_ids, "caption": caption},
+        )
+        parent_id = parent.get("id")
+        if not parent_id:
+            raise SocialProviderError(f"No se pudo crear el contenedor padre del carrusel: {parent}")
+
+        result = self.provider.call_action(
+            client_id, PUBLISH_CONTAINER_ACTION, {"ig_user_id": ig_user_id, "creation_id": parent_id},
+        )
+        if not result.get("id"):
+            raise SocialProviderError(f"La publicación del carrusel no devolvió un id válido: {result}")
+        return result
+
+    def publish_story(self, client_id: str, asset: LibraryAsset) -> dict:
+        """Story individual (24hs, no carrusel) -- 2026-07-19, agregado para la secuencia de
+        3 stories del Dia 2 de EALumina. media_type='STORIES' confirmado como valor real y
+        valido del enum contra el esquema de Composio (junto a REELS/CAROUSEL). A diferencia
+        de publish(), nunca manda caption -- las stories de Instagram no lo muestran."""
+        if asset.file_type != "imagen" or not asset.storage_key:
+            raise PublishValidationError(f"'{asset.title}' no es una imagen con archivo real, no puede ir como story.")
+
+        media_url = get_asset_url(asset.storage_key)
+        if urlparse(media_url).query:
+            raise PublishValidationError(
+                f"La URL de '{asset.title}' tiene parámetros de consulta (presigned) — Instagram la rechaza."
+            )
+
+        ig_user_id = self._resolve_ig_user_id(client_id)
+
+        container = self.provider.call_action(
+            client_id,
+            CREATE_CONTAINER_ACTION,
+            {"ig_user_id": ig_user_id, "media_type": "STORIES", "image_url": media_url},
+        )
+        container_id = container.get("id")
+        if not container_id:
+            raise SocialProviderError(f"No se pudo crear el contenedor de la story: {container}")
+
+        result = self.provider.call_action(
+            client_id, PUBLISH_CONTAINER_ACTION, {"ig_user_id": ig_user_id, "creation_id": container_id},
+        )
+        if not result.get("id"):
+            raise SocialProviderError(f"La publicación de la story no devolvió un id válido: {result}")
+        return result
