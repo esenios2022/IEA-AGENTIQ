@@ -64,3 +64,36 @@ class ComposioSocialProvider(SocialProvider):
         if envelope.get("successful") is False or envelope.get("error"):
             raise SocialProviderError(f"Composio action {action_slug} devolvió error: {envelope.get('error')}")
         return envelope.get("data") or {}
+
+    def proxy(self, user_id: str, platform: str, endpoint: str, method: str, body: dict | None = None) -> dict[str, Any]:
+        """Llamada autenticada directa a la API real del proveedor (ej. graph.instagram.com)
+        usando el access token que Composio ya tiene guardado para esta conexion, sin que
+        el token pase nunca por nuestro codigo. Necesaria para acciones que Composio no
+        expone como INSTAGRAM_* predefinida (ej. responder un comentario o mandar un DM
+        privado) — verificado real contra la cuenta de eAlumina (2026-07-24): Business
+        Discovery devolvio un error real de Meta a traves de este mismo mecanismo, prueba
+        de que la llamada llega de verdad a graph.instagram.com."""
+        try:
+            composio = get_composio()
+            accounts = composio.toolkits.connected_accounts.list(
+                user_ids=[user_id], toolkit_slugs=[platform.upper()], statuses=["ACTIVE"],
+            )
+            items = getattr(accounts, "items", None) or []
+            if not items:
+                raise SocialProviderError(f"No hay conexion activa de {platform} para {user_id}")
+            connected_account_id = items[0].id
+            response = composio.tools.proxy(
+                endpoint=endpoint,
+                method=method,  # type: ignore[arg-type]
+                body=body,
+                connected_account_id=connected_account_id,
+            )
+        except SocialProviderError:
+            raise
+        except Exception as exc:
+            raise SocialProviderError(f"Composio proxy {method} {endpoint} falló: {exc}") from exc
+
+        data = getattr(response, "data", None) or {}
+        if isinstance(data, dict) and "error" in data:
+            raise SocialProviderError(f"Proxy {method} {endpoint} devolvió error de Meta: {data['error']}")
+        return data

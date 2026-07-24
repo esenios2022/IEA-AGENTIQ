@@ -8,9 +8,21 @@ from sqlalchemy import select
 from src.agent_service import run as run_agent_service
 from src.database import SessionLocal
 from src.editorial_calendar import roll_editorial_calendar
+from src.instagram_comment_automation import poll_recent_comments
 from src.models import Agent, Client, ClientAgent
 
 CHECK_INTERVAL_SECONDS = 300
+# Mas seguido que CHECK_INTERVAL_SECONDS a proposito -- la ventana util para
+# responder un comentario (antes de que la persona se vaya de Instagram) es
+# de minutos, no de 5 en 5 minutos como el resto de los jobs recurrentes.
+INSTAGRAM_COMMENT_POLL_SECONDS = 90
+
+
+def _poll_instagram_comments() -> None:
+    try:
+        poll_recent_comments()
+    except Exception as exc:
+        print(f"[scheduler] poll_recent_comments fallo: {exc}", flush=True)
 
 FREQUENCY_DELTAS = {
     "daily": timedelta(days=1),
@@ -67,7 +79,7 @@ def _run_due_editorial_calendars() -> None:
 
         for client in due:
             try:
-                roll_editorial_calendar(db, client.id)
+                roll_editorial_calendar(db, client.id, auto_provider=True)
                 client.cosmos_calendar_last_error = None
             except Exception as exc:
                 client.cosmos_calendar_last_error = f"Error: {exc}"
@@ -84,5 +96,6 @@ def start_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(_run_due_schedules, "interval", seconds=CHECK_INTERVAL_SECONDS)
     scheduler.add_job(_run_due_editorial_calendars, "interval", seconds=CHECK_INTERVAL_SECONDS)
+    scheduler.add_job(_poll_instagram_comments, "interval", seconds=INSTAGRAM_COMMENT_POLL_SECONDS)
     scheduler.start()
     return scheduler

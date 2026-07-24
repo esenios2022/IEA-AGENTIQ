@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     library_s3_secret_access_key: str | None = None
     library_s3_region: str = "auto"
     library_s3_public_base_url: str | None = None  # si no esta seteado, se usan presigned URLs
+    # Webhook de comentarios de Instagram (respuesta publica + DM privado por
+    # palabra clave) — ver POST/GET /webhooks/instagram en src/main.py.
+    instagram_webhook_verify_token: str | None = None
+    meta_app_secret: str | None = None
+    instagram_dm_trigger_keyword: str = "QUERO"
+    instagram_dm_reply_text: str | None = None
+    instagram_comment_reply_text: str = "Te mandei por mensagem privada! 📩 Confere sua caixa de entrada."
 
 
 settings = Settings()

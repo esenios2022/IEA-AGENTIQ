@@ -276,3 +276,22 @@ class SocialPublication(Base):
     publish_error: Mapped[str | None] = mapped_column(Text, nullable=True)  # motivo si connector.publish() o una validacion previa fallo
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class InstagramWebhookEvent(Base):
+    """Deduplicacion real de comentarios ya procesados por el webhook de
+    Instagram (ver POST /webhooks/instagram en src/main.py). Meta reintenta
+    el envio del webhook si el servidor tarda mas de ~3s en responder 200 —
+    sin esto, un mismo comentario dispararia el DM privado mas de una vez."""
+
+    __tablename__ = "instagram_webhook_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comment_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    media_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    commenter_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    matched_keyword: Mapped[bool] = mapped_column(Boolean, default=False)
+    public_reply_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    dm_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -16,7 +18,7 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -36,7 +38,7 @@ from src.config import settings
 from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
-from src import editorial_calendar, library, library_storage, marketing_pipeline, social_publishing, strategic_intelligence
+from src import editorial_calendar, instagram_comment_automation, library, library_storage, marketing_pipeline, social_publishing, strategic_intelligence
 from src.connectors.base import PublishValidationError
 from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
@@ -586,6 +588,47 @@ def publish_publication_route(
     if publication is None:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
     return RedirectResponse(url="/admin/publicaciones?published=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --- Webhook de comentarios de Instagram: camino para cuando tengamos una
+# App de Meta propia con webhook entrante real (ver
+# src/instagram_comment_automation.py — hoy la automatizacion real corre por
+# POLLING desde scheduler.py, porque Composio no tiene ningun trigger de
+# Instagram; este endpoint queda listo para el dia que eso cambie, sin tocar
+# la logica de matching/respuesta).
+
+
+@app.get("/webhooks/instagram")
+def instagram_webhook_verify(request: Request):
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge") or ""
+    if (
+        mode == "subscribe"
+        and token
+        and settings.instagram_webhook_verify_token
+        and compare_digest(token, settings.instagram_webhook_verify_token)
+    ):
+        return PlainTextResponse(challenge)
+    raise HTTPException(status_code=403, detail="Verificación de webhook fallida")
+
+
+@app.post("/webhooks/instagram")
+async def instagram_webhook_receive(request: Request, background_tasks: BackgroundTasks):
+    raw_body = await request.body()
+    if settings.meta_app_secret:
+        signature = request.headers.get("x-hub-signature-256", "")
+        expected = "sha256=" + hmac.new(
+            settings.meta_app_secret.encode("utf-8"), raw_body, hashlib.sha256
+        ).hexdigest()
+        if not compare_digest(signature, expected):
+            raise HTTPException(status_code=403, detail="Firma X-Hub-Signature-256 inválida")
+    try:
+        payload = json.loads(raw_body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Payload no es JSON válido")
+    background_tasks.add_task(instagram_comment_automation.process_webhook_payload, payload)
+    return {"status": "ok"}
 
 
 @app.post("/admin/publicaciones/test-publish")
@@ -1511,7 +1554,7 @@ def generate_editorial_calendar_route(
     Cosmos sobre 13 semanas (90 días) y guarda el calendario editorial en
     la Biblioteca del cliente, listo para que Marketing lo reutilice."""
     try:
-        asset = editorial_calendar.generate_editorial_calendar(db, client_id)
+        asset = editorial_calendar.generate_editorial_calendar(db, client_id, auto_provider=True)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
