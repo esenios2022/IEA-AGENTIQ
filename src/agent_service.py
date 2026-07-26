@@ -20,7 +20,8 @@ from src.cost import BudgetDecision, check_budget, record_usage
 from src.crew_runtime import run_crew
 from src.library import find_recent_asset
 from src.llm_pricing import TIER_MODELS
-from src.models import Agent, LibraryAsset, ResponseCache
+from src.models import Agent, Client, LibraryAsset, ResponseCache
+from src.provider_routing import select_provider
 from src.tiering import select_tier
 
 # Margen hacia atrás sobre el reloj de pared -- evita perder por milisegundos
@@ -92,16 +93,75 @@ def run(
     tier_override: str | None = None,
     platform_cost: bool = False,
     composio_user_id: str | None = None,
+    auto_provider: bool = False,
 ) -> RunOutcome:
     definition = agent.definition or {}
+    has_tools = bool(definition.get("tools"))
+
+    # 2026-07-19 — guard real: nada impedía antes pasar gemini_key para un
+    # agente con tools configuradas, lo que lo mandaba a Gemini (sin
+    # tool-calling) y descartaba sus herramientas en silencio, sin error.
+    if gemini_key and has_tools:
+        raise ValueError(
+            f"«{agent.name}» tiene herramientas configuradas; no puede enrutarse a "
+            "Gemini (el ejecutor de Gemini no soporta tool-calling)."
+        )
+
+    # auto_provider: decisión dinámica solo para agentes sin tools (hoy,
+    # Departamento de Inteligencia Estratégica y Contextual / Cosmos) — ver
+    # src/provider_routing.py. Nunca pisa un gemini_key ya explícito, y
+    # nunca se activa si el agente tiene tools (select_provider ya lo filtra,
+    # pero el guard de arriba cubre además cualquier gemini_key explícito).
+    if auto_provider and gemini_key is None and not has_tools:
+        client_for_routing = db.get(Client, client_id) if client_id else None
+        decision = select_provider(agent, client_for_routing)
+        if decision.provider == "gemini":
+            gemini_key = decision.gemini_key
+            platform_cost = decision.platform_cost
+        elif decision.provider == "ollama":
+            # 2026-07-19 -- Ollama local, costo real $0 (cómputo local, no
+            # API paga: platform_cost nunca aplica acá). select_provider()
+            # ya confirmó con un health check que respondía, pero puede
+            # caerse justo entre el check y esta llamada real -- si eso pasa,
+            # OllamaUnavailableError degrada al flujo normal de Claude de
+            # abajo en vez de romper la corrida.
+            from src.ollama_executor import OllamaUnavailableError, run_ollama
+
+            ollama_wall_started_at = datetime.utcnow()
+            ollama_started_at = time.perf_counter()
+            try:
+                ollama_result = run_ollama(agent, extra_input or "", history=history)
+            except OllamaUnavailableError:
+                ollama_result = None
+            if ollama_result is not None:
+                content_asset = _find_asset_since(db, agent.id, client_id, ollama_wall_started_at)
+                record_usage(
+                    db,
+                    agent_id=agent.id,
+                    client_id=client_id,
+                    execution_id=uuid.uuid4(),
+                    model=ollama_result.model,
+                    tier="ollama-local",
+                    provider="ollama",
+                    input_tokens=ollama_result.input_tokens,
+                    output_tokens=ollama_result.output_tokens,
+                    success=True,
+                    input_text=extra_input,
+                    result_text=ollama_result.text,
+                    duration_ms=(time.perf_counter() - ollama_started_at) * 1000,
+                    platform_cost=False,
+                    content_asset_id=content_asset.id if content_asset else None,
+                )
+                return RunOutcome(result=ollama_result.text, cost_usd=0.0, tier_used="ollama-local", cached=False)
+            # ollama_result is None -> sigue el flujo normal de abajo (Claude)
 
     # Ruta Gemini: por defecto asume BYOK (la key es del cliente, ver
     # client.config['api_keys']['gemini'] en main.py) -> platform_cost=False,
     # cost_usd=0, el gasto real lo paga la cuenta del cliente. Los llamadores
-    # que usan la key PROPIA de IEA-AGENTIQ (ej. Cosmos vía editorial_calendar.py,
-    # confirmado 2026-07-14 por el usuario) deben pasar platform_cost=True
+    # que usan la key PROPIA de IEA-AGENTIQ deben pasar platform_cost=True
     # explícitamente para que el costo real entre al cost-tracking de la
-    # plataforma en vez de quedar invisible en $0.
+    # plataforma en vez de quedar invisible en $0. (auto_provider solo
+    # produce BYOK, platform_cost=False siempre — ver provider_routing.py.)
     if gemini_key:
         from src.gemini_executor import run_gemini
         gemini_wall_started_at = datetime.utcnow()

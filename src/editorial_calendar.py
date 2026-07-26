@@ -348,6 +348,7 @@ def _run_specialists(
     tier_override: str | None = None,
     gemini_key: str | None = None,
     platform_cost: bool = True,
+    auto_provider: bool = False,
 ) -> tuple[list[tuple[str, str]], set[str]]:
     sections: list[tuple[str, str]] = []
     sections_ran: set[str] = set()
@@ -368,6 +369,7 @@ def _run_specialists(
         outcome = run_agent_service(
             db, agent, prompt, user_id=str(client_id), client_id=client.id,
             tier_override=tier_override, gemini_key=gemini_key, platform_cost=platform_cost,
+            auto_provider=auto_provider,
         )
         sections.append((SPECIALIST_LABELS[key], outcome.result))
         sections_ran.add(key)
@@ -384,6 +386,7 @@ def _run_ancestral(
     tier_override: str | None = None,
     gemini_key: str | None = None,
     platform_cost: bool = True,
+    auto_provider: bool = False,
 ) -> bool:
     if not ancestral_modules:
         return False
@@ -398,6 +401,7 @@ def _run_ancestral(
     outcome = run_agent_service(
         db, agent, prompt, user_id=str(client_id), client_id=client.id,
         tier_override=tier_override, gemini_key=gemini_key, platform_cost=platform_cost,
+        auto_provider=auto_provider,
     )
     sections.append((SPECIALIST_LABELS["ancestral"], outcome.result))
     return True
@@ -422,6 +426,7 @@ def _run_coordinador_batches(
     tier_override: str | None = None,
     gemini_key: str | None = None,
     platform_cost: bool = True,
+    auto_provider: bool = False,
 ) -> list[dict]:
     """Hallazgo real de producción: el Coordinador a veces ignora
     COORDINADOR_WEEK_TEMPLATE y vuelve a su formato de 7 preguntas fijado en
@@ -443,6 +448,7 @@ def _run_coordinador_batches(
             coord_outcome = run_agent_service(
                 db, coordinador, coord_prompt, user_id=str(client_id), client_id=client.id,
                 tier_override=tier_override, gemini_key=gemini_key, platform_cost=platform_cost,
+                auto_provider=auto_provider,
             )
             batch_weeks = _parse_coordinador_weeks(coord_outcome.result, dates)
             if len(batch_weeks) >= len(batch):
@@ -491,6 +497,7 @@ def generate_editorial_calendar(
     tier_override: str | None = None,
     gemini_key: str | None = None,
     platform_cost: bool = True,
+    auto_provider: bool = False,
 ) -> LibraryAsset:
     """Cold start: genera un calendario nuevo de `weeks` semanas completas.
     Usado cuando el cliente no tiene ningún calendario vigente todavía, o
@@ -498,12 +505,16 @@ def generate_editorial_calendar(
     ninguna semana útil. `tier_override` (ej. "economy") fuerza el tier de
     TODAS las llamadas — pensado para validar con saldo real limitado, ver
     src/agent_service.py::run(). `gemini_key` enruta las 9 llamadas de
-    Cosmos a Gemini en vez de Claude — Cosmos no usa herramientas, así que
-    el executor de Gemini (sin tool-calling) alcanza sin cambios.
-    `platform_cost=True` (default) asume que `gemini_key` es la cuenta
-    propia de IEA-AGENTIQ (confirmado 2026-07-14) -> el costo real entra
-    al cost-tracking de la plataforma; pasar False solo si algún día
-    Cosmos corre con una key BYOK de un cliente específico."""
+    Cosmos a Gemini en vez de Claude de forma explícita — Cosmos no usa
+    herramientas, así que el executor de Gemini (sin tool-calling) alcanza
+    sin cambios. `auto_provider=True` (2026-07-19, ver
+    src/provider_routing.py) reemplaza la necesidad de pasar `gemini_key` a
+    mano: si el cliente cargó su propia key de Gemini en el admin, Cosmos
+    corre gratis para la plataforma (BYOK, platform_cost=False); si no,
+    cae a Claude economy sin cambios — nunca usa la key propia de
+    IEA-AGENTIQ, porque al precio real de Gemini sale más caro que Claude,
+    no más barato (ver docstring de select_provider). `platform_cost=True`
+    (default) solo aplica si se pasa `gemini_key` explícito a mano."""
     client = db.get(Client, client_id)
     if client is None:
         raise ValueError("Cliente no encontrado.")
@@ -513,12 +524,13 @@ def generate_editorial_calendar(
     anchor_dates = _week_anchor_dates(today, weeks)
 
     sections, sections_ran = _run_specialists(
-        db, client, client_id, enabled_sources, anchor_dates, tier_override, gemini_key, platform_cost
+        db, client, client_id, enabled_sources, anchor_dates, tier_override, gemini_key, platform_cost, auto_provider
     )
 
     ancestral_modules = (client.config or {}).get("ancestral_modules") or []
     ancestral_ran = _run_ancestral(
-        db, client, client_id, ancestral_modules, anchor_dates, sections, tier_override, gemini_key, platform_cost
+        db, client, client_id, ancestral_modules, anchor_dates, sections, tier_override, gemini_key, platform_cost,
+        auto_provider,
     )
 
     if not sections:
@@ -529,7 +541,8 @@ def generate_editorial_calendar(
         raise RuntimeError(f"No se encontró el Coordinador Cosmos ({COORDINADOR_AGENT_CODE}).")
 
     parsed_weeks = _run_coordinador_batches(
-        db, coordinador, sections, client, anchor_dates, client_id, tier_override, gemini_key, platform_cost
+        db, coordinador, sections, client, anchor_dates, client_id, tier_override, gemini_key, platform_cost,
+        auto_provider,
     )
     confidence = _confidence_table(enabled_sources, sections_ran, ancestral_modules, ancestral_ran)
 
@@ -571,16 +584,19 @@ def roll_editorial_calendar(
     tier_override: str | None = None,
     gemini_key: str | None = None,
     platform_cost: bool = True,
+    auto_provider: bool = False,
 ) -> LibraryAsset:
     """Calendario deslizante (FASE 3.2A): descarta las semanas ya vencidas
     del calendario vigente, renumera las que quedan y genera solo las
     semanas nuevas necesarias para volver a completar `weeks` — llamadas
     mucho más chicas que un cold start completo. Usado por el scheduler
-    recurrente (src/scheduler.py)."""
+    recurrente (src/scheduler.py), que pasa `auto_provider=True` — ver
+    docstring de generate_editorial_calendar."""
     current = _get_current_calendar(db, client_id)
     if current is None or not (current.structured_content or {}).get("weeks"):
         return generate_editorial_calendar(
-            db, client_id, weeks=weeks, tier_override=tier_override, gemini_key=gemini_key, platform_cost=platform_cost
+            db, client_id, weeks=weeks, tier_override=tier_override, gemini_key=gemini_key,
+            platform_cost=platform_cost, auto_provider=auto_provider,
         )
 
     existing_weeks = current.structured_content["weeks"]
@@ -593,7 +609,8 @@ def roll_editorial_calendar(
     if weeks_to_advance >= len(existing_weeks):
         # El calendario vigente ya no tiene ninguna semana util - equivale a un cold start.
         return generate_editorial_calendar(
-            db, client_id, weeks=weeks, tier_override=tier_override, gemini_key=gemini_key, platform_cost=platform_cost
+            db, client_id, weeks=weeks, tier_override=tier_override, gemini_key=gemini_key,
+            platform_cost=platform_cost, auto_provider=auto_provider,
         )
 
     client = db.get(Client, client_id)
@@ -611,12 +628,13 @@ def roll_editorial_calendar(
 
     enabled_sources = (client.config or {}).get("intelligence_sources") or DEFAULT_SOURCES
     sections, sections_ran = _run_specialists(
-        db, client, client_id, enabled_sources, new_dates, tier_override, gemini_key, platform_cost
+        db, client, client_id, enabled_sources, new_dates, tier_override, gemini_key, platform_cost, auto_provider
     )
 
     ancestral_modules = (client.config or {}).get("ancestral_modules") or []
     ancestral_ran = _run_ancestral(
-        db, client, client_id, ancestral_modules, new_dates, sections, tier_override, gemini_key, platform_cost
+        db, client, client_id, ancestral_modules, new_dates, sections, tier_override, gemini_key, platform_cost,
+        auto_provider,
     )
 
     if not sections:
@@ -627,7 +645,8 @@ def roll_editorial_calendar(
         raise RuntimeError(f"No se encontró el Coordinador Cosmos ({COORDINADOR_AGENT_CODE}).")
 
     new_weeks = _run_coordinador_batches(
-        db, coordinador, sections, client, new_dates, client_id, tier_override, gemini_key, platform_cost
+        db, coordinador, sections, client, new_dates, client_id, tier_override, gemini_key, platform_cost,
+        auto_provider,
     )
     offset = len(carried)
     for week in new_weeks:

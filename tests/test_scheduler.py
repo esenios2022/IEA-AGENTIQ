@@ -17,7 +17,10 @@ def test_run_due_editorial_calendars_rolls_due_clients():
          patch("src.scheduler.roll_editorial_calendar") as roll_mock:
         scheduler._run_due_editorial_calendars()
 
-    roll_mock.assert_called_once_with(db, due_client.id)
+    # 2026-07-19 — el scheduler pasa auto_provider=True: los agentes sin
+    # tools del Departamento Cosmos se enrutan solos a Gemini BYOK cuando el
+    # cliente tiene su propia key guardada, ver src/provider_routing.py.
+    roll_mock.assert_called_once_with(db, due_client.id, auto_provider=True)
     assert due_client.cosmos_calendar_last_error is None
     assert due_client.cosmos_calendar_last_run_at is not None
     assert due_client.cosmos_calendar_next_run_at is not None

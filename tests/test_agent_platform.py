@@ -46,6 +46,42 @@ def test_agent(db):
     db.commit()
 
 
+@pytest.fixture
+def tool_agent(db):
+    """Contraparte de test_agent CON herramientas configuradas — representa
+    a los 38 de 46 agentes reales que no pueden enrutarse a Gemini
+    (ver src/provider_routing.py)."""
+    agent = Agent(
+        id=uuid.uuid4(),
+        name="TestToolAgent",
+        role="Tester con herramientas",
+        description="Agente de prueba con tools",
+        definition={
+            "instructions": {"system_prompt": "Sos un agente de prueba con herramientas."},
+            "tasks": [{"description": "Decí hola", "expected_output": "Un saludo"}],
+            # Forma real post-sync_master_agents (ver src/agent_seed.py::_map_tool):
+            # {"name": ...}, no el string crudo "composio_googlesheets" de
+            # agents_config.json -- _matching_tools() en tool_assembly.py espera
+            # spec.get("name"), no un string. "library_search" se arma en
+            # Python puro (LibrarySearchTool), sin llamada de red real, a
+            # diferencia de un tool "composio" -- mantiene el test rápido y
+            # determinístico igual que el resto de la suite.
+            "tools": [{"name": "library_search"}],
+            "llm_routing": {"default_tier": "economy"},
+        },
+        daily_budget_usd=0.0002,
+        status="active",
+    )
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+    yield agent
+    db.query(UsageLog).filter(UsageLog.agent_id == agent.id).delete()
+    db.query(ResponseCache).filter(ResponseCache.agent_id == agent.id).delete()
+    db.delete(agent)
+    db.commit()
+
+
 def _fake_response(text="Hola!", input_tokens=50, output_tokens=20):
     resp = MagicMock()
     resp.stop_reason = "end_turn"
@@ -174,6 +210,185 @@ def test_agent_service_gemini_platform_key_records_real_cost(db, test_agent):
     log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.tier == "gemini-platform").one()
     assert log.provider == "gemini"
     assert float(log.cost_usd) == pytest.approx((1000 * 1.50 + 1000 * 9.00) / 1_000_000)
+
+
+def test_agent_service_gemini_key_for_tool_agent_raises_instead_of_dropping_tools(db, tool_agent):
+    """2026-07-19 — antes, pasar gemini_key para un agente CON herramientas
+    lo mandaba a Gemini (sin tool-calling) y descartaba sus tools en
+    silencio, sin ningún error. Ahora es un ValueError explícito."""
+    import src.agent_service as agent_service
+
+    with pytest.raises(ValueError, match="herramientas"):
+        agent_service.run(db, tool_agent, extra_input="hola", user_id="tester", gemini_key="fake-key")
+
+
+def test_agent_service_auto_provider_routes_toolless_agent_to_byok_gemini(db, test_agent):
+    """2026-07-19 — Departamento Cosmos (agentes sin tools): con
+    auto_provider=True y el cliente con su propia key de Gemini guardada,
+    la corrida se enruta sola a Gemini BYOK -- costo $0 real para la
+    plataforma, sin que el llamador tenga que pasar gemini_key a mano."""
+    import src.agent_service as agent_service
+    from src.exec_result import ExecResult
+
+    client = Client(
+        name="Cliente con key de Gemini",
+        email=f"auto-provider-byok-{uuid.uuid4()}@test.local",
+        password_hash="x",
+        config={"api_keys": {"gemini": "clients-own-gemini-key"}},
+    )
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    fake_exec_result = ExecResult(text="Respuesta real de Gemini.", model="gemini-flash-latest", input_tokens=20, output_tokens=180)
+    try:
+        with patch("src.gemini_executor.run_gemini", return_value=fake_exec_result) as mock_run_gemini:
+            outcome = agent_service.run(
+                db, test_agent, extra_input="hola", user_id="tester", client_id=client.id, auto_provider=True,
+            )
+        mock_run_gemini.assert_called_once_with(test_agent, "hola", "clients-own-gemini-key", history=None)
+        assert outcome.tier_used == "gemini-byok"
+        assert outcome.cost_usd == 0.0
+
+        log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.tier == "gemini-byok").one()
+        assert log.provider == "gemini"
+        assert float(log.cost_usd) == 0.0
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
+
+
+def test_agent_service_auto_provider_falls_back_to_claude_without_client_key_or_ollama(db, test_agent):
+    """2026-07-19 — mismo agente sin tools, cliente sin key de Gemini Y sin
+    Ollama disponible (mockeado False acá para no depender de si esta
+    máquina puntual tiene Ollama corriendo o no -- ver
+    test_agent_service_auto_provider_routes_toolless_agent_to_ollama_when_no_gemini_key
+    para el caso real): auto_provider=True no debe inventar ningún costo
+    nuevo, cae al tier de Claude exactamente como si auto_provider nunca
+    hubiera existido."""
+    import src.agent_service as agent_service
+
+    client = Client(name="Cliente sin key de Gemini", email=f"auto-provider-no-key-{uuid.uuid4()}@test.local", password_hash="x")
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    try:
+        with patch("src.provider_routing.is_ollama_reachable", return_value=False), \
+             patch("src.agent_executor.Anthropic") as mock_anthropic:
+            mock_anthropic.return_value.messages.create.return_value = _fake_response()
+            outcome = agent_service.run(
+                db, test_agent, extra_input="hola", user_id="tester", client_id=client.id, auto_provider=True,
+            )
+        assert outcome.tier_used == "economy"
+
+        log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.client_id == client.id).one()
+        assert log.provider == "claude"
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
+
+
+def test_agent_service_auto_provider_routes_toolless_agent_to_ollama_when_no_gemini_key(db, test_agent):
+    """2026-07-19 — sin key de Gemini del cliente pero con Ollama local
+    corriendo (confirmado real en esta máquina, puerto 11434), la corrida
+    se enruta sola a Ollama: costo $0 real, sin depender de que el cliente
+    cargue nada."""
+    import src.agent_service as agent_service
+    from src.exec_result import ExecResult
+
+    client = Client(name="Cliente sin key de Gemini", email=f"auto-provider-ollama-{uuid.uuid4()}@test.local", password_hash="x")
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    fake_exec_result = ExecResult(text="Respuesta real de Ollama.", model="qwen2.5:14b", input_tokens=38, output_tokens=120)
+    try:
+        with patch("src.provider_routing.is_ollama_reachable", return_value=True), \
+             patch("src.ollama_executor.run_ollama", return_value=fake_exec_result) as mock_run_ollama:
+            outcome = agent_service.run(
+                db, test_agent, extra_input="hola", user_id="tester", client_id=client.id, auto_provider=True,
+            )
+        mock_run_ollama.assert_called_once()
+        assert outcome.tier_used == "ollama-local"
+        assert outcome.cost_usd == 0.0
+
+        log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.tier == "ollama-local").one()
+        assert log.provider == "ollama"
+        assert log.model == "qwen2.5:14b"
+        assert log.input_tokens == 38
+        assert log.output_tokens == 120
+        assert float(log.cost_usd) == 0.0
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
+
+
+def test_agent_service_auto_provider_falls_back_to_claude_when_ollama_dies_mid_call(db, test_agent):
+    """2026-07-19 — el health check dijo que Ollama respondía, pero la
+    llamada real falla (se cayó justo ahora, condición de carrera real
+    posible): no puede romper la corrida, tiene que caer a Claude en el
+    mismo run() en vez de propagar el error."""
+    import src.agent_service as agent_service
+    from src.ollama_executor import OllamaUnavailableError
+
+    client = Client(name="Cliente Ollama se cae", email=f"auto-provider-ollama-dies-{uuid.uuid4()}@test.local", password_hash="x")
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    try:
+        with patch("src.provider_routing.is_ollama_reachable", return_value=True), \
+             patch("src.ollama_executor.run_ollama", side_effect=OllamaUnavailableError("se cayó")), \
+             patch("src.agent_executor.Anthropic") as mock_anthropic:
+            mock_anthropic.return_value.messages.create.return_value = _fake_response()
+            outcome = agent_service.run(
+                db, test_agent, extra_input="hola", user_id="tester", client_id=client.id, auto_provider=True,
+            )
+        assert outcome.tier_used == "economy"
+
+        log = db.query(UsageLog).filter(UsageLog.agent_id == test_agent.id, UsageLog.client_id == client.id).one()
+        assert log.provider == "claude"
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
+
+
+def test_agent_service_auto_provider_never_routes_tool_agent_to_gemini(db, tool_agent):
+    """2026-07-19 — protección de regresión para los 38 de 46 agentes reales
+    con herramientas: aunque el cliente tenga una key de Gemini guardada y
+    se pida auto_provider=True, tienen que quedarse en Claude siempre,
+    porque Gemini no soporta tool-calling."""
+    import src.agent_service as agent_service
+
+    client = Client(
+        name="Cliente con key de Gemini y agente con tools",
+        email=f"auto-provider-tool-agent-{uuid.uuid4()}@test.local",
+        password_hash="x",
+        config={"api_keys": {"gemini": "clients-own-gemini-key"}},
+    )
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    try:
+        with patch("src.agent_executor.Anthropic") as mock_anthropic:
+            mock_anthropic.return_value.messages.create.return_value = _fake_response()
+            outcome = agent_service.run(
+                db, tool_agent, extra_input="hola", user_id="tester", client_id=client.id, auto_provider=True,
+            )
+        assert outcome.tier_used == "economy"
+
+        log = db.query(UsageLog).filter(UsageLog.agent_id == tool_agent.id, UsageLog.client_id == client.id).one()
+        assert log.provider == "claude"
+    finally:
+        db.query(UsageLog).filter(UsageLog.client_id == client.id).delete()
+        db.delete(client)
+        db.commit()
 
 
 def test_agent_service_populates_content_asset_id_when_agent_saves_to_library(db, test_agent):
