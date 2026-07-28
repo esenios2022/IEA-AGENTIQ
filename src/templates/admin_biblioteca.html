@@ -201,6 +201,8 @@
                         {% if asset.storage_key %}
                         <a href="/admin/biblioteca/{{ asset.id }}/file" target="_blank">Ver</a>
                         {% endif %}
+                        <a href="/admin/biblioteca/{{ asset.id }}/preview" target="_blank">👁️ Vista previa</a>
+                        <br>
                         {% if asset.status == "borrador" %}
                         <form method="post" action="/admin/biblioteca/{{ asset.id }}/status" style="display:inline;">
                             <input type="hidden" name="new_status" value="en_revision">

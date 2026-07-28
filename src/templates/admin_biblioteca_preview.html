@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista previa | {{ asset.title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { background: #f0f2f5; }
+        .preview-page { max-width: 620px; margin: 50px auto; padding: 0 20px; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--emerald); text-decoration: none; font-size: 0.85rem; }
+        .post-card {
+            background: #fff;
+            border: 1px solid #dbdbdb;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .post-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #efefef;
+        }
+        .post-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--emerald), var(--gold));
+            flex-shrink: 0;
+        }
+        .post-handle { font-size: 0.85rem; font-weight: 600; color: #262626; }
+        .post-sub { font-size: 0.72rem; color: #8e8e8e; }
+        .post-media { width: 100%; background: #000; display: block; }
+        .post-media img, .post-media video { width: 100%; max-height: 620px; object-fit: contain; display: block; background: #000; }
+        .post-no-media { padding: 60px 20px; text-align: center; color: #8e8e8e; font-size: 0.85rem; background: #fafafa; }
+        .post-caption {
+            padding: 14px 16px 18px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            color: #262626;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .post-caption b { font-weight: 600; }
+        .no-pair-note {
+            margin-top: 14px;
+            font-size: 0.8rem;
+            color: #a15c00;
+            background: #fff3cd;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .meta-row {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .meta-row span {
+            font-size: 0.72rem;
+            background: rgba(22,52,41,.08);
+            color: var(--emerald);
+            padding: 3px 10px;
+            border-radius: 100px;
+        }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="preview-page">
+        <a class="back-link" href="javascript:history.back()">&larr; Volver a la Biblioteca</a>
+
+        <div class="post-card">
+            <div class="post-head">
+                <div class="post-avatar"></div>
+                <div>
+                    <div class="post-handle">{{ (asset.client_id and "cliente" or "recurso_global") }}</div>
+                    <div class="post-sub">Vista previa &mdash; no es la publicación real</div>
+                </div>
+            </div>
+            <div class="post-media">
+                {% if image_url and is_video %}
+                <video src="{{ image_url }}" controls preload="metadata"></video>
+                {% elif image_url %}
+                <img src="{{ image_url }}" alt="{{ image_asset.title if image_asset else asset.title }}">
+                {% else %}
+                <div class="post-no-media">Sin imagen/video emparejado todavía.</div>
+                {% endif %}
+            </div>
+            <div class="post-caption">{% if text_asset and text_asset.text_content %}{{ text_asset.text_content }}{% else %}<i style="color:#8e8e8e">Sin texto emparejado todavía.</i>{% endif %}</div>
+        </div>
+
+        {% if not image_asset or not text_asset %}
+        <div class="no-pair-note">
+            No se encontró automáticamente la otra mitad de esta pieza (imagen o texto). Esto pasa cuando los títulos no coinciden lo suficiente &mdash; revisá el título en "Editar" para que ambos compartan el mismo texto base.
+        </div>
+        {% endif %}
+
+        <div class="meta-row">
+            <span>Estado: {{ asset.status }}</span>
+            <span>Categoría: {{ asset.category }}{% if asset.subcategory %} › {{ asset.subcategory }}{% endif %}</span>
+            <span>Creado: {{ asset.created_at.strftime("%Y-%m-%d") }}</span>
+        </div>
+    </main>
+</body>
+</html>

@@ -441,6 +441,77 @@ def get_library_asset_file(
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
 
+# Sufijos reales observados en los titulos que produce el pipeline de
+# marketing (ver marketing_pipeline.py) y los scripts de campana -- se
+# usan solo para emparejar imagen<->texto de la misma pieza por titulo,
+# nunca para decidir nada mas.
+_BIBLIOTECA_TITLE_SUFFIXES = [
+    " - foto limpia sin logo", " - imagen", " - foto", " - caption",
+    " - copy", " - texto", " - video", " - story", " - post",
+]
+
+
+def _biblioteca_pair_base_title(title: str) -> str:
+    lowered = title.strip().lower()
+    for suffix in _BIBLIOTECA_TITLE_SUFFIXES:
+        if lowered.endswith(suffix):
+            return lowered[: -len(suffix)].strip()
+    return lowered
+
+
+@app.get("/admin/biblioteca/{asset_id}/preview")
+def preview_library_asset(
+    request: Request,
+    asset_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """Vista previa tipo 'como quedaria publicado': empareja este recurso
+    con su contraparte imagen/texto (mismo cliente, mismo titulo base sin
+    sufijo) para mostrar los dos juntos, en vez de tener que abrir cada
+    fila de la Biblioteca por separado."""
+    asset = library.get_asset(db, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+
+    base_title = _biblioteca_pair_base_title(asset.title)
+    candidates = library.search_assets(db, client_id=str(asset.client_id) if asset.client_id else None, limit=200)
+    pair = None
+    for other in candidates:
+        if other.id == asset.id:
+            continue
+        if _biblioteca_pair_base_title(other.title) != base_title:
+            continue
+        if asset.file_type in ("imagen", "video") and other.text_content:
+            pair = other
+            break
+        if asset.text_content and other.file_type in ("imagen", "video"):
+            pair = other
+            break
+
+    image_asset = asset if asset.file_type in ("imagen", "video") else pair
+    text_asset = asset if asset.text_content else pair
+
+    image_url = None
+    if image_asset is not None and image_asset.storage_key:
+        try:
+            image_url = library_storage.get_asset_url(image_asset.storage_key)
+        except library_storage.LibraryStorageError:
+            image_url = None
+
+    return templates.TemplateResponse(
+        request,
+        "admin_biblioteca_preview.html",
+        {
+            "asset": asset,
+            "image_asset": image_asset,
+            "text_asset": text_asset,
+            "image_url": image_url,
+            "is_video": image_asset.file_type == "video" if image_asset else False,
+        },
+    )
+
+
 @app.post("/admin/biblioteca/clients/{client_id}/extra-categories")
 def set_library_client_extra_categories(
     client_id: str,
