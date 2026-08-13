@@ -23,10 +23,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.agent_service import run as run_agent_service
-from src.connectors.base import PublishPreview, PublishValidationError
+from src.connectors.base import PublishPreview, PublishValidationError, resolve_composio_user_id
 from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
-from src.models import Agent, LibraryAsset, SocialPublication
+from src.models import Agent, Client, LibraryAsset, SocialPublication
 
 ELIAS_AGENT_CODE = "agent_004"
 FAVORABLE_VERDICTS = {"FIRMAR", "FIRMAR_CON_CAMBIOS"}
@@ -203,7 +203,19 @@ def execute_publish(db: Session, publication_id: uuid.UUID | str) -> SocialPubli
     recurso existe. Cualquier falla (de estas reglas o de connector.
     publish() contra la API real) se registra en publish_error y la
     publicación queda en 'en_cola' para poder reintentar — nunca se
-    pierde ni se saca de la cola."""
+    pierde ni se saca de la cola.
+
+    2026-08-13 — bug real corregido acá: antes se llamaba a
+    connector.is_connected(str(publication.client_id)) y connector.publish(str(...))
+    con el UUID crudo del Client, pero la identidad del cliente en Composio puede ser
+    otra (Client.config["composio_user_id"], ya usada bien en marketing_pipeline.py
+    desde antes). EALumina en producción tiene composio_user_id="ealumina" — sus
+    conexiones reales de Instagram/Facebook viven ahí, nunca bajo su UUID. Con el bug,
+    is_connected() siempre daba False para EALumina y el botón "Publicar" nunca llegaba
+    a llamar a Composio. Verificado contra la API real: ComposioSocialProvider().
+    is_connected(<uuid al azar>, "instagram"/"facebook") -> False; is_connected(
+    "ealumina", "instagram"/"facebook") -> True (1 cuenta ACTIVE cada una). Ver
+    src/connectors/base.py::resolve_composio_user_id() para el detalle completo."""
     publication = get_publication(db, publication_id)
     if publication is None:
         return None
@@ -224,12 +236,17 @@ def execute_publish(db: Session, publication_id: uuid.UUID | str) -> SocialPubli
     if asset is None or not asset.storage_key:
         _fail("El recurso de la Biblioteca ya no existe o no tiene un archivo asociado.")
 
+    client = db.get(Client, publication.client_id)
+    if client is None:
+        _fail("El cliente de esta publicación ya no existe.")
+    composio_user_id = resolve_composio_user_id(client)
+
     connector = _get_connector(publication.platform)
-    if not connector.is_connected(str(publication.client_id)):
+    if not connector.is_connected(composio_user_id):
         _fail(f"La cuenta de {publication.platform} no está conectada o no está activa.")
 
     try:
-        result = connector.publish(str(publication.client_id), asset, publication.caption)
+        result = connector.publish(composio_user_id, asset, publication.caption)
     except (PublishValidationError, SocialProviderError) as exc:
         _fail(str(exc))
         return None  # inalcanzable, _fail siempre lanza — deja claro el flujo al lector

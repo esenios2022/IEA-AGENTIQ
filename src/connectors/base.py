@@ -18,11 +18,35 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from src.models import LibraryAsset
+from src.models import Client, LibraryAsset
 
 
 class PublishValidationError(Exception):
     pass
+
+
+def resolve_composio_user_id(client: Client) -> str:
+    """Bug real (detectado 2026-08-13, revisando por qué `/admin/publicaciones` nunca
+    llegaba a publicar en Instagram/Facebook para EALumina pese a tener las cuentas
+    conectadas): un Client puede tener una identidad DISTINTA de su UUID en Composio
+    (`Client.config["composio_user_id"]`) -- `src/marketing_pipeline.py:103` ya la
+    resolvía bien para los agentes, pero `src/social_publishing.py::execute_publish()`
+    y la ruta `GET /admin/clients/{client_id}/social-connect` en `src/main.py` seguían
+    llamando a Composio con `str(client.id)` crudo. EALumina en producción tiene
+    `composio_user_id="ealumina"`; bajo esa identidad están sus conexiones reales y
+    activas de Instagram y Facebook, nunca bajo su UUID de la tabla `clients`.
+
+    Verificado contra la API real de Composio (no simulado): con un UUID al azar,
+    `ComposioSocialProvider().is_connected(uuid, "instagram"/"facebook")` devuelve
+    `False` en ambos casos; con `"ealumina"` devuelve `True` en ambos (1 cuenta ACTIVE
+    cada uno). Ver comentario con el mismo detalle en
+    `src/social_publishing.py::execute_publish()`.
+
+    Extraído a un único helper (en vez de repetir `(client.config or {}).get(...)` en
+    3 puntos de llamada) para que el próximo conector (Facebook) lo use gratis."""
+    if client is None:
+        raise ValueError("resolve_composio_user_id() necesita un Client real, no None.")
+    return (client.config or {}).get("composio_user_id") or str(client.id)
 
 
 @dataclass

@@ -255,6 +255,71 @@ def test_execute_publish_on_connector_failure_stays_en_cola_and_records_error():
     assert "rechazó" in publication.publish_error
 
 
+# --- 2026-08-13: execute_publish() debe hablar con Composio usando
+# Client.config["composio_user_id"] (identidad real), no el UUID crudo del cliente
+# (ver src/connectors/base.py::resolve_composio_user_id para el bug real corregido) ---
+
+def _fake_get_with_client(asset, client):
+    from src.models import Client, LibraryAsset
+
+    def _get(model, id_):
+        if model is Client:
+            return client
+        if model is LibraryAsset:
+            return asset
+        return None
+
+    return _get
+
+
+def test_execute_publish_uses_composio_user_id_override_not_raw_uuid():
+    db = MagicMock()
+    publication = _queued_publication(client_id="11111111-1111-1111-1111-111111111111")
+    client = MagicMock(id="11111111-1111-1111-1111-111111111111", config={"composio_user_id": "ealumina"})
+    db.get.side_effect = _fake_get_with_client(_asset(), client)
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = True
+    fake_connector.publish.return_value = {"id": "post-1"}
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        social_publishing.execute_publish(db, "pub-1")
+
+    fake_connector.is_connected.assert_called_once_with("ealumina")
+    assert fake_connector.publish.call_args[0][0] == "ealumina"
+
+
+def test_execute_publish_falls_back_to_uuid_when_client_has_no_composio_override():
+    db = MagicMock()
+    publication = _queued_publication(client_id="11111111-1111-1111-1111-111111111111")
+    client = MagicMock(id="11111111-1111-1111-1111-111111111111", config=None)
+    db.get.side_effect = _fake_get_with_client(_asset(), client)
+    fake_connector = MagicMock()
+    fake_connector.is_connected.return_value = True
+    fake_connector.publish.return_value = {"id": "post-1"}
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        social_publishing.execute_publish(db, "pub-1")
+
+    fake_connector.is_connected.assert_called_once_with("11111111-1111-1111-1111-111111111111")
+    assert fake_connector.publish.call_args[0][0] == "11111111-1111-1111-1111-111111111111"
+
+
+def test_execute_publish_rejects_when_client_missing():
+    db = MagicMock()
+    publication = _queued_publication()
+    db.get.side_effect = _fake_get_with_client(_asset(), None)
+    fake_connector = MagicMock()
+
+    with patch("src.social_publishing.get_publication", return_value=publication), \
+         patch.dict(social_publishing.CONNECTORS, {"instagram": fake_connector}, clear=True):
+        with pytest.raises(social_publishing.PublishExecutionError, match="cliente"):
+            social_publishing.execute_publish(db, "pub-1")
+
+    fake_connector.publish.assert_not_called()
+
+
 def test_execute_publish_is_test_skips_legal_review_check():
     db = MagicMock()
     publication = _queued_publication(is_test=True, legal_review_verdict=None)

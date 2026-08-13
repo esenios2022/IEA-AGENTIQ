@@ -39,7 +39,7 @@ from src.database import Base, SessionLocal, engine, get_db
 from src.document_ingest import ingest_document
 from src.embeddings import embed_text
 from src import editorial_calendar, instagram_comment_automation, library, library_storage, marketing_pipeline, social_publishing, strategic_intelligence
-from src.connectors.base import PublishValidationError
+from src.connectors.base import PublishValidationError, resolve_composio_user_id
 from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
 from src.lead_qualification import qualify_and_contact_lead
@@ -732,6 +732,13 @@ def connect_client_social_platform(
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
+    """2026-08-13 — mismo bug que src/social_publishing.py::execute_publish(): esto
+    llamaba a connector.get_auth_url(str(client.id)), el UUID crudo del Client, en vez
+    de resolve_composio_user_id(client) (ver src/connectors/base.py para el detalle y
+    la verificación real contra Composio). Efecto práctico del bug acá: el link "Conectar"
+    del panel habría arrancado el flujo de OAuth bajo una identidad de Composio distinta
+    a la que ya tiene las cuentas reales conectadas (ej. "ealumina"), separando la cuenta
+    nueva de las conexiones existentes en vez de reutilizarlas."""
     client = db.get(Client, client_id)
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -739,7 +746,7 @@ def connect_client_social_platform(
     if connector is None:
         raise HTTPException(status_code=400, detail=f"Plataforma no soportada: '{platform}'.")
     try:
-        url = connector.get_auth_url(str(client.id))
+        url = connector.get_auth_url(resolve_composio_user_id(client))
     except SocialProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
