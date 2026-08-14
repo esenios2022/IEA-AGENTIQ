@@ -204,7 +204,13 @@ def run(
 
     # Case-based runs carry their own conversation memory, so identical text at two
     # different points in a patient's history must NOT be deduped by the response cache.
-    if case_id is None:
+    # 2026-08-14 -- misma razon aplica a CUALQUIER llamada con `history` (ej. el chat
+    # en vivo de un agente, agent_chat_socket): el cache key original solo miraba
+    # (agent_id, tier, extra_input), ignorando el historial por completo -- si el
+    # mismo texto literal aparecia en dos conversaciones distintas (o dos momentos
+    # de la misma charla), devolvia una respuesta vieja fuera de contexto en vez de
+    # una real. Se detecto al conectar el chat en vivo a este mismo run().
+    if case_id is None and not history:
         cached_row = _cache_lookup(db, agent.id, tier, extra_input)
         if cached_row is not None:
             record_usage(

@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import json
@@ -26,7 +27,6 @@ from sqlalchemy import delete as sa_delete, func, select, text, update as sa_upd
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from src.agent_runtime import AgentRuntime
 from src.agent_seed import load_master_config, sync_master_agents
 from src.agent_service import AgentPausedError
 from src.agent_service import run as run_agent_service
@@ -1953,13 +1953,42 @@ def agent_public_chat_page(agent_id: str, request: Request, db: Session = Depend
 
 @app.websocket("/api/agents/{agent_id}/chat")
 async def agent_chat_socket(agent_id: str, websocket: WebSocket, db: Session = Depends(get_db)):
+    """2026-08-14 -- antes esto corria AgentRuntime (src/agent_runtime.py):
+    charla pura, un unico client.messages.create() sin `tools`, confirmado
+    real en la auditoria de Fable 5 ("hablarle a un agente hoy es solo
+    charla, no accion"). Ahora pasa por el mismo agent_service.run() que usa
+    el pipeline por lotes, para que el agente pueda de verdad buscar/guardar
+    en la Biblioteca u otras tools mientras charla, no solo describir que
+    haria.
+
+    Sin client_id: este chat es publico/demo, no esta atado a ningun cliente
+    real todavia. Las tools que necesitan un client_id real (library_search,
+    library_save, gemini_image, runway_api) van a devolver un error legible
+    como resultado de la tool en vez de romper la conversacion
+    (agent_executor.py::_run_tool ya atrapa la excepcion) -- el agente se lo
+    explica al usuario en texto, degradacion prolija, no un crash.
+
+    `history` arranca con un turno sembrado (no vacio) a proposito: si se
+    pasara vacio, agent_executor.py::_run_loop cae en _initial_task_text(),
+    pensada para corridas por lote (envuelve extra_input como "datos reales
+    de esta tarea" atras de la tarea default del agente) -- perfecto para el
+    pipeline, pero rompe el primer mensaje de una charla en vivo real (un
+    saludo terminaria envuelto como si fueran datos de una tarea de
+    marketing). Sembrar el historial evita tocar ese helper compartido, que
+    si lo usan corridas por lote reales."""
     agent = db.get(Agent, agent_id)
     if agent is None:
         await websocket.close(code=4404)
         return
 
     await websocket.accept()
-    runtime = AgentRuntime(agent)
+    history: list[dict] = [
+        {
+            "role": "user",
+            "content": f"Empezá una conversación en vivo conmigo. Actuá como {agent.name} ({agent.role}). Respondé de forma natural y usá tus herramientas reales cuando la tarea lo requiera, no solo describas lo que harías.",
+        },
+        {"role": "assistant", "content": f"¡Hola! Soy {agent.name}. ¿En qué te puedo ayudar?"},
+    ]
     try:
         while True:
             data = await websocket.receive_json()
@@ -1967,8 +1996,19 @@ async def agent_chat_socket(agent_id: str, websocket: WebSocket, db: Session = D
             if not message:
                 continue
             try:
-                reply = runtime.reply(message)
-                await websocket.send_json({"type": "message", "content": reply})
+                outcome = await asyncio.to_thread(
+                    run_agent_service,
+                    db,
+                    agent,
+                    extra_input=message,
+                    user_id=str(agent.id),
+                    history=history,
+                )
+                history.append({"role": "user", "content": message})
+                history.append({"role": "assistant", "content": outcome.result})
+                await websocket.send_json({"type": "message", "content": outcome.result})
+            except AgentPausedError as exc:
+                await websocket.send_json({"type": "error", "message": str(exc)})
             except Exception as exc:
                 await websocket.send_json({"type": "error", "message": f"Error: {exc}"})
     except WebSocketDisconnect:
