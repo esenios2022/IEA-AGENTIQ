@@ -399,6 +399,94 @@ def edit_library_asset(
     return RedirectResponse(url="/admin/biblioteca?edited=1", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.get("/admin/biblioteca/calendario")
+def library_calendar_page(
+    request: Request,
+    client_id: str | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """2026-08-14 -- pedido explicito del usuario: poder ver dia por dia lo
+    que los agentes generaron, con un click de '✅ Aprobado' o '🔁 Necesita
+    cambios' por pieza, en vez de tener que entrar fila por fila a la tabla
+    de /admin/biblioteca. Agrupa por dia real (LibraryAsset.created_at,
+    el dia en que se genero) -- el calendario editorial hoy solo tiene
+    granularidad de semana, ningun agente asigna todavia un dia especifico
+    de publicacion por pieza (ver ESTADO_PROYECTO_PARA_ANTIGRAVITY.md)."""
+    assets = library.search_assets(db, client_id=client_id, status=None, limit=500)
+    clients = db.scalars(select(Client).order_by(Client.name)).all()
+
+    grouped: dict[str, list] = {}
+    for asset in assets:
+        grouped.setdefault(_biblioteca_pair_base_title(asset.title), []).append(asset)
+
+    pieces = []
+    for group in grouped.values():
+        image_asset = next((a for a in group if a.file_type in ("imagen", "video")), None)
+        text_asset = next((a for a in group if a.text_content), None)
+        primary = image_asset or text_asset or group[0]
+        image_url = None
+        if image_asset is not None and image_asset.storage_key:
+            try:
+                image_url = library_storage.get_asset_url(image_asset.storage_key)
+            except library_storage.LibraryStorageError:
+                image_url = None
+        pieces.append({
+            "day": primary.created_at.date(),
+            "title": primary.title,
+            "image_asset": image_asset,
+            "text_asset": text_asset,
+            "image_url": image_url,
+            "is_video": image_asset.file_type == "video" if image_asset else False,
+            "status": primary.status,
+            "asset_ids": [str(a.id) for a in group],
+        })
+
+    days: dict = {}
+    for piece in sorted(pieces, key=lambda p: p["day"], reverse=True):
+        days.setdefault(piece["day"], []).append(piece)
+
+    return templates.TemplateResponse(
+        request,
+        "admin_biblioteca_calendario.html",
+        {"days": days, "clients": clients, "filters": {"client_id": client_id}},
+    )
+
+
+@app.post("/admin/biblioteca/approve")
+def approve_library_pieces(
+    asset_ids: list[str] = Form(...),
+    client_id: str | None = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """Aprueba TODAS las filas de una misma pieza juntas (ej. imagen +
+    caption) para que no quede una aprobada y la otra no."""
+    for asset_id in asset_ids:
+        try:
+            library.approve_asset(db, asset_id)
+        except library.InvalidStatusTransitionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    url = "/admin/biblioteca/calendario" + (f"?client_id={client_id}" if client_id else "")
+    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/biblioteca/request-changes")
+def request_changes_library_pieces(
+    asset_ids: list[str] = Form(...),
+    client_id: str | None = Form(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    for asset_id in asset_ids:
+        try:
+            library.request_changes_asset(db, asset_id)
+        except library.InvalidStatusTransitionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    url = "/admin/biblioteca/calendario" + (f"?client_id={client_id}" if client_id else "")
+    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.post("/admin/biblioteca/{asset_id}/status")
 def set_library_asset_status(
     asset_id: str,
@@ -1696,6 +1784,35 @@ def set_cosmos_calendar_schedule(
             client.cosmos_calendar_next_run_at = datetime.utcnow() + delta
     else:
         client.cosmos_calendar_next_run_at = None
+    db.commit()
+    return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/admin/clients/{client_id}/marketing-pipeline-schedule")
+def set_marketing_pipeline_schedule(
+    client_id: str,
+    enabled: str | None = Form(None),
+    frequency: str = Form("weekly"),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    """2026-08-14 -- mismo patron que set_cosmos_calendar_schedule() de
+    arriba, para generate_weekly_marketing_content() (ETAPA 4.1). Apagado
+    por default -- nada recurrente ni de costo real se activa solo, el
+    admin lo prende explicitamente por cliente. Genera y guarda en
+    Biblioteca como borrador; publicar sigue siendo siempre manual."""
+    client = db.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    client.marketing_pipeline_enabled = enabled is not None
+    client.marketing_pipeline_frequency = frequency
+    if client.marketing_pipeline_enabled:
+        if client.marketing_pipeline_next_run_at is None:
+            delta = timedelta(days=1) if frequency == "daily" else timedelta(days=7)
+            client.marketing_pipeline_next_run_at = datetime.utcnow() + delta
+    else:
+        client.marketing_pipeline_next_run_at = None
     db.commit()
     return RedirectResponse(url=f"/admin/clients/{client_id}", status_code=status.HTTP_303_SEE_OTHER)
 

@@ -9,6 +9,7 @@ from src.agent_service import run as run_agent_service
 from src.database import SessionLocal
 from src.editorial_calendar import roll_editorial_calendar
 from src.instagram_comment_automation import poll_recent_comments
+from src.marketing_pipeline import generate_weekly_marketing_content
 from src.models import Agent, Client, ClientAgent
 
 CHECK_INTERVAL_SECONDS = 300
@@ -92,10 +93,45 @@ def _run_due_editorial_calendars() -> None:
         db.close()
 
 
+def _run_due_marketing_pipelines() -> None:
+    """2026-08-14 -- mismo patron que _run_due_editorial_calendars() de
+    arriba, para generate_weekly_marketing_content() (ETAPA 4.1, ver
+    src/marketing_pipeline.py). Opt-in por cliente, apagado por default (ver
+    Client.marketing_pipeline_enabled). Genera y guarda en Biblioteca como
+    borrador -- NUNCA publica solo, a proposito (decision explicita del
+    usuario): la publicacion sigue pasando por revision humana + legal de
+    Elias, igual que todo el resto de esta sesion."""
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        due = db.scalars(
+            select(Client).where(
+                Client.marketing_pipeline_enabled.is_(True),
+                Client.marketing_pipeline_next_run_at.isnot(None),
+                Client.marketing_pipeline_next_run_at <= now,
+            )
+        ).all()
+
+        for client in due:
+            try:
+                generate_weekly_marketing_content(db, client.id)
+                client.marketing_pipeline_last_error = None
+            except Exception as exc:
+                client.marketing_pipeline_last_error = f"Error: {exc}"
+
+            client.marketing_pipeline_last_run_at = now
+            delta = FREQUENCY_DELTAS.get(client.marketing_pipeline_frequency, timedelta(days=7))
+            client.marketing_pipeline_next_run_at = now + delta
+            db.commit()
+    finally:
+        db.close()
+
+
 def start_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(_run_due_schedules, "interval", seconds=CHECK_INTERVAL_SECONDS)
     scheduler.add_job(_run_due_editorial_calendars, "interval", seconds=CHECK_INTERVAL_SECONDS)
+    scheduler.add_job(_run_due_marketing_pipelines, "interval", seconds=CHECK_INTERVAL_SECONDS)
     scheduler.add_job(_poll_instagram_comments, "interval", seconds=INSTAGRAM_COMMENT_POLL_SECONDS)
     scheduler.start()
     return scheduler

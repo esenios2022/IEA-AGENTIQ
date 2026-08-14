@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisión día por día | IEA AGENTIQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { background: #f0f2f5; }
+        .cal-page { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+        .cal-filters { margin-bottom: 24px; display: flex; gap: 10px; align-items: center; }
+        .cal-filters select { padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(205,163,73,0.4); }
+        .day-block { margin-bottom: 32px; }
+        .day-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--emerald);
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+            border-bottom: 2px solid rgba(205,163,73,0.3);
+        }
+        .day-title .count { font-size: 0.78rem; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+        .piece-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .piece-card {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+        .piece-media { width: 100%; height: 200px; background: #000; }
+        .piece-media img, .piece-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .piece-no-media { height: 200px; display: flex; align-items: center; justify-content: center; color: #8e8e8e; font-size: 0.8rem; background: #fafafa; padding: 10px; text-align: center; }
+        .piece-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; }
+        .piece-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #262626; }
+        .piece-caption { font-size: 0.78rem; color: #555; max-height: 60px; overflow: hidden; white-space: pre-wrap; margin-bottom: 10px; flex: 1; }
+        .piece-status {
+            display: inline-block;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            width: fit-content;
+        }
+        .piece-status.borrador { background: #f0f0f0; color: #666; }
+        .piece-status.en_revision { background: #fff3cd; color: #a15c00; }
+        .piece-status.aprobado { background: #e6f4ea; color: #1f6d3a; }
+        .piece-status.archivado { background: #e0e0e0; color: #888; }
+        .piece-actions { display: flex; gap: 8px; }
+        .piece-actions form { flex: 1; margin: 0; }
+        .piece-actions button {
+            width: 100%;
+            padding: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-approve { background: #1f6d3a; color: #fff; }
+        .btn-approve:hover { background: #17552c; }
+        .btn-changes { background: #a15c00; color: #fff; }
+        .btn-changes:hover { background: #7e4800; }
+        .piece-preview-link { font-size: 0.72rem; text-align: center; margin-top: 8px; }
+        .piece-preview-link a { color: var(--emerald); }
+        .cal-empty { text-align: center; color: var(--text-muted); padding: 60px 0; }
+    </style>
+</head>
+<body>
+    {% include "_header.html" %}
+    <main class="cal-page">
+        <h1>Revisión día por día</h1>
+        <p style="color:var(--text-muted); font-size:0.85rem;">
+            Lo que generaron los agentes, agrupado por el día en que se creó. Un click en
+            <b>✅ Aprobado</b> deja la pieza lista para pasar a publicación (siempre manual).
+            Un click en <b>🔁 Necesita cambios</b> la devuelve a borrador.
+        </p>
+        <form method="get" class="cal-filters">
+            <select name="client_id" onchange="this.form.submit()">
+                <option value="">Todos los clientes</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}" {% if filters.client_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        {% if days %}
+            {% for day, pieces in days.items() %}
+            <div class="day-block">
+                <div class="day-title">{{ day.strftime("%A %d/%m/%Y") }}<span class="count">({{ pieces|length }} pieza{{ "s" if pieces|length != 1 else "" }})</span></div>
+                <div class="piece-grid">
+                    {% for piece in pieces %}
+                    <div class="piece-card">
+                        <div class="piece-media">
+                            {% if piece.image_url and piece.is_video %}
+                            <video src="{{ piece.image_url }}" preload="metadata" muted></video>
+                            {% elif piece.image_url %}
+                            <img src="{{ piece.image_url }}" alt="{{ piece.title }}">
+                            {% else %}
+                            <div class="piece-no-media">Sin imagen/video<br>(solo texto)</div>
+                            {% endif %}
+                        </div>
+                        <div class="piece-body">
+                            <div class="piece-title">{{ piece.title }}</div>
+                            <span class="piece-status {{ piece.status }}">{{ piece.status }}</span>
+                            {% if piece.text_asset and piece.text_asset.text_content %}
+                            <div class="piece-caption">{{ piece.text_asset.text_content[:180] }}{% if piece.text_asset.text_content|length > 180 %}…{% endif %}</div>
+                            {% endif %}
+                            <div class="piece-actions">
+                                <form method="post" action="/admin/biblioteca/approve">
+                                    {% for aid in piece.asset_ids %}<input type="hidden" name="asset_ids" value="{{ aid }}">{% endfor %}
+                                    <input type="hidden" name="client_id" value="{{ filters.client_id or '' }}">
+                                    <button type="submit" class="btn-approve">✅ Aprobado</button>
+                                </form>
+                                <form method="post" action="/admin/biblioteca/request-changes">
+                                    {% for aid in piece.asset_ids %}<input type="hidden" name="asset_ids" value="{{ aid }}">{% endfor %}
+                                    <input type="hidden" name="client_id" value="{{ filters.client_id or '' }}">
+                                    <button type="submit" class="btn-changes">🔁 Cambiar</button>
+                                </form>
+                            </div>
+                            <div class="piece-preview-link">
+                                <a href="/admin/biblioteca/{{ piece.asset_ids[0] }}/preview" target="_blank">Ver vista previa completa →</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p class="cal-empty">Todavía no hay contenido generado para mostrar acá.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

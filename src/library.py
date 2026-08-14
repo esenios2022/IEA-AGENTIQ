@@ -206,6 +206,45 @@ def transition_asset_status(db: Session, asset_id: uuid.UUID | str, new_status: 
     return asset
 
 
+def approve_asset(db: Session, asset_id: uuid.UUID | str) -> LibraryAsset | None:
+    """2026-08-14 -- para la vista de revision dia-por-dia
+    (/admin/biblioteca/calendario), pedida explicitamente por el usuario:
+    un solo click de '✅ Aprobado' sin importar si el recurso esta en
+    'borrador' o 'en_revision' -- a diferencia de transition_asset_status()
+    (arriba), que exige un paso a la vez. No es una limitacion tecnica que
+    se relaja porque si: para el flujo de revision humana simple que pidio
+    el usuario ("aprobado, listo para publicar" / "hay que cambiarlo"), el
+    salto directo es el comportamiento correcto, no un atajo peligroso --
+    el recurso sigue sin poder publicarse solo (eso pasa por
+    social_publishing.py, con su propia revision legal aparte)."""
+    asset = get_asset(db, asset_id)
+    if asset is None:
+        return None
+    if asset.status == "archivado":
+        raise InvalidStatusTransitionError("El recurso ya está archivado, no se puede aprobar.")
+    asset.status = "aprobado"
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+def request_changes_asset(db: Session, asset_id: uuid.UUID | str) -> LibraryAsset | None:
+    """Contraparte de approve_asset(): marca que el recurso necesita
+    cambios, devolviéndolo a 'borrador' para que se edite o se regenere.
+    Retroceso deliberado (a diferencia de transition_asset_status(), que
+    lo prohíbe) porque es exactamente lo que pide la revisión humana:
+    'esto está mal, hay que cambiarlo', no un paso más del flujo lineal."""
+    asset = get_asset(db, asset_id)
+    if asset is None:
+        return None
+    if asset.status == "archivado":
+        raise InvalidStatusTransitionError("El recurso ya está archivado, no se puede devolver a borrador.")
+    asset.status = "borrador"
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
 def delete_asset(db: Session, asset_id: uuid.UUID | str) -> bool:
     asset = get_asset(db, asset_id)
     if asset is None:

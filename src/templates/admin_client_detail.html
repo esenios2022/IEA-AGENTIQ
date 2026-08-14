@@ -185,11 +185,34 @@
                 <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0;">
                     ETAPA 4.1 — corre Daniel → Clara → Ariel → Valentina → Marco → Elena en cadena: cada uno lee
                     la semana vigente del Calendario Editorial y guarda su pieza en la Biblioteca como borrador.
-                    No publica nada. Disparo manual únicamente.
+                    Nunca publica nada solo — la publicación siempre queda para revisión y aprobación manual
+                    (ver <a href="/admin/biblioteca/calendario?client_id={{ client.id }}">vista de revisión día por día</a>).
                 </p>
                 <form method="post" action="/admin/clients/{{ client.id }}/generate-weekly-marketing">
-                    <button type="submit">Generar contenido de Marketing de la semana</button>
+                    <button type="submit">Generar contenido de Marketing de la semana (ahora)</button>
                 </form>
+                <form method="post" action="/admin/clients/{{ client.id }}/marketing-pipeline-schedule" style="margin-top:14px;">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+                        <input type="checkbox" name="enabled" {% if client.marketing_pipeline_enabled %}checked{% endif %}>
+                        Generar automáticamente (solo genera, publicar sigue siendo manual)
+                    </label>
+                    <label style="display:block;font-size:0.8rem;margin:8px 0 4px;">Frecuencia</label>
+                    <select name="frequency" style="max-width:200px;">
+                        <option value="weekly" {% if client.marketing_pipeline_frequency != "daily" %}selected{% endif %}>Semanal</option>
+                        <option value="daily" {% if client.marketing_pipeline_frequency == "daily" %}selected{% endif %}>Diaria</option>
+                    </select>
+                    <div style="margin-top:10px;">
+                        <button type="submit">Guardar</button>
+                    </div>
+                </form>
+                {% if client.marketing_pipeline_last_run_at %}
+                <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0;margin-top:10px;">
+                    Última corrida automática: {{ client.marketing_pipeline_last_run_at.strftime("%Y-%m-%d %H:%M") }}
+                    {% if client.marketing_pipeline_last_error %}
+                    — <span style="color:#c0392b;">error: {{ client.marketing_pipeline_last_error }}</span>
+                    {% endif %}
+                </p>
+                {% endif %}
             </div>
         </div>
 

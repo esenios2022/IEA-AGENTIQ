@@ -84,6 +84,21 @@ class Client(Base):
     cosmos_calendar_next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cosmos_calendar_last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cosmos_calendar_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 2026-08-14 — mismo patron que cosmos_calendar_* de arriba, para
+    # generate_weekly_marketing_content() (src/marketing_pipeline.py):
+    # generacion recurrente y automatica de contenido (Daniel->Clara->Ariel->
+    # Valentina->Marco->Elena, guardado en Biblioteca como borrador), opt-in
+    # por cliente, apagado por default. La PUBLICACION sigue siendo manual a
+    # proposito (decision explicita del usuario, 2026-08-14): cada vez que se
+    # reviso contenido generado esta sesion aparecio algo real para corregir
+    # (idioma, texto de guion filtrado, composicion visual) — automatizar
+    # tambien el publish hubiera sacado ese freno humano que en la practica
+    # evito publicar contenido con errores reales.
+    marketing_pipeline_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    marketing_pipeline_frequency: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "weekly" | "daily"
+    marketing_pipeline_next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    marketing_pipeline_last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    marketing_pipeline_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ClientAgent(Base):
