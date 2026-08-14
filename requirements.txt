@@ -1,5 +1,17 @@
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
+# 2026-08-14 -- implementacion de websocket alternativa a la libreria
+# "websockets" (que uvicorn[standard] ya trae). Descubierto real: detras del
+# proxy de Railway, "websockets" rechaza con 403 CUALQUIER conexion
+# websocket real (probado con dos clientes distintos, con y sin Origin
+# explicito matcheando el dominio publico) antes de que la app la vea
+# siquiera -- confirmado en logs reales de Uvicorn ("connection rejected
+# (403 Forbidden)"), no un problema del codigo de la app. wsproto no aplica
+# ese chequeo de origen por default (verificado local: conecta incluso con
+# un Origin completamente distinto), asi que sortea el problema sin tener
+# que armar un allowlist de origenes a mano. Ver Procfile/railway.json
+# (--ws wsproto) y src/main.py::agent_chat_socket.
+wsproto>=1.2.0
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 alembic>=1.13.0
