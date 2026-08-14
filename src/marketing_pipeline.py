@@ -27,6 +27,7 @@ no se dispara solo todavía (eso es ETAPA 4.2, scheduler.py sin cambios).
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timedelta
 
@@ -34,7 +35,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.agent_service import run as run_agent_service
-from src.library import find_recent_asset
+from src.library import find_recent_asset, search_assets
 from src.models import Agent, Client
 
 PIPELINE = [
@@ -68,8 +69,38 @@ BASE_INSTRUCTION = (
 )
 
 
-def _build_prompt(client: Client, instruction: str, previous_steps: list[dict]) -> str:
-    prompt = f"Cliente: {client.name}.\n\n{instruction}\n\n{BASE_INSTRUCTION}"
+def _build_prompt(
+    client: Client,
+    instruction: str,
+    previous_steps: list[dict],
+    forced_week: dict | None = None,
+    extra_context: str | None = None,
+) -> str:
+    if forced_week:
+        # Semana especifica pedida a mano -- reemplaza el paso 1 de
+        # BASE_INSTRUCTION (buscar "calendario editorial" con library_search)
+        # porque esa tool siempre devuelve la semana de HOY, nunca una
+        # semana futura puntual (ver _find_week_by_start_date arriba).
+        base_instruction = (
+            "PASOS OBLIGATORIOS, EN ESTE ORDEN, SIN SALTARTE NINGUNO:\n"
+            "1. NO llames a library_search para el calendario editorial esta vez -- ya te doy acá abajo, "
+            "textual, los datos reales de la semana que tenés que usar. Basá tu trabajo en eso, nunca "
+            "inventes otra cosa.\n"
+            "2. Escribí tu pieza en 3-6 líneas. NO expliques tu proceso, NO armes una tabla de brief, NO "
+            "listes los pasos que vas a seguir — andá directo al contenido final.\n"
+            "3. Llamá a library_save con esa pieza INMEDIATAMENTE después de escribirla, en el mismo "
+            "turno. Este paso es obligatorio — un borrador guardado e imperfecto vale más que uno "
+            "perfecto que nunca se guarda.\n"
+            "No agregues explicaciones antes ni después de estos 3 pasos.\n\n"
+            f"DATOS REALES DE LA SEMANA A USAR (start_date={forced_week.get('start_date')}):\n"
+            f"{json.dumps(forced_week, ensure_ascii=False, indent=2)}"
+        )
+    else:
+        base_instruction = BASE_INSTRUCTION
+
+    prompt = f"Cliente: {client.name}.\n\n{instruction}\n\n{base_instruction}"
+    if extra_context:
+        prompt += f"\n\nCONTEXTO ADICIONAL REAL PARA ESTA SEMANA (usalo si encaja con el tema, no lo fuerces):\n{extra_context}"
     if previous_steps:
         material = "\n\n".join(f"## {step['agent']}\n{step['result']}" for step in previous_steps)
         prompt += f"\n\nMaterial ya producido esta semana por el resto del equipo:\n\n{material}"
@@ -81,15 +112,63 @@ def _saved_asset_since(db: Session, agent_id, client_id, since: datetime) -> uui
     return asset.id if asset is not None else None
 
 
+def _find_week_by_start_date(db: Session, client_id: uuid.UUID | str, target_week_start: str) -> dict | None:
+    """2026-08-14 -- LibrarySearchTool._current_week() (src/tools/
+    library_search.py) SIEMPRE resuelve la semana por fecha de hoy — no hay
+    forma de que un agente pida "la semana que viene" a través de esa tool.
+    Para un pedido puntual de generar contenido de una semana FUTURA
+    especifica (ej. "generá el contenido de la semana que viene"), se busca
+    acá directamente en el calendario editorial guardado, por start_date
+    exacto, y esa semana se INYECTA en el prompt de cada agente en vez de
+    pedirles que la busquen ellos — evita tocar LibrarySearchTool (tool
+    generica, compartida por mucho mas que este pipeline)."""
+    asset = next(
+        iter(search_assets(db, client_id=client_id, file_type="calendario_editorial", status=None, limit=1)),
+        None,
+    )
+    if asset is None:
+        return None
+    for week in (asset.structured_content or {}).get("weeks", []):
+        if week.get("start_date") == target_week_start:
+            return week
+    return None
+
+
 def generate_weekly_marketing_content(
-    db: Session, client_id: uuid.UUID | str, tier_override: str | None = None
+    db: Session,
+    client_id: uuid.UUID | str,
+    tier_override: str | None = None,
+    target_week_start: str | None = None,
+    extra_context: str | None = None,
 ) -> dict:
     """`tier_override` (ej. "economy") fuerza el tier de las 6 llamadas —
     pensado para validar con saldo real limitado, ver
-    src/agent_service.py::run()."""
+    src/agent_service.py::run().
+
+    `target_week_start` (ISO "YYYY-MM-DD") -- opcional, por defecto None
+    (cada agente resuelve "la semana vigente" el mismo de siempre, por
+    fecha de hoy). Si se pasa, tiene que matchear EXACTO el start_date de
+    una semana ya guardada en el Calendario Editorial de este cliente —
+    si no se encuentra, se lanza ValueError en vez de generar con datos
+    inventados o de la semana equivocada.
+
+    `extra_context` -- texto libre opcional, se agrega tal cual al prompt
+    de los 6 pasos (ej. transitos astrologicos reales verificados para esa
+    semana puntual, pedido explicito del usuario 2026-08-14) — nunca
+    generado ni inventado por este modulo, siempre provisto por quien
+    llama."""
     client = db.get(Client, client_id)
     if client is None:
         raise ValueError("Cliente no encontrado.")
+
+    forced_week: dict | None = None
+    if target_week_start:
+        forced_week = _find_week_by_start_date(db, client_id, target_week_start)
+        if forced_week is None:
+            raise ValueError(
+                f"No se encontró ninguna semana con start_date='{target_week_start}' en el Calendario "
+                "Editorial de este cliente."
+            )
 
     steps: list[dict] = []
     warnings: list[str] = []
@@ -107,7 +186,7 @@ def generate_weekly_marketing_content(
         if agent is None:
             raise RuntimeError(f"No se encontró el agente {name} ({agent_code}).")
 
-        prompt = _build_prompt(client, instruction, steps)
+        prompt = _build_prompt(client, instruction, steps, forced_week=forced_week, extra_context=extra_context)
         # Margen de 5s hacia atrás — evita perder por milisegundos un asset
         # guardado justo al arrancar la llamada.
         started_at = datetime.utcnow() - timedelta(seconds=5)
