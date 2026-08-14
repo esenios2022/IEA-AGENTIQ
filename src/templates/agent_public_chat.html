@@ -81,26 +81,65 @@
         </div>
     </main>
     <script>
+        // 2026-08-14 -- reemplaza al websocket (new WebSocket(...)) por fetch + SSE
+        // sobre HTTP POST normal. Motivo real: el borde de Railway (railway-hikari)
+        // rechaza con 403 cualquier conexion websocket real contra produccion,
+        // confirmado en logs reales -- ver ESTADO_PROYECTO_PARA_ANTIGRAVITY.md
+        // seccion 3. HTTP POST normal (lo que usa esto) no pasa por esa parte
+        // de Railway que esta fallando.
         const agentId = "{{ agent.id }}";
-        const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const ws = new WebSocket(`${proto}//${window.location.host}/api/agents/${agentId}/chat`);
+        let conversationHistory = null; // el servidor la siembra sola en el primer pedido
+        let sending = false;
 
-        ws.onopen = () => addMessage("Hola, soy {{ agent.name }}. ¿En qué te puedo ayudar?", "agent");
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "message") addMessage(data.content, "agent");
-            else if (data.type === "error") addMessage("⚠️ " + data.message, "status");
-        };
-        ws.onerror = () => addMessage("⚠️ Error de conexión con el agente.", "status");
-        ws.onclose = () => addMessage("⚠️ Conexión cerrada. Recargá la página para reintentar.", "status");
+        addMessage("Hola, soy {{ agent.name }}. ¿En qué te puedo ayudar?", "agent");
 
-        function sendMessage() {
+        async function sendMessage() {
+            if (sending) return;
             const input = document.getElementById("input");
             const message = input.value.trim();
             if (!message) return;
             addMessage(message, "user");
-            ws.send(JSON.stringify({ message }));
             input.value = "";
+            sending = true;
+            const button = document.querySelector(".input-group button");
+            button.disabled = true;
+
+            try {
+                const response = await fetch(`/api/agents/${agentId}/chat/stream`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message, history: conversationHistory }),
+                });
+                if (!response.ok || !response.body) {
+                    addMessage("⚠️ Error de conexión con el agente (HTTP " + response.status + ").", "status");
+                    return;
+                }
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const frames = buffer.split("\n\n");
+                    buffer = frames.pop(); // ultimo fragmento, puede estar incompleto todavia
+                    for (const frame of frames) {
+                        if (!frame.startsWith("data: ")) continue;
+                        const data = JSON.parse(frame.slice(6));
+                        if (data.type === "message") {
+                            addMessage(data.content, "agent");
+                            conversationHistory = data.history;
+                        } else if (data.type === "error") {
+                            addMessage("⚠️ " + data.message, "status");
+                        }
+                    }
+                }
+            } catch (err) {
+                addMessage("⚠️ Error de conexión con el agente. Recargá la página para reintentar.", "status");
+            } finally {
+                sending = false;
+                button.disabled = false;
+            }
         }
 
         function addMessage(msg, type) {

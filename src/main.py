@@ -19,7 +19,7 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -1951,6 +1951,70 @@ def agent_public_chat_page(agent_id: str, request: Request, db: Session = Depend
     return templates.TemplateResponse(request, "agent_public_chat.html", {"agent": agent})
 
 
+def _seed_chat_history(agent: Agent) -> list[dict]:
+    """Turno inicial sembrado (no vacio) a proposito, compartido por el chat
+    websocket viejo y el stream SSE nuevo (ver docstring de
+    agent_chat_socket mas abajo para el por que): si se pasara historial
+    vacio, agent_executor.py::_run_loop cae en _initial_task_text(), pensada
+    para corridas por lote, y rompe un primer saludo real."""
+    return [
+        {
+            "role": "user",
+            "content": f"Empezá una conversación en vivo conmigo. Actuá como {agent.name} ({agent.role}). Respondé de forma natural y usá tus herramientas reales cuando la tarea lo requiera, no solo describas lo que harías.",
+        },
+        {"role": "assistant", "content": f"¡Hola! Soy {agent.name}. ¿En qué te puedo ayudar?"},
+    ]
+
+
+@app.post("/api/agents/{agent_id}/chat/stream")
+async def agent_chat_stream(agent_id: str, request: Request, db: Session = Depends(get_db)):
+    """2026-08-14 -- reemplaza a agent_chat_socket (websocket) como transporte
+    real que usa el frontend. Motivo real, no preferencia de estilo: el
+    websocket funciona perfecto local/TestClient pero el borde de Railway
+    (railway-hikari) rechaza CUALQUIER conexion websocket real contra
+    produccion con 403, confirmado en logs reales -- ver
+    ESTADO_PROYECTO_PARA_ANTIGRAVITY.md seccion 3. SSE sobre HTTP POST normal
+    no pasa por esa parte de Railway que esta fallando (la misma ruta HTTP
+    que ya usa /api/me/agents/{agent_id}/run funciona bien en produccion).
+
+    Sin estado en el servidor entre pedidos (a diferencia del websocket, que
+    mantenia `history` en el closure de la conexion): el cliente manda su
+    historial completo en cada POST y lo recibe de vuelta actualizado. El
+    websocket (agent_chat_socket, mas abajo) queda como esta, sin borrar --
+    sigue sirviendo para quien lo ejercite via TestClient/in-process."""
+    agent = db.get(Agent, agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    body = await request.json()
+    message = (body.get("message") or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Falta el mensaje.")
+    history = body.get("history") or _seed_chat_history(agent)
+
+    async def event_stream():
+        try:
+            outcome = await asyncio.to_thread(
+                run_agent_service,
+                db,
+                agent,
+                extra_input=message,
+                user_id=str(agent.id),
+                history=history,
+            )
+            new_history = history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": outcome.result},
+            ]
+            yield f"data: {json.dumps({'type': 'message', 'content': outcome.result, 'history': new_history})}\n\n"
+        except AgentPausedError as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Error: {exc}'})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.websocket("/api/agents/{agent_id}/chat")
 async def agent_chat_socket(agent_id: str, websocket: WebSocket, db: Session = Depends(get_db)):
     """2026-08-14 -- antes esto corria AgentRuntime (src/agent_runtime.py):
@@ -1982,13 +2046,7 @@ async def agent_chat_socket(agent_id: str, websocket: WebSocket, db: Session = D
         return
 
     await websocket.accept()
-    history: list[dict] = [
-        {
-            "role": "user",
-            "content": f"Empezá una conversación en vivo conmigo. Actuá como {agent.name} ({agent.role}). Respondé de forma natural y usá tus herramientas reales cuando la tarea lo requiera, no solo describas lo que harías.",
-        },
-        {"role": "assistant", "content": f"¡Hola! Soy {agent.name}. ¿En qué te puedo ayudar?"},
-    ]
+    history: list[dict] = _seed_chat_history(agent)
     try:
         while True:
             data = await websocket.receive_json()
