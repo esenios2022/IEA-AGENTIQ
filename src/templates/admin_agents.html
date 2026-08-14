@@ -83,6 +83,34 @@
             padding: 4px 8px;
             margin-bottom: 8px;
         }
+        .agent-card .card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .agent-avatar {
+            flex: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--emerald);
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .agent-card .activity {
+            font-size: 0.78rem;
+            border-radius: 6px;
+            padding: 6px 9px;
+            margin-bottom: 10px;
+        }
+        .agent-card .activity.is-live {
+            color: #1f6d3a;
+            background: #e6f4ea;
+        }
+        .agent-card .activity.is-dormant {
+            color: #6b6b6b;
+            background: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -132,13 +160,29 @@
                 <div class="group-title">{{ group_name }}<span class="count">({{ group_agents|length }})</span></div>
                 <div class="agent-grid">
                     {% for agent in group_agents %}
+                    {% set act = activity.get(agent.id) %}
+                    {% set asset_count = asset_counts.get(agent.id, 0) %}
                     <div class="agent-card">
-                        <span class="role-tag">{{ agent.role }}</span>
-                        <h3>{{ agent.name }}{% if agent.definition and agent.definition.orixa %} <small>({{ agent.definition.orixa }})</small>{% endif %}</h3>
+                        <div class="card-top">
+                            <div class="agent-avatar">{{ agent.name[0]|upper if agent.name else "?" }}</div>
+                            <div>
+                                <span class="role-tag">{{ agent.role }}</span>
+                                <h3 style="margin:0;">{{ agent.name }}{% if agent.definition and agent.definition.orixa %} <small>({{ agent.definition.orixa }})</small>{% endif %}</h3>
+                            </div>
+                        </div>
                         {% if agent.status == "paused" %}
                         <div class="paused-banner">Pausado por presupuesto diario &mdash; se reactiva mañana</div>
                         {% endif %}
-                        <div class="status">{{ agent.status }} &middot; {{ agent.created_at.strftime("%Y-%m-%d") }}</div>
+                        {% if act %}
+                        <div class="activity is-live">
+                            🟢 {{ act.run_count }} corrida{{ "s" if act.run_count != 1 else "" }} real{{ "es" if act.run_count != 1 else "" }}
+                            &middot; última: {{ act.last_run_at.strftime("%Y-%m-%d %H:%M") }}
+                            {% if asset_count %} &middot; {{ asset_count }} pieza{{ "s" if asset_count != 1 else "" }} en Biblioteca{% endif %}
+                        </div>
+                        {% else %}
+                        <div class="activity is-dormant">⚪ Nunca corrió — solo definición, sin actividad real todavía</div>
+                        {% endif %}
+                        <div class="status">{{ agent.status }} &middot; creado {{ agent.created_at.strftime("%Y-%m-%d") }}</div>
                         {% if agent.daily_budget_usd %}
                         <div class="budget">Límite: ${{ "%.2f"|format(agent.daily_budget_usd) }}/día &middot; ≈${{ "%.0f"|format(agent.daily_budget_usd * 30) }}/mes</div>
                         {% else %}

@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import delete as sa_delete, select, text, update as sa_update
+from sqlalchemy import delete as sa_delete, func, select, text, update as sa_update
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -43,7 +43,7 @@ from src.connectors.base import PublishValidationError, resolve_composio_user_id
 from src.connectors.providers.base import SocialProviderError
 from src.connectors.registry import CONNECTORS
 from src.lead_qualification import qualify_and_contact_lead
-from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, LeadInteraction, PatientCase, ResponseCache, SocialPublication, UsageLog
+from src.models import Agent, CaseMessage, Client, ClientAgent, KbArticle, Lead, LeadInteraction, LibraryAsset, PatientCase, ResponseCache, SocialPublication, UsageLog
 from src.scheduler import start_scheduler
 from src.schemas import (
     AgentOut,
@@ -972,12 +972,41 @@ def list_agents_page(
     _: None = Depends(require_admin),
 ):
     agents = db.scalars(select(Agent).order_by(Agent.created_at.desc())).all()
+
+    # Actividad real por agente -- 2026-08-14, pedido directo del usuario tras
+    # la auditoria de Fable 5: el panel mostraba 40 tarjetas identicas (nombre +
+    # rol + fecha de CREACION del registro) sin ninguna senal de cuales agentes
+    # alguna vez corrieron de verdad. No era un bug tecnico, era la ausencia
+    # total de esta info en la UI -- confirmado que es la razon real detras de
+    # "no veo lo que hacen los agentes". Dos consultas agregadas (no N+1 por
+    # agente) alcanzan: ultima corrida real (UsageLog) y cuantas piezas reales
+    # dejo en la Biblioteca (LibraryAsset.created_by_agent_id).
+    activity_rows = db.execute(
+        select(
+            UsageLog.agent_id,
+            func.max(UsageLog.created_at).label("last_run_at"),
+            func.count(UsageLog.id).label("run_count"),
+        ).group_by(UsageLog.agent_id)
+    ).all()
+    activity = {row.agent_id: {"last_run_at": row.last_run_at, "run_count": row.run_count} for row in activity_rows}
+
+    asset_rows = db.execute(
+        select(LibraryAsset.created_by_agent_id, func.count(LibraryAsset.id).label("asset_count"))
+        .where(LibraryAsset.created_by_agent_id.is_not(None))
+        .group_by(LibraryAsset.created_by_agent_id)
+    ).all()
+    asset_counts = {row.created_by_agent_id: row.asset_count for row in asset_rows}
+
     groups: dict[str, list[Agent]] = {}
     for agent in agents:
         definition = agent.definition or {}
         group_name = definition.get("group") if agent.agent_code else None
         groups.setdefault(group_name or agent.user_id or "Sin grupo", []).append(agent)
-    return templates.TemplateResponse(request, "admin_agents.html", {"groups": groups, "agents": agents})
+    return templates.TemplateResponse(
+        request,
+        "admin_agents.html",
+        {"groups": groups, "agents": agents, "activity": activity, "asset_counts": asset_counts},
+    )
 
 
 @app.post("/admin/agents/import")
